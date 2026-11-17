@@ -1,0 +1,18 @@
+# Normalise line endings in the repo; check out with the platform's endings.
+* text=auto
+
+# Windows scripts must keep CRLF; Unix scripts must keep LF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+backend/mvnw text eol=lf
+*.sh text eol=lf
+
+# SQL and content files are plain text
+*.sql  text
+*.json text
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.svg text

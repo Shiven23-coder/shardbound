@@ -1,0 +1,28 @@
+# ===== Secrets (CLAUDE.md rule 11) =====
+backend/src/main/resources/db.properties
+*.local.properties
+.env
+.env.*
+
+# ===== Java / Maven =====
+backend/target/
+*.class
+*.log
+hs_err_pid*
+
+# ===== Node / Vite =====
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+
+# ===== IDEs and OS =====
+.idea/
+*.iml
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ===== Claude Code local settings =====
+.claude/settings.local.json

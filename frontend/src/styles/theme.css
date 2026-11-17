@@ -1,0 +1,20 @@
+/* Base theme tokens. Region themes (body[data-region]) and location accents
+   (body[data-location]) are filled in during Phase 3 (spec section 9.3). */
+:root {
+  --bg: #1b1712;
+  --text: #f2e8d8;
+  --font-body: Georgia, 'Times New Roman', serif;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+.placeholder {
+  max-width: 40rem;
+  margin: 4rem auto;
+  padding: 0 1rem;
+}
