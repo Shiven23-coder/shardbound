@@ -1,20 +1,110 @@
-/* Base theme tokens. Region themes (body[data-region]) and location accents
-   (body[data-location]) are filled in during Phase 3 (spec section 9.3). */
+/* Base theme tokens and element defaults.
+   Region themes (regions.css) override the colour tokens on <body>.
+   The colour tokens are registered with @property so the browser can
+   animate them: that is what makes the region crossfade work. */
+
+@property --bg { syntax: '<color>'; inherits: true; initial-value: #1b1712; }
+@property --bg-2 { syntax: '<color>'; inherits: true; initial-value: #2c2117; }
+@property --surface { syntax: '<color>'; inherits: true; initial-value: rgba(40, 31, 22, 0.82); }
+@property --surface-solid { syntax: '<color>'; inherits: true; initial-value: #2a2018; }
+@property --border { syntax: '<color>'; inherits: true; initial-value: #5a4532; }
+@property --text { syntax: '<color>'; inherits: true; initial-value: #f2e8d8; }
+@property --text-dim { syntax: '<color>'; inherits: true; initial-value: #c9b9a0; }
+@property --accent { syntax: '<color>'; inherits: true; initial-value: #e0a040; }
+@property --accent-text { syntax: '<color>'; inherits: true; initial-value: #1b1209; }
+@property --glow { syntax: '<color>'; inherits: true; initial-value: rgba(224, 160, 64, 0.25); }
+
 :root {
-  --bg: #1b1712;
-  --text: #f2e8d8;
-  --font-body: Georgia, 'Times New Roman', serif;
+  /* Colours that stay the same in every region. */
+  --hp: #d9534f;
+  --hp-2: #f07a5a;
+  --xp: #5b8def;
+  --xp-2: #8fb3ff;
+  --energy: #4fd1c5;
+  --gold: #f5c542;
+  --danger: #e5484d;
+  --success: #46a758;
+  --focus: #ffd166;
+
+  --font-story: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Times New Roman', serif;
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --radius: 10px;
+  --radius-small: 6px;
+  --gap: 1rem;
+  --shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+  --region-fade: 1.2s;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
-  background: var(--bg);
+  min-height: 100vh;
   color: var(--text);
-  font-family: var(--font-body);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse at 50% -10%, var(--glow), transparent 60%),
+    linear-gradient(180deg, var(--bg-2), var(--bg));
+  background-attachment: fixed;
+  font-family: var(--font-ui);
+  line-height: 1.5;
+  transition:
+    --bg var(--region-fade) ease,
+    --bg-2 var(--region-fade) ease,
+    --surface var(--region-fade) ease,
+    --surface-solid var(--region-fade) ease,
+    --border var(--region-fade) ease,
+    --text var(--region-fade) ease,
+    --text-dim var(--region-fade) ease,
+    --accent var(--region-fade) ease,
+    --accent-text var(--region-fade) ease,
+    --glow var(--region-fade) ease,
+    background-color var(--region-fade) ease;
 }
 
-.placeholder {
-  max-width: 40rem;
-  margin: 4rem auto;
-  padding: 0 1rem;
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-story);
+  line-height: 1.2;
+  margin: 0 0 0.5rem;
+}
+
+p {
+  margin: 0 0 0.75rem;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+/* Visible keyboard focus everywhere. */
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Text only for screen readers. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

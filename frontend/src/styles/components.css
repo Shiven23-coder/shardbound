@@ -1,0 +1,1063 @@
+/* Layout and component styles. Colours always come from the tokens in
+   theme.css / regions.css so every region theme applies automatically. */
+
+/* ---------- App frame ---------- */
+.app {
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+.screen-frame {
+  max-width: 76rem;
+  margin: 0 auto;
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+  backdrop-filter: blur(4px);
+}
+
+/* ---------- Buttons, tags, small text ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface-solid);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.btn-ghost {
+  background: transparent;
+}
+
+.btn-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn-skill {
+  border-color: var(--energy);
+}
+
+.btn-small {
+  min-height: 2rem;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.9rem;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.skill-cost {
+  font-size: 0.8em;
+  opacity: 0.8;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.tag {
+  display: inline-block;
+  padding: 0 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.tag-main,
+.tag-demo {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.hint,
+.panel-meta {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.empty {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.notice {
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--success);
+  background: var(--surface-solid);
+  border-radius: var(--radius-small);
+}
+
+.notice-error {
+  border-left-color: var(--danger);
+}
+
+.input {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  margin: 0.25rem 0 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface-solid);
+}
+
+/* ---------- Tabs ---------- */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.75rem;
+}
+
+.tab {
+  padding: 0.45rem 0.8rem;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.tab-active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.tab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ---------- Title, profile ---------- */
+.title-screen {
+  align-items: center;
+  text-align: center;
+  padding-top: 8vh;
+}
+
+.game-title {
+  font-size: clamp(2.4rem, 9vw, 4.5rem);
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 0 0 24px var(--glow);
+}
+
+.tagline {
+  color: var(--text-dim);
+  font-family: var(--font-story);
+  font-style: italic;
+}
+
+.title-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: min(22rem, 100%);
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+  padding: 0.4rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.toggle-track {
+  position: relative;
+  width: 2.6rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background-color 0.2s ease;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: var(--text);
+  transition: transform 0.2s ease;
+}
+
+.toggle[aria-checked='true'] .toggle-track {
+  background: var(--accent);
+}
+
+.toggle[aria-checked='true'] .toggle-thumb {
+  transform: translateX(1.2rem);
+}
+
+.profile-screen {
+  align-items: center;
+  padding-top: 10vh;
+}
+
+.profile-form {
+  width: min(26rem, 100%);
+}
+
+/* ---------- HUD and bars ---------- */
+.game-top {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.game-top .hud {
+  flex: 1;
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: minmax(12rem, 2fr) minmax(10rem, 2fr) minmax(10rem, 1.4fr);
+  gap: 0.6rem 1.25rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+}
+
+.hud-bars {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.hud-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.9rem;
+}
+
+.hud-gold {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.hud-small {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.energy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.energy-label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-right: 0.15rem;
+}
+
+.pip {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  border: 2px solid var(--energy);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.pip-full {
+  background: var(--energy);
+  box-shadow: 0 0 6px var(--energy);
+}
+
+.stat-bar-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.stat-bar-numbers {
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.stat-bar-track {
+  height: 0.6rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--hp), var(--hp-2));
+}
+
+.stat-bar-xp .stat-bar-fill {
+  background: linear-gradient(90deg, var(--xp), var(--xp-2));
+}
+
+.stat-bar-enemy .stat-bar-fill {
+  background: linear-gradient(90deg, #b3261e, var(--hp));
+}
+
+.stat-bar-progress .stat-bar-track {
+  height: 0.9rem;
+}
+
+.stat-bar-progress .stat-bar-fill {
+  background: linear-gradient(90deg, var(--accent), var(--gold));
+}
+
+.hud-weapon {
+  justify-self: end;
+}
+
+.weapon-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.weapon-stat {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+/* ---------- Game screen layout ---------- */
+.game-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22rem;
+  gap: var(--gap);
+  align-items: start;
+}
+
+.game-menu {
+  position: relative;
+}
+
+.game-menu-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.4rem);
+  z-index: 20;
+  width: 13rem;
+  margin: 0;
+  padding: 0.4rem;
+  list-style: none;
+  background: var(--surface-solid);
+}
+
+.side-panels {
+  max-height: calc(100vh - 10rem);
+  overflow-y: auto;
+}
+
+/* ---------- Story ---------- */
+.story-panel {
+  padding: 1.5rem;
+}
+
+.story-place {
+  color: var(--accent);
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.story-title {
+  font-size: 1.7rem;
+}
+
+.typewriter {
+  cursor: pointer;
+}
+
+.story-text {
+  font-family: var(--font-story);
+  font-size: 1.15rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  min-height: 6rem;
+  margin-bottom: 1.25rem;
+}
+
+.choice-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-small);
+  background: var(--surface-solid);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.2s ease;
+}
+
+.choice:hover:not(:disabled):not(.choice-locked) {
+  transform: translateX(4px);
+  border-color: var(--accent);
+}
+
+.choice:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.choice-locked {
+  border-left-color: var(--border);
+  color: var(--text-dim);
+  opacity: 0.7;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+
+.choice-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.choice-reason {
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.lock-icon {
+  flex-shrink: 0;
+}
+
+/* ---------- Side panel contents ---------- */
+.item-list,
+.quest-list,
+.value-list,
+.journal {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item-row,
+.quest {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-solid);
+}
+
+.item-row-head,
+.quest-head,
+.weapon-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.item-qty {
+  color: var(--text-dim);
+}
+
+.weapon-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin: 0.3rem 0;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.item-desc {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 0.4rem;
+}
+
+.quest[data-status='COMPLETED'] {
+  opacity: 0.75;
+}
+
+.quest[data-status='FAILED'] .quest-status {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.quest[data-status='ACTIVE'] .quest-status {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.panel-subtitle {
+  font-size: 1rem;
+  margin-top: 0.75rem;
+}
+
+.value-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.3rem 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.value-pos { color: var(--success); }
+.value-neg { color: var(--danger); }
+.value-zero { color: var(--text-dim); }
+
+.journal-entry {
+  display: flex;
+  flex-direction: column;
+  padding-left: 0.6rem;
+  border-left: 2px solid var(--border);
+}
+
+.journal-node {
+  font-family: var(--font-story);
+}
+
+.journal-choice {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+/* ---------- Combat ---------- */
+.hud-wrap {
+  position: relative;
+}
+
+.hud-wrap .damage-layer {
+  left: 0;
+  width: 12rem;
+}
+
+.combat-arena {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.combat-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.enemy-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem;
+}
+
+.enemy-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: left;
+  cursor: pointer;
+  overflow: visible;
+}
+
+.enemy-card:disabled {
+  cursor: default;
+}
+
+.enemy-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent), var(--shadow);
+}
+
+.enemy-dead {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+
+.enemy-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+
+.enemy-target-label {
+  position: absolute;
+  top: -0.7rem;
+  right: 0.75rem;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.hit-flash {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: #fff;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+.damage-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.damage-number {
+  position: absolute;
+  top: 0.5rem;
+  transform-origin: center;
+  font: 800 1.4rem/1 var(--font-ui);
+  color: #ff5b5b;
+  text-shadow: 0 2px 0 #000, 0 0 6px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+}
+
+.damage-crit {
+  color: var(--gold);
+  font-size: 1.9rem;
+}
+
+.damage-crit-label {
+  display: block;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+}
+
+.combat-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.item-picker {
+  display: grid;
+  gap: 0.4rem;
+  max-width: 20rem;
+  margin: 0.6rem 0 0;
+  list-style: none;
+}
+
+.combat-log ol {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-family: var(--font-story);
+  color: var(--text-dim);
+}
+
+.combat-log li:last-child {
+  color: var(--text);
+}
+
+/* ---------- Ending ---------- */
+.ending-screen {
+  align-items: center;
+  padding-top: 4vh;
+}
+
+.ending-panel {
+  width: min(44rem, 100%);
+  padding: 2rem;
+}
+
+.ending-kicker {
+  color: var(--accent);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+
+.ending-title {
+  font-size: clamp(1.8rem, 6vw, 2.8rem);
+}
+
+.ending-stats {
+  display: flex;
+  gap: 2rem;
+  margin: 0 0 1rem;
+}
+
+.ending-stats dt {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.ending-stats dd {
+  margin: 0;
+  font-size: 1.4rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Achievements / leaderboard ---------- */
+.list-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.achievement-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.achievement {
+  opacity: 0.6;
+}
+
+.achievement.unlocked {
+  opacity: 1;
+  border-color: var(--gold);
+}
+
+.ending-list {
+  margin: 0;
+  list-style: none;
+}
+
+.ending-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px dashed var(--border);
+  color: var(--text-dim);
+}
+
+.ending-row.reached {
+  color: var(--text);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.leaderboard {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leaderboard th,
+.leaderboard td {
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.leaderboard tr.me {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---------- Toasts ---------- */
+.toast-layer {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(20rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  flex-direction: column;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-small);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.toast-kind {
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+}
+
+.toast[data-kind='ERROR'] { border-left-color: var(--danger); }
+.toast[data-kind='HEAL'] { border-left-color: var(--success); }
+.toast[data-kind='LEVEL'],
+.toast[data-kind='XP'] { border-left-color: var(--xp); }
+.toast[data-kind='GOLD'] { border-left-color: var(--gold); }
+
+/* Achievements get a gold card with a sweeping shine. */
+.toast[data-kind='ACHIEVEMENT'] {
+  border: 1px solid #f5c542;
+  border-left: 4px solid #f5c542;
+  color: #2a1d00;
+  background: linear-gradient(110deg, #e9b62f 30%, #fff1b8 50%, #e9b62f 70%);
+  background-size: 250% 100%;
+  animation: achievement-shine 1.6s ease-out 1;
+}
+
+.toast[data-kind='ACHIEVEMENT'] .toast-kind {
+  color: #5a3f00;
+}
+
+/* ---------- Modal ---------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.modal {
+  width: min(34rem, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--surface-solid);
+}
+
+.modal-close {
+  margin-left: auto;
+}
+
+.slot-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.slot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+}
+
+.slot-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.slot-info small {
+  color: var(--text-dim);
+}
+
+.slot-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.reload-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  max-width: 76rem;
+  margin: 0 auto 1rem;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--danger);
+  border-radius: var(--radius);
+  background: var(--surface-solid);
+  font-weight: 600;
+}
+
+/* ---------- Inspector ---------- */
+.inspector {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 45;
+  width: min(24rem, 100vw);
+  overflow-y: auto;
+  padding: 1rem;
+  background: rgba(8, 10, 14, 0.94);
+  color: #d8e0ea;
+  border-right: 1px solid #334;
+  font: 0.85rem/1.45 ui-monospace, Consolas, monospace;
+}
+
+.inspector h4 {
+  margin-top: 1rem;
+  font-family: inherit;
+  color: #8fd3ff;
+}
+
+.inspector-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.inspector .btn {
+  color: #d8e0ea;
+  border-color: #445;
+}
+
+.inspector-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.75rem;
+}
+
+.inspector-facts dd {
+  margin: 0;
+}
+
+.inspector-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.inspector-table td {
+  padding: 0.1rem 0.3rem;
+  border-bottom: 1px solid #223;
+}
+
+.inspector-list {
+  padding-left: 1.4rem;
+}
+
+.inspector-sql {
+  margin: 0 0 0.4rem;
+  padding: 0.4rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #11161f;
+  border-radius: 4px;
+}
+
+/* ---------- Responsive: stack everything on narrow screens ---------- */
+@media (max-width: 900px) {
+  .game-body {
+    grid-template-columns: 1fr;
+  }
+
+  .side-panels {
+    max-height: none;
+  }
+
+  .hud {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .hud-weapon {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 560px) {
+  .app {
+    padding: 0.6rem;
+  }
+
+  .hud {
+    grid-template-columns: 1fr;
+  }
+
+  .game-top {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .game-menu {
+    align-self: flex-end;
+  }
+
+  .story-panel {
+    padding: 1rem;
+  }
+
+  .story-text {
+    font-size: 1.05rem;
+  }
+
+  .combat-buttons .btn {
+    flex: 1 1 40%;
+  }
+}

@@ -1,0 +1,79 @@
+/* Weapon tier styles. The tier letter comes from the server and is put on
+   the element as data-tier; these rules only decide how it looks. */
+
+/* ---------- Tier badge (the small letter chip) ---------- */
+.tier-badge {
+  --tier-color: #8a8a8a;
+  --tier-text: #111;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.1em;
+  padding: 0.05em 0.4em;
+  border-radius: var(--radius-small);
+  background: var(--tier-color);
+  color: var(--tier-text);
+  font: 700 0.78rem/1.4 var(--font-ui);
+  letter-spacing: 0.04em;
+}
+
+/* ---------- Weapon card (border carries the tier colour) ---------- */
+.weapon-card {
+  --tier-color: #8a8a8a;
+  border: 2px solid var(--tier-color);
+  border-radius: var(--radius);
+  background: var(--surface-solid);
+}
+
+.weapon-card-inner {
+  padding: 0.6rem 0.75rem;
+}
+
+/* Greys for C and below, each a little different. */
+[data-tier='C'] { --tier-color: #b4b9c0; }
+[data-tier='D'] { --tier-color: #9da1a8; }
+[data-tier='E'] { --tier-color: #868a90; }
+[data-tier='F'] { --tier-color: #6f7277; --tier-text: #f2f2f2; }
+
+[data-tier='B'] { --tier-color: #46b45a; }
+[data-tier='A'] { --tier-color: #4a8cf0; --tier-text: #fff; }
+[data-tier='S'] { --tier-color: #a35cf0; --tier-text: #fff; }
+
+/* SS: gold with a moving shimmer. */
+[data-tier='SS'] {
+  --tier-color: #f2c230;
+}
+
+.tier-badge[data-tier='SS'] {
+  background: linear-gradient(110deg, #c8961c 20%, #fff2b0 45%, #f2c230 55%, #c8961c 80%);
+  background-size: 250% 100%;
+  animation: tier-shimmer 2.4s linear infinite;
+}
+
+.weapon-card[data-tier='SS'] {
+  border-color: transparent;
+  background:
+    linear-gradient(var(--surface-solid), var(--surface-solid)) padding-box,
+    linear-gradient(110deg, #b8860b 20%, #fff2b0 45%, #f2c230 55%, #b8860b 80%) border-box;
+  background-size: 100% 100%, 250% 100%;
+  animation: tier-shimmer-border 2.4s linear infinite;
+  box-shadow: 0 0 12px rgba(242, 194, 48, 0.35);
+}
+
+/* SSS: animated rainbow border plus a pulsing glow. */
+.tier-badge[data-tier='SSS'] {
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  background: linear-gradient(90deg, #ff4d4d, #ffb84d, #f5f54d, #4dff88, #4dd2ff, #8a4dff, #ff4dd2, #ff4d4d);
+  background-size: 300% 100%;
+  animation: tier-rainbow 3s linear infinite, tier-glow 2s ease-in-out infinite;
+}
+
+.weapon-card[data-tier='SSS'] {
+  border: 3px solid transparent;
+  background:
+    linear-gradient(var(--surface-solid), var(--surface-solid)) padding-box,
+    linear-gradient(90deg, #ff4d4d, #ffb84d, #f5f54d, #4dff88, #4dd2ff, #8a4dff, #ff4dd2, #ff4d4d) border-box;
+  background-size: 100% 100%, 300% 100%;
+  animation: tier-rainbow-border 3s linear infinite, tier-glow 2s ease-in-out infinite;
+}

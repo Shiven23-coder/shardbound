@@ -1,0 +1,53 @@
+/* Keyframes used by tiers.css and components.css.
+   Framer Motion handles the JS-driven animations (HP bars, toasts, damage). */
+
+@keyframes tier-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -150% 0; }
+}
+
+@keyframes tier-shimmer-border {
+  from { background-position: 0 0, 100% 0; }
+  to { background-position: 0 0, -150% 0; }
+}
+
+@keyframes tier-rainbow {
+  from { background-position: 0% 0; }
+  to { background-position: 300% 0; }
+}
+
+@keyframes tier-rainbow-border {
+  from { background-position: 0 0, 0% 0; }
+  to { background-position: 0 0, 300% 0; }
+}
+
+@keyframes tier-glow {
+  0%, 100% { box-shadow: 0 0 6px rgba(255, 255, 255, 0.25), 0 0 14px rgba(160, 100, 255, 0.35); }
+  50% { box-shadow: 0 0 12px rgba(255, 255, 255, 0.45), 0 0 26px rgba(255, 120, 200, 0.55); }
+}
+
+@keyframes caret-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes achievement-shine {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+
+.typewriter-caret {
+  animation: caret-blink 0.9s step-end infinite;
+}
+
+/* Respect the user's reduced-motion setting: stop looping animations
+   and make CSS transitions instant (the region crossfade included). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

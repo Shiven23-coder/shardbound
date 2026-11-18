@@ -1,0 +1,87 @@
+/* Region themes. App.jsx sets body[data-region] and body[data-location]
+   from the GameView; these rules only swap colour tokens. The crossfade
+   comes from the transitions declared on body in theme.css. */
+
+/* VILLAGE: warm amber and brown (also the default). */
+body,
+body[data-region='VILLAGE'] {
+  --bg: #1b1712;
+  --bg-2: #33241a;
+  --surface: rgba(43, 32, 22, 0.85);
+  --surface-solid: #2b2016;
+  --border: #6a4f36;
+  --text: #f4ead9;
+  --text-dim: #cdbb9f;
+  --accent: #e8a643;
+  --accent-text: #1b1209;
+  --glow: rgba(232, 166, 67, 0.28);
+}
+
+/* FOREST: deep greens with a moss accent. */
+body[data-region='FOREST'] {
+  --bg: #0f1a12;
+  --bg-2: #1b3020;
+  --surface: rgba(20, 38, 25, 0.86);
+  --surface-solid: #16281b;
+  --border: #3f6b47;
+  --text: #e6f2e2;
+  --text-dim: #a9c6a5;
+  --accent: #8bd17c;
+  --accent-text: #0b1a0d;
+  --glow: rgba(120, 200, 110, 0.22);
+}
+
+/* DUNGEON: dark slate with a violet edge. */
+body[data-region='DUNGEON'] {
+  --bg: #0c0c14;
+  --bg-2: #1a1630;
+  --surface: rgba(22, 20, 38, 0.9);
+  --surface-solid: #17152a;
+  --border: #4a4170;
+  --text: #e4e1f2;
+  --text-dim: #a7a2c4;
+  --accent: #a58cff;
+  --accent-text: #100a24;
+  --glow: rgba(140, 110, 255, 0.2);
+}
+
+/* KINGDOM: royal blue with gold. */
+body[data-region='KINGDOM'] {
+  --bg: #0e1426;
+  --bg-2: #1e2850;
+  --surface: rgba(24, 32, 64, 0.86);
+  --surface-solid: #18203f;
+  --border: #b8923a;
+  --text: #f6f0dc;
+  --text-dim: #cfc4a2;
+  --accent: #f2c14e;
+  --accent-text: #1a1405;
+  --glow: rgba(242, 193, 78, 0.28);
+}
+
+/* SPIRE: pale crystalline (light theme: icy blue and white-violet). */
+body[data-region='SPIRE'] {
+  --bg: #dfe7f5;
+  --bg-2: #f4f1ff;
+  --surface: rgba(255, 255, 255, 0.78);
+  --surface-solid: #f7f8fe;
+  --border: #9fb1d8;
+  --text: #1a2140;
+  --text-dim: #48527a;
+  --accent: #4a5fd0;
+  --accent-text: #ffffff;
+  --glow: rgba(160, 180, 255, 0.55);
+}
+
+/* Location accent: Eldmere burning tints everything ember red. */
+body[data-location='eldmere_burning'] {
+  --bg: #1a0c08;
+  --bg-2: #4a160c;
+  --surface: rgba(48, 20, 12, 0.88);
+  --surface-solid: #2e130b;
+  --border: #a2442a;
+  --text-dim: #e3b29c;
+  --accent: #ff7a3d;
+  --accent-text: #1a0904;
+  --glow: rgba(255, 90, 40, 0.38);
+}
