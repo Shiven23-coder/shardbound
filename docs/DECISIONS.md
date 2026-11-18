@@ -416,3 +416,24 @@ Format for each entry: **Problem** → **Decision** → **Why** → **Where in s
 | S7 | `insertHistory` walks the history stack with `descendingIterator()` so `step_no` 1 is the oldest step. | `ArrayDeque` used as a stack iterates newest-first; without this the journal loads reversed. | §4.1, §4.4 |
 | S8 | Phase 2 cannot go green until the student-written `Graph.bfs/dfs/shortestPath` exists, because `StoryValidator` uses it. | Makes the dependency explicit in the phase plan. | §10 |
 | S9 | Language level Java 21 via `maven.compiler.release=21`; the installed JDK 25 is fine. | `--release 21` rejects any API added after 21, so the code runs on any Java 21 machine. | §2 |
+
+---
+
+## Implementation choices I1–I12 (build of Phases 1–8, pending review)
+
+Made while writing the code, where the spec was silent. Listed in spec §12. **Not yet approved by the student** — each is easy to change.
+
+| # | Choice | Why |
+|---|---|---|
+| I1 | `content/` package with one raw shape (`RawContent`) for both the JSON and the DB path | One validator and one assembler serve the importer, the server and the tests. Testable without a database. |
+| I2 | Offline mode (`ConsoleRunner --json`, `ContentImporter --dry-run`, unit tests from JSON) | PostgreSQL was not installed yet; the engine could still be built and verified. Offline mode refuses saves rather than faking them. |
+| I3 | Event types `ITEM_LOST`, `FLAG_SET`, `GOLD_CHANGED`, `HEALED`, `XP_GAINED` | Spec §6.2 says every effect publishes an event, but §6.8's list had no type for these effects. |
+| I4 | Helper types (`Rewards`, `Encounter`, `DamageRoll`, `Hit`, `ActionType`, `ItemType`, `RepositoryException`, `Sessions`, request/response records) | Keep methods small (CLAUDE.md rule 12) and avoid duplicating reward logic in effects, quests and combat. |
+| I5 | Full bag → item left behind with a toast, no exception | An exception halfway through a choice's effect list would leave the state half-changed. |
+| I6 | Enemies crit at 5% | The damage formula needs a crit chance; enemies have no weapon to take it from. |
+| I7 | BossAI phase 2 = heavy attack every 2nd turn (phase 1: every 3rd) | The spec names a phase 2 but not what it changes. |
+| I8 | Level-up also heals +5 | Otherwise the new max hp would show as missing health. |
+| I9 | Extra CHECK constraints (non-negative values) | Cheap integrity, consistent with the existing constraints. |
+| I10 | `?playerId=` accepted when no session; load without a session creates one | The title screen's "Load" happens before any game session exists. |
+| I11 | GameView ships all panel fields now | All phases' engine code was written in one pass. |
+| I12 | `compile exec:java`; default main class as a property | Found while running the tools: plugin configuration silently overrode `-Dexec.mainClass`. |

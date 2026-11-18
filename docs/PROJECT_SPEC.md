@@ -123,6 +123,7 @@ shardbound/
 │       │   ├── achievement/ Achievement, AchievementRule, AchievementManager
 │       │   ├── persistence/ ContentRepository, SaveRepository, PlayerRepository,
 │       │   │                MetaRepository, SqlLog, SaveData (record of raw save rows, D22)
+│       │   ├── content/     RawContent (raw rows), JsonContentReader, ContentAssembler, GameContent (I1)
 │       │   ├── tools/       ContentImporter, ConsoleRunner, GraphExporter
 │       │   └── exception/   GameException, InvalidChoiceException, LockedChoiceException,
 │       │                    InventoryFullException, SaveFailedException, ContentValidationException,
@@ -1195,3 +1196,24 @@ my answer, then score it 0–5 and tell me what a perfect answer includes. Focus
 transactions/ACID, indexes, triggers vs application logic, data structure choices and complexity,
 OOP design, concurrency, and SQL injection.
 ```
+
+---
+
+## 12. Implementation notes (build of Phases 1–8, pending review)
+
+Choices made while writing the code where this spec was silent. Each is tagged **(In)** and explained in `docs/DECISIONS.md`. They are **pending the student's review**; change any of them by editing this section and the code together.
+
+| # | Note |
+|---|---|
+| I1 | New package `content/`: `RawContent` (rows), `JsonContentReader` (JSON → rows), `ContentAssembler` (rows → objects), `GameContent` (immutable catalog). The DB path (`ContentRepository`) and the JSON path produce the same `RawContent`, so the validator, importer and engine never care where content came from. |
+| I2 | Offline mode: `ConsoleRunner --json` and the unit tests load content straight from `content/*.json` with no database; saving is refused (409) and nothing is persisted. `ContentImporter --dry-run` validates without a database. |
+| I3 | Five event types were added so that every effect publishes an event (§6.2): `ITEM_LOST`, `FLAG_SET`, `GOLD_CHANGED`, `HEALED`, `XP_GAINED`. Flags produce no toast. |
+| I4 | Small helper types: `rules/Rewards` (shared XP/gold/item/consumable granting), `combat/Encounter`, `DamageRoll`, `Hit`, `ActionType`, `item/ItemType`, `persistence/RepositoryException`, `api/Sessions`, `api/dto/Requests` and `MetaViews` (request/response records). |
+| I5 | `GiveItemEffect` never throws: a full bag leaves the item behind with a toast, so a choice is never half-applied. Owning a non-stackable item twice is impossible (the save PK is (save_id, item_id)). |
+| I6 | Enemies have no weapon; they crit at a fixed 5% (`DamageCalculator.ENEMY_CRIT_PCT`). |
+| I7 | `BossAI`: phase 1 = heavy attack every 3rd turn; phase 2 (≤ 50% hp) = heavy attack every 2nd turn. |
+| I8 | Level-up adds +5 to current hp as well as max hp. |
+| I9 | Extra CHECK constraints in `01_schema.sql` beyond §4.1: non-negative enemy stats/rewards, consumable heal/energy, quest rewards, `play_seconds`, `best_seconds`. |
+| I10 | `GET /api/saves`, `/api/achievements`, `/api/endings`, `DELETE /api/saves/{slot}` and `/load` accept `?playerId=` when no `X-Session` is sent (title-screen load). A load without a session creates a new session. An unknown session → 404. |
+| I11 | `GameView` already carries the Phase 4–7 fields (`inventory`, `quests`, `reputation`, `affinity`, `journal`, `offerReload`) plus `locationName`, `chapter`, `demoMode`; `CombatView` adds `encounterName`, `round`, `skillCost`, `alive`. |
+| I12 | `exec:java` does not compile: use `.\mvnw.cmd compile exec:java -Dexec.mainClass=…`. The default main class is the `exec.mainClass` property in `pom.xml` (plugin `<configuration>` would override `-D`). |
