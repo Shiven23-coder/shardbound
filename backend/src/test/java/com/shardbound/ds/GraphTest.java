@@ -10,8 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests for Graph. The structure tests pass now; the bfs / dfs /
- * shortestPath tests FAIL until the student implements those methods
+ * Tests for Graph: structure, and the viva algorithms bfs / dfs /
+ * shortestPath (explained in docs/STUDY_GUIDE.md).
  * (CLAUDE.md rule 8).
  *
  * <pre>
@@ -64,7 +64,7 @@ class GraphTest {
     }
 
     // ---------------------------------------------------------------------
-    // BFS (student)
+    // BFS
     // ---------------------------------------------------------------------
 
     @Test
@@ -85,7 +85,7 @@ class GraphTest {
     }
 
     // ---------------------------------------------------------------------
-    // DFS (student)
+    // DFS
     // ---------------------------------------------------------------------
 
     @Test
@@ -109,7 +109,7 @@ class GraphTest {
     }
 
     // ---------------------------------------------------------------------
-    // shortest path (student)
+    // shortest path
     // ---------------------------------------------------------------------
 
     @Test

@@ -17,8 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * StoryValidator (spec §8.4). It traverses with Graph.bfs / dfs /
- * shortestPath, so these tests pass only once the student has implemented
- * those methods (CLAUDE.md rule 8).
+ * shortestPath (the viva algorithms, docs/STUDY_GUIDE.md).
  */
 class StoryValidatorTest {
 

@@ -1,8 +1,10 @@
 package com.shardbound.ds;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +20,8 @@ import java.util.Set;
  * the O(V²) of an adjacency matrix.
  *
  * <p>The traversal methods {@link #bfs}, {@link #dfs} and {@link #shortestPath}
- * are <b>student-implemented</b> (CLAUDE.md rule 8). Their tests are in
- * {@code GraphTest} and fail until they are written.
+ * are viva algorithms (CLAUDE.md rule 8): step-by-step comments here, a dry run
+ * and viva questions in docs/STUDY_GUIDE.md, tests in {@code GraphTest}.
  *
  * @param <V> vertex type; must implement equals/hashCode correctly
  * @param <E> edge value type
@@ -94,7 +96,7 @@ public class Graph<V, E> {
     }
 
     // =====================================================================
-    // Student-implemented traversals (CLAUDE.md rule 8)
+    // Viva algorithms (CLAUDE.md rule 8; explained in docs/STUDY_GUIDE.md)
     // =====================================================================
 
     /**
@@ -108,12 +110,34 @@ public class Graph<V, E> {
      * <p>Use an {@code ArrayDeque} as the FIFO queue and a {@code HashSet}
      * for "visited".
      *
-     * <p>Expected complexity: time O(V + E), space O(V).
+     * <p>Complexity: time O(V + E) — each vertex is queued/pushed and expanded at most once, each edge is examined once; space O(V) for the visited set and the queue/stack.
      * Used by StoryValidator checks 1 and 4 (reachability).
      */
     public List<V> bfs(V start) {
-        // TODO(student): implement BFS (see GraphTest for the expected behaviour)
-        throw new UnsupportedOperationException("TODO(student): Graph.bfs");
+        List<V> order = new ArrayList<>();
+        // Step 0: an unknown start vertex reaches nothing.
+        if (!adjacency.containsKey(start)) {
+            return order;
+        }
+        // Step 1: "visited" marks a vertex the moment it is DISCOVERED (added to the queue),
+        // so no vertex can ever be queued twice.
+        Set<V> visited = new HashSet<>();
+        ArrayDeque<V> queue = new ArrayDeque<>();      // FIFO: add at the tail, poll from the head
+        visited.add(start);
+        queue.add(start);
+        // Step 2: take the oldest discovered vertex, record it, discover its unseen neighbours.
+        // Because the queue is FIFO, every vertex at distance d is recorded before any at d + 1.
+        while (!queue.isEmpty()) {
+            V current = queue.poll();
+            order.add(current);
+            for (V next : neighbors(current)) {
+                if (!visited.contains(next)) {
+                    visited.add(next);
+                    queue.add(next);
+                }
+            }
+        }
+        return order;
     }
 
     /**
@@ -126,12 +150,41 @@ public class Graph<V, E> {
      * it is popped (skip it if already visited). Returns an empty list if
      * {@code start} is not in the graph.
      *
-     * <p>Expected complexity: time O(V + E), space O(V).
-     * Used by StoryValidator check 2 (dead ends).
+     * <p>Complexity: time O(V + E) — each vertex is expanded at most once and each
+     * edge causes at most one push; space O(V + E) worst case, because a vertex can
+     * sit on the stack several times (pushed by different neighbours) before its
+     * first pop. Used by StoryValidator check 2 (dead ends).
      */
     public List<V> dfs(V start) {
-        // TODO(student): implement iterative DFS (see GraphTest)
-        throw new UnsupportedOperationException("TODO(student): Graph.dfs");
+        List<V> order = new ArrayList<>();
+        // Step 0: an unknown start vertex reaches nothing.
+        if (!adjacency.containsKey(start)) {
+            return order;
+        }
+        // Step 1: an explicit stack replaces recursion, so a 100 000-vertex chain
+        // cannot overflow the Java call stack.
+        Set<V> visited = new HashSet<>();
+        ArrayDeque<V> stack = new ArrayDeque<>();      // LIFO: push and pop at the head
+        stack.push(start);
+        while (!stack.isEmpty()) {
+            // Step 2: a vertex counts as visited when it is POPPED. It may have been pushed
+            // more than once (by different neighbours); later copies are simply skipped.
+            V current = stack.pop();
+            if (visited.contains(current)) {
+                continue;
+            }
+            visited.add(current);
+            order.add(current);
+            // Step 3: push neighbours in REVERSE order, so the first neighbour ends up on top
+            // and is explored first: the same order a recursive DFS would use.
+            List<V> next = neighbors(current);
+            for (int i = next.size() - 1; i >= 0; i--) {
+                if (!visited.contains(next.get(i))) {
+                    stack.push(next.get(i));
+                }
+            }
+        }
+        return order;
     }
 
     /**
@@ -147,11 +200,44 @@ public class Graph<V, E> {
      * {@code to} is unreachable or either vertex is missing. The path length in
      * edges is {@code size() - 1}.
      *
-     * <p>Expected complexity: time O(V + E), space O(V).
+     * <p>Complexity: time O(V + E) — each vertex is queued/pushed and expanded at most once, each edge is examined once; space O(V) for the visited set and the queue/stack.
      * Used by StoryValidator check 5 (quick route ≤ 12 steps).
      */
     public List<V> shortestPath(V from, V to) {
-        // TODO(student): implement BFS with a parent map (see GraphTest)
-        throw new UnsupportedOperationException("TODO(student): Graph.shortestPath");
+        // Step 0: both ends must exist.
+        if (!adjacency.containsKey(from) || !adjacency.containsKey(to)) {
+            return new ArrayList<>();
+        }
+        // Step 1: BFS from 'from'. parent.get(v) is the vertex v was discovered from;
+        // containsKey(v) doubles as "already discovered". The start has no parent.
+        Map<V, V> parent = new HashMap<>();
+        ArrayDeque<V> queue = new ArrayDeque<>();
+        parent.put(from, null);
+        queue.add(from);
+        // Step 2: stop as soon as 'to' has been discovered. BFS discovers every vertex
+        // along a fewest-edges route, so the first discovery of 'to' is a shortest path.
+        while (!queue.isEmpty() && !parent.containsKey(to)) {
+            V current = queue.poll();
+            for (V next : neighbors(current)) {
+                if (!parent.containsKey(next)) {
+                    parent.put(next, current);
+                    queue.add(next);
+                }
+            }
+        }
+        // Step 3: never discovered → unreachable.
+        if (!parent.containsKey(to)) {
+            return new ArrayList<>();
+        }
+        // Step 4: walk the parent links back from 'to' to 'from' (the path in reverse),
+        // then reverse it so it reads from → to.
+        List<V> path = new ArrayList<>();
+        V step = to;
+        while (step != null) {
+            path.add(step);
+            step = parent.get(step);
+        }
+        Collections.reverse(path);
+        return path;
     }
 }
