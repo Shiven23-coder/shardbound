@@ -54,7 +54,10 @@ public class ConsoleRunner {
 
         GameEngine engine = json ? offlineEngine(defaultContentDir()) : databaseEngine();
         if (auto) {
-            boolean ok = playQuickRoute(engine, System.out);
+            // With a database the ending is recorded in player_ending, which needs a REAL
+            // player row (FK); offline nothing is persisted, so id 0 is fine.
+            int botPlayer = json ? 0 : profileFor("auto-quick");
+            boolean ok = playQuickRoute(engine, System.out, botPlayer);
             System.exit(ok ? 0 : 1);
         }
         int playerId = json ? 0 : askProfile();
@@ -86,8 +89,13 @@ public class ConsoleRunner {
     private static int askProfile() {
         System.out.print("Username: ");
         String name = new Scanner(System.in).nextLine().trim();
+        return profileFor(name.isEmpty() ? "console" : name);
+    }
+
+    /** Creates (or finds) the player row for a username in the database. */
+    private static int profileFor(String username) {
         Database db = Database.from(AppConfig.load());
-        return new PlayerRepository(db).findOrCreate(name.isEmpty() ? "console" : name);
+        return new PlayerRepository(db).findOrCreate(username);
     }
 
     private static File defaultContentDir() {
@@ -214,9 +222,15 @@ public class ConsoleRunner {
      * takes the first UNLOCKED choice leading to the next route node, and in
      * combat it attacks until the fight ends. Uses a fixed seed and Demo Mode.
      * Returns true if END_QUICK is reached. Time O(route length · k).
+     * Offline variant: player id 0 (nothing is persisted).
      */
     public static boolean playQuickRoute(GameEngine engine, PrintStream out) {
-        GameState state = engine.newGame(0, true, AUTO_SEED);
+        return playQuickRoute(engine, out, 0);
+    }
+
+    /** Same, as an existing player (required with a database: endings and achievements are stored). */
+    public static boolean playQuickRoute(GameEngine engine, PrintStream out, int playerId) {
+        GameState state = engine.newGame(playerId, true, AUTO_SEED);
         StoryGraph graph = engine.content().graph();
         GameView view = engine.view(state);
         int index = 0;
