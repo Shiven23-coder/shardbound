@@ -437,3 +437,47 @@ Made while writing the code, where the spec was silent. Listed in spec §12. **N
 | I10 | `?playerId=` accepted when no session; load without a session creates one | The title screen's "Load" happens before any game session exists. |
 | I11 | GameView ships all panel fields now | All phases' engine code was written in one pass. |
 | I12 | `compile exec:java`; default main class as a property | Found while running the tools: plugin configuration silently overrode `-Dexec.mainClass`. |
+
+---
+
+## v2 design decisions (V-01 … V-35)
+
+Recorded with the v2 design (2026-11-18). The specification is `docs/V2_SPEC.md`; each row says **why**.
+
+| # | Decision | Why |
+|---|---|---|
+| V-01 | Names: **Lanterns**, **Shards**, **Lost Shards**, **"FOE VANQUISHED"**, **Lantern Draught** | Souls-like mood without the identifiable Elden Ring names (Sites of Grace, runes, "ENEMY FELLED"). Your choice. |
+| V-02 | v1 tagged `v1-semester`; all v2 work on branch `v2` | The graded semester version stays reproducible while v2 changes almost every layer. |
+| V-03 | Grid-locked 4-direction movement, one tile per step | Server validation becomes simple and exact (adjacent tile, walkable bit, rate). Free pixel movement would need physics on the server. |
+| V-04 | WebSocket only for the world (movement, interact, pushes); REST for everything else | Steps are frequent and small; battles, dialogue and menus are request/response and easier to test over REST. |
+| V-05 | WS handshake checks the `sb_session` cookie and `Origin` | Browsers send cookies with cross-site WS upgrades; the Origin check is the CSRF defence for WebSockets. |
+| V-06 | WS frames ≤ 1 KB, ≤ 20 msgs/s, one socket per game | Bounds memory and CPU per client; stops a client from spamming steps faster than the step rate limiter can reject them cheaply. |
+| V-07 | Reconnect = full snapshot from server state | The server is the truth, so resuming is "send everything"; no client-side replay logic to get wrong. |
+| V-08 | WS messages use the same `synchronized (state)` lock as REST (D16 extended) | A move arriving while a REST request ends a battle could otherwise interleave on one GameState. |
+| V-09 | Creeps are static with an aggro radius; patrol is cosmetic | The server never simulates moving creeps, so encounters are deterministic and testable. |
+| V-10 | All constants in `content/balance.json` → `curve_point`; soft caps as piecewise-linear `Curve`s (✍ `valueAt`) | Balance is data (rule 4), tunable without code; TreeMap interpolation is a good DS exercise. |
+| V-11 | `cost(L) = round(100·L^1.5)`, `creepShards(lvl) = round(35·lvl^1.45)`, boss ×5 | Grid-searched against the §10.2 progression table: every boss target hit exactly, first level-up after fight 3. |
+| V-12 | Defence as a ratio `100 / (100 + DEF)` instead of v1's subtraction | Subtraction collapses to the 1-damage floor at larger numbers; a ratio keeps every hit meaningful. |
+| V-13 | ATTACK = Strike / Guard; Guard halves damage, quarters a telegraphed heavy | The required menu has no DEFEND; telegraphs need a counter that rewards reading the text box. |
+| V-14 | FP persists between battles; heals come from refillable Lantern Draughts | The Souls-like resource loop: resting matters. v1's "refill energy every fight" (S2) does not apply in v2. |
+| V-15 | `save_slot.hp` upper bound enforced in Java, not by CHECK | Max HP now comes from a curve stored in rows; a CHECK can only read its own row. D28's idea holds where possible. |
+| V-16 | Weapon upgrades only at Smith NPCs | Gives the hub areas a purpose and makes fast travel useful. |
+| V-17 | Dijkstra (✍) drives fast travel, quest next hop, the bot and region preloading | One algorithm with four visible uses in the viva. |
+| V-18 | Flyway migrations replace `database/0x_*.sql` | Versioned, repeatable schema changes; the SQL is still hand-written. |
+| V-19 | DB roles: owner (migrations), app (DML only), telemetry read-only | Least privilege: a SQL-injection bug in the app could not drop tables. |
+| V-20 | Argon2id m=19 MiB, t=2, p=1 (Bouncy Castle) | OWASP's minimum Argon2id setting; pure Java, no native library in Docker. |
+| V-21 | Sign-up and forgot-password always return the same 202; an existing email gets an "account exists" mail | Prevents account enumeration through either form. |
+| V-22 | Random 32-byte session token in an HttpOnly/Secure/SameSite=Strict cookie; DB stores SHA-256; Origin check on writes | A stolen DB backup cannot be used to log in; JS cannot read the cookie; SameSite + Origin stop CSRF. |
+| V-23 | Transactional outbox for email | The email row commits with the account/token change or not at all; sending is retried outside the request. |
+| V-24 | Eclipse Angus Mail for SMTP (**approved**) | SMTP with STARTTLS and auth by hand is error-prone; Angus is the reference Jakarta Mail implementation. |
+| V-25 | Guests are real accounts with `is_guest`; upgrade keeps `account_id` | Progress survives the upgrade without copying saves. |
+| V-26 | Telemetry: BRIN on `at` **and** B-tree on `(run_id, at)` | BRIN: append-only rows arrive in time order, so a tiny block-range index serves time-window dashboard scans. B-tree: window functions over one run (`LEAD … PARTITION BY run_id ORDER BY at`) need that run's rows in order, which BRIN cannot provide. |
+| V-27 | Telemetry keyed by an anonymous `run_id`, with an opt-out setting | Balancing needs runs, not people; less personal data to protect on a public deploy. Your choice. |
+| V-28 | Dev chapter select: route registered only in dev, server rejects it otherwise, frontend code dead-code-eliminated, CI greps the prod bundle | Defence in depth: a presentation tool must never ship. |
+| V-29 | CI bundle-size budget from V3; Vitest for the event store and mappers | Budgets regress silently without a gate; the mappers are the only frontend logic worth unit-testing. |
+| V-30 | Rule 8 adds `Graph.dijkstra`, `Curve.valueAt`, `SlidingWindowRateLimiter` | Three more DS/algorithm pieces you write and explain yourself (8 in total). |
+| V-31 | `map_object.props` as JSONB | Each object type has different properties; the queried fields (type, area, x, y) are real columns. |
+| V-32 | Fonts self-hosted (not Google Fonts CDN) | No third-party requests (privacy page stays short), and a CSP of `font-src 'self'`. |
+| V-33 | Loose, configurable rate limits: login 100 per IP / 15 min, 5 failures per email / 15 min, guests 30 per IP / hour; every value in config, none hardcoded | Whole college campuses and mobile carriers share one public IP (NAT), so tight per-IP limits would lock out real players. The per-email limit protects each account, and Turnstile is the main bot defence. Config lets limits be tuned after launch without a release. |
+| V-34 | Cloudflare's official Turnstile test keys in dev and CI; the playtest bot runs only in dev mode; no Turnstile or rate-limit bypass in production builds | Dev and CI exercise the real verification code; a bypass switch is exactly what leaks into production. |
+| V-35 | §10.2 adds a robustness scenario (one death per boss, half the Lost Shards never recovered); the model script lives in `tools/balance/`; V10 requires every boss beatable (≥ 40 %) at target level − 2 with the weapon one upgrade lower | The progression must hold for imperfect players and be re-runnable from the repo. The simulator check covers the harsh cases the economy model cannot (dying with a full purse, being under-levelled). |

@@ -1,5 +1,7 @@
 # Shardbound — Project Specification
 
+> **v1 specification.** For v2 work, `docs/V2_SPEC.md` is the source of truth and overrides this document wherever they differ; everything not overridden (e.g. JDBC conventions, ConditionGroup, quest state machine, D1–D32) still applies.
+
 > Source of truth for the build. Place this file at `docs/PROJECT_SPEC.md`.
 > Sections are numbered so prompts can reference them ("implement spec §6.5").
 > Decisions made after the first draft are folded in below and tagged **(D1)…(D32)** or **(S1)…(S9)**.
