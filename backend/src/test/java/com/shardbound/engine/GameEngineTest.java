@@ -23,8 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Whole-engine tests on the REAL prologue, offline (content from JSON, no DB).
- * Startup computes the quest order with QuestManager.topoOrder, so these pass
- * only once the student has implemented Kahn's algorithm.
+ * Startup computes the quest order with QuestManager.topoOrder (Kahn).
  */
 class GameEngineTest {
 

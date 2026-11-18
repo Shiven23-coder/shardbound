@@ -17,8 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * State-machine tests pass now. The topoOrder tests FAIL until the student
- * implements Kahn's algorithm (CLAUDE.md rule 8).
+ * State machine and Kahn's algorithm (topoOrder), explained in docs/STUDY_GUIDE.md.
  */
 class QuestManagerTest {
 
@@ -36,7 +35,7 @@ class QuestManagerTest {
     }
 
     // ---------------------------------------------------------------------
-    // Kahn's algorithm (student)
+    // Kahn's algorithm
     // ---------------------------------------------------------------------
 
     @Test

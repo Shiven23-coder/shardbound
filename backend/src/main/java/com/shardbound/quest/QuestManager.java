@@ -10,7 +10,10 @@ import com.shardbound.rules.Rewards;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +50,7 @@ public class QuestManager {
     }
 
     // =====================================================================
-    // Student-implemented (CLAUDE.md rule 8)
+    // Viva algorithm (CLAUDE.md rule 8; explained in docs/STUDY_GUIDE.md)
     // =====================================================================
 
     /**
@@ -73,7 +76,9 @@ public class QuestManager {
      * <p>You may assume every prerequisite id refers to an existing quest
      * (ContentAssembler checks that first).
      *
-     * <p>Expected complexity: time O(V + E), space O(V + E), where V is the
+     * <p>Complexity: time O(V + E): each quest enters the queue once and each
+     * prerequisite link is decremented once; space O(V + E) for the in-degree map,
+     * the reversed edge lists and the queue. V is the
      * number of quests and E the number of prerequisite links.
      * Runs once at startup; the quest log displays quests in this order.
      *
@@ -81,8 +86,58 @@ public class QuestManager {
      * @throws ContentValidationException if the prerequisites contain a cycle
      */
     public List<String> topoOrder() {
-        // TODO(student): implement Kahn's algorithm (see QuestManagerTest)
-        throw new UnsupportedOperationException("TODO(student): QuestManager.topoOrder");
+        // Step 1: in-degree of each quest = how many prerequisites it still waits for.
+        // LinkedHashMap keeps content order, which makes the result deterministic.
+        Map<String, Integer> inDegree = new LinkedHashMap<>();
+        for (Quest quest : quests.values()) {
+            inDegree.put(quest.id(), quest.prereqs().size());
+        }
+        // Step 2: reverse the edges once: for each quest, which quests depend on it?
+        // Built by walking quests in content order, so every list is in content order too.
+        Map<String, List<String>> dependants = new HashMap<>();
+        for (Quest quest : quests.values()) {
+            for (String prereq : quest.prereqs()) {
+                if (!dependants.containsKey(prereq)) {
+                    dependants.put(prereq, new ArrayList<>());
+                }
+                dependants.get(prereq).add(quest.id());
+            }
+        }
+        // Step 3: start with every quest that needs nothing (in-degree 0), in content order.
+        ArrayDeque<String> ready = new ArrayDeque<>();
+        for (Map.Entry<String, Integer> entry : inDegree.entrySet()) {
+            if (entry.getValue() == 0) {
+                ready.add(entry.getKey());
+            }
+        }
+        // Step 4: repeatedly take a ready quest, output it, and "remove its outgoing edges":
+        // each dependant waits for one prerequisite fewer. A dependant whose count reaches 0
+        // has all its prerequisites already in the output, so it becomes ready.
+        List<String> order = new ArrayList<>();
+        while (!ready.isEmpty()) {
+            String questId = ready.poll();
+            order.add(questId);
+            List<String> waiting = dependants.getOrDefault(questId, List.of());
+            for (String dependant : waiting) {
+                int remaining = inDegree.get(dependant) - 1;
+                inDegree.put(dependant, remaining);
+                if (remaining == 0) {
+                    ready.add(dependant);
+                }
+            }
+        }
+        // Step 5: quests never output still wait for a prerequisite that can never be
+        // output: they are in a cycle or depend on one.
+        if (order.size() < quests.size()) {
+            List<String> stuck = new ArrayList<>();
+            for (Map.Entry<String, Integer> entry : inDegree.entrySet()) {
+                if (entry.getValue() > 0) {
+                    stuck.add(entry.getKey());
+                }
+            }
+            throw new ContentValidationException("Quest prerequisites contain a cycle", stuck);
+        }
+        return order;
     }
 
     // =====================================================================
