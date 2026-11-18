@@ -28,15 +28,14 @@ The project is graded on visible Java, hand-written SQL, and deliberately chosen
 5. **Use the data structures listed in PROJECT_SPEC §5 and V2_SPEC §5.** Don't substitute one without asking.
 6. Every non-trivial method gets a short comment stating time/space complexity.
 7. **Phase gates:** finish one phase at a time (V2_SPEC §12: V1, V2a, V2b, V3 … V11a–V11d, V12). A phase is done only when its acceptance criteria pass, all tests are green and the game is playable. Do not start the next phase until I say so.
-8. **Student-implemented parts** (I must explain these in my viva):
+8. **Algorithm methods I must explain in my viva.** Claude implements the algorithm methods, but each must have: step-by-step comments, complexity in the Javadoc, and a section in docs/STUDY_GUIDE.md.
    - `ds/Graph` — `bfs`, `dfs`, `shortestPath`, `dijkstra`
    - `quest/QuestManager.topoOrder` (Kahn's algorithm)
-   - `persistence/SaveRepository.save` (the save transaction)
-   - `progression/Curve.valueAt` (TreeMap `floorEntry`/`ceilingEntry` interpolation)
-   - `auth/SlidingWindowRateLimiter` (Deque of timestamps)
+   - `persistence/SaveRepository.save` (+ helpers: the save transaction)
+   - `progression/Curve.valueAt` (V5: TreeMap `floorEntry`/`ceilingEntry` interpolation)
+   - `auth/SlidingWindowRateLimiter` (V2a: Deque of timestamps)
 
-   For these: create the class, method signatures, Javadoc, and failing JUnit tests, then **stop and let me implement**. Afterwards, review my code for bugs and complexity.
-   *(Delete rule 8 if you want Claude to write these too.)*
+   Standard for these: follow the Javadoc contract, make the existing tests pass without weakening any test, plain loops and clear names (rule 12, no streams inside these methods). Each STUDY_GUIDE section has: the idea in 3 lines, a dry run on a small example with a table of the queue/stack/map contents at each step, the complexity and why, common mistakes, and 5 viva questions with answers.
 9. After each phase, give me:
    - which files changed and why
    - how to run it
