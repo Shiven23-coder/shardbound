@@ -1,0 +1,101 @@
+package com.shardbound.content;
+
+import com.shardbound.engine.Ending;
+import com.shardbound.item.Weapon;
+import com.shardbound.model.Tier;
+import com.shardbound.quest.QuestStatus;
+import com.shardbound.story.NodeType;
+import com.shardbound.story.StoryGraph;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+import java.io.File;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * Reads the REAL content/*.json and builds the in-memory objects. Catches
+ * typos in content files at build time, without a database.
+ */
+class ContentFilesTest {
+
+    private static RawContent raw;
+    private static GameContent content;
+
+    @BeforeAll
+    static void load() {
+        raw = new JsonContentReader(new File("../content")).read();
+        content = new ContentAssembler().assemble(raw);
+    }
+
+    @Test
+    void exactlySixEndingsAndOnlyQuickIsDirect() {
+        assertEquals(6, content.endings().size());
+        long direct = content.endings().stream().filter(e -> !e.viaResolver()).count();
+        assertEquals(1, direct);
+        Ending last = content.endings().stream().filter(Ending::viaResolver).reduce((a, b) -> b).orElseThrow();
+        assertTrue(last.conditions().isEmpty(), "the last resolver ending must have no conditions");
+    }
+
+    @Test
+    void endAshenUsesTwoOrGroups() {                            // D4
+        Ending ashen = content.endings().stream().filter(e -> e.id().equals("END_ASHEN")).findFirst().orElseThrow();
+        assertEquals(2, ashen.conditions().groupCount());
+    }
+
+    @Test
+    void weaponLadderMatchesSpec() {                            // spec §6.4
+        String[][] ladder = {{"rusty_shortsword", "F", "3"}, {"woodcutter_hatchet", "E", "5"},
+                {"hunter_longbow", "D", "6"}, {"iron_longsword", "C", "8"}, {"thornwood_spear", "B", "10"},
+                {"moonsteel_blade", "A", "13"}, {"kingsguard_halberd", "S", "16"},
+                {"dragonbone_greatsword", "SS", "20"}, {"aetherion", "SSS", "26"}};
+        for (String[] row : ladder) {
+            Weapon w = (Weapon) content.items().get(row[0]);
+            assertNotNull(w, row[0]);
+            assertEquals(Tier.valueOf(row[1]), w.tier());
+            assertEquals(Integer.parseInt(row[2]), w.attack());
+        }
+    }
+
+    @Test
+    void quickRouteNodesExist() {
+        StoryGraph g = content.graph();
+        for (String id : List.of("p01", "p02", "p03", "p04m", "p05m", "p06m", "p07m", "p08m", "p09m", "p10m", "END_QUICK")) {
+            assertNotNull(g.node(id), id);
+        }
+        assertEquals(NodeType.COMBAT, g.node("p07m").type());
+        assertEquals(NodeType.ENDING, g.node("END_QUICK").type());
+    }
+
+    @Test
+    void lockedChoicesExistOnTheSquareAndTheOffer() {
+        assertTrue(content.graph().choicesFrom("p03").stream().anyMatch(c -> !c.conditions().isEmpty()));
+        assertTrue(content.graph().choicesFrom("p04m").stream().anyMatch(c -> c.hasRepOrAffinityCondition()));
+    }
+
+    @Test
+    void questConditionsAreStoredAsOrdinals() {                 // D13
+        RawContent.RuleDef rule = raw.endings().get(0).conditions().get(0);
+        assertEquals("QUEST", rule.type());
+        assertEquals(QuestStatus.COMPLETED.ordinal(), rule.value());
+    }
+
+    @Test
+    void choiceIdsAreUniqueAndSortOrderStartsAtZero() {
+        long distinct = raw.choices().stream().mapToInt(RawContent.ChoiceDef::id).distinct().count();
+        assertEquals(raw.choices().size(), distinct);
+        assertFalse(content.graph().choicesFrom("p01").isEmpty());
+        assertEquals(0, content.graph().choicesFrom("p01").get(0).sortOrder());
+    }
+
+    @Test
+    void structuralGraphHasCombatAndResolverEdges() {           // D10
+        var structure = content.graph().structure();
+        assertTrue(structure.neighbors("p07m").containsAll(List.of("p08m", "p07l")));
+        assertEquals(5, structure.neighbors("c5_resolver").size());
+    }
+}
