@@ -1,0 +1,47 @@
+{
+  "chapter": 5,
+  "nodes": [
+    {
+      "id": "c5_resolver", "location": "crystal_spire", "type": "RESOLVER",
+      "title": "The Weight of Every Choice",
+      "text": "Placeholder (D2/D3): until Chapters 1–5 are written, the prologue's raid leads here. The resolver checks the endings by priority and moves straight on to the first one whose conditions hold.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": []
+    },
+    {
+      "id": "END_TRUE", "location": "crystal_spire", "type": "ENDING",
+      "title": "Aether Reborn",
+      "text": "Placeholder ending text (written in Phase 9). The three shards become one blade again in your hands, and no faction in Valdren has reason to fear it.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": []
+    },
+    {
+      "id": "END_TYRANT", "location": "crystal_spire", "type": "ENDING",
+      "title": "The Shard Tyrant",
+      "text": "Placeholder ending text (written in Phase 9). You drew on the crystal's dark power once too often, and now it draws on you.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": []
+    },
+    {
+      "id": "END_ASHEN", "location": "crystal_spire", "type": "ENDING",
+      "title": "Ashen Dawn",
+      "text": "Placeholder ending text (written in Phase 9). The Ashen Circle completes its rite, and the sun rises grey over a kingdom remade in their image.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": []
+    },
+    {
+      "id": "END_GUARDIAN", "location": "crystal_spire", "type": "ENDING",
+      "title": "Guardian of Valdren",
+      "text": "Placeholder ending text (written in Phase 9). Crown and village stand together behind you, and the heartshard is sealed away under your watch.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": []
+    },
+    {
+      "id": "END_WANDERER", "location": "crystal_spire", "type": "ENDING",
+      "title": "The Wanderer",
+      "text": "Placeholder ending text (written in Phase 9). No banner claims you and no crown thanks you. You take the road alone, the crystal's pulse fading behind you.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": []
+    }
+  ]
+}

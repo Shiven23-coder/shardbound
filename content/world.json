@@ -1,0 +1,166 @@
+{
+  "factions": [
+    { "id": "ELDMERE", "name": "Eldmere" },
+    { "id": "SYLVAN",  "name": "Sylvan Wardens" },
+    { "id": "CROWN",   "name": "The Crown" },
+    { "id": "ASHEN",   "name": "Ashen Circle" }
+  ],
+
+  "locations": [
+    { "id": "eldmere_cottage",   "name": "Your Cottage",          "region": "VILLAGE" },
+    { "id": "eldmere_ruins",     "name": "The Old Ruins",         "region": "VILLAGE" },
+    { "id": "eldmere_square",    "name": "Eldmere Square",        "region": "VILLAGE" },
+    { "id": "elder_house",       "name": "Elder Maren's House",   "region": "VILLAGE" },
+    { "id": "eldmere_mill",      "name": "The Mill",              "region": "VILLAGE" },
+    { "id": "eldmere_outskirts", "name": "The Forest Edge",       "region": "VILLAGE" },
+    { "id": "corvin_stall",      "name": "Corvin's Wagon",        "region": "VILLAGE" },
+    { "id": "eldmere_alley",     "name": "Tanner's Alley",        "region": "VILLAGE" },
+    { "id": "eldmere_burning",   "name": "Eldmere, Burning",      "region": "VILLAGE" },
+    { "id": "whispering_wood",   "name": "Whispering Wood",       "region": "FOREST" },
+    { "id": "hollow_deep",       "name": "The Hollow Deep",       "region": "DUNGEON" },
+    { "id": "valdren_city",      "name": "Valdren City",          "region": "KINGDOM" },
+    { "id": "crystal_spire",     "name": "The Crystal Spire",     "region": "SPIRE" }
+  ],
+
+  "npcs": [
+    { "id": "maren",   "name": "Elder Maren",       "faction": "ELDMERE", "location": "elder_house" },
+    { "id": "corvin",  "name": "Corvin the Merchant","faction": "ASHEN",  "location": "corvin_stall" },
+    { "id": "lyra",    "name": "Warden Lyra",       "faction": "SYLVAN",  "location": "whispering_wood" },
+    { "id": "hale",    "name": "Captain Hale",      "faction": "CROWN",   "location": "valdren_city" },
+    { "id": "brann",   "name": "Brann the Smith",   "faction": "ELDMERE", "location": "eldmere_square" }
+  ],
+
+  "items": [
+    { "id": "rusty_shortsword", "name": "Rusty Shortsword", "type": "WEAPON", "price": 5,
+      "description": "Your father's old blade. More rust than steel, but it still holds an edge.",
+      "weapon": { "tier": "F", "attack": 3, "critPct": 5, "ability": null } },
+    { "id": "woodcutter_hatchet", "name": "Woodcutter's Hatchet", "type": "WEAPON", "price": 20,
+      "description": "A short, heavy hatchet with a notched handle. Built for timber, good for worse.",
+      "weapon": { "tier": "E", "attack": 5, "critPct": 5, "ability": null } },
+    { "id": "hunter_longbow", "name": "Hunter's Longbow", "type": "WEAPON", "price": 40,
+      "description": "Yew and sinew, strung tight. The grip is worn smooth by a steady hand.",
+      "weapon": { "tier": "D", "attack": 6, "critPct": 10, "ability": "Steady Aim" } },
+    { "id": "iron_longsword", "name": "Iron Longsword", "type": "WEAPON", "price": 70,
+      "description": "Fresh from Brann's forge. Plain, honest, and properly balanced.",
+      "weapon": { "tier": "C", "attack": 8, "critPct": 8, "ability": null } },
+    { "id": "thornwood_spear", "name": "Thornwood Spear", "type": "WEAPON", "price": 120,
+      "description": "A Warden's spear of living thornwood. Its tip never dulls.",
+      "weapon": { "tier": "B", "attack": 10, "critPct": 10, "ability": "Briar Reach" } },
+    { "id": "moonsteel_blade", "name": "Moonsteel Blade", "type": "WEAPON", "price": 200,
+      "description": "Pale metal that drinks the light. Cold to the touch even in summer.",
+      "weapon": { "tier": "A", "attack": 13, "critPct": 12, "ability": "Moonlit Edge" } },
+    { "id": "kingsguard_halberd", "name": "Kingsguard Halberd", "type": "WEAPON", "price": 320,
+      "description": "The tournament champion's prize, engraved with the royal stag.",
+      "weapon": { "tier": "S", "attack": 16, "critPct": 12, "ability": "Royal Sweep" } },
+    { "id": "dragonbone_greatsword", "name": "Dragonbone Greatsword", "type": "WEAPON", "price": 500,
+      "description": "Carved from the thighbone of something that should not have died.",
+      "weapon": { "tier": "SS", "attack": 20, "critPct": 15, "ability": "Bone Fury" } },
+    { "id": "aetherion", "name": "Aetherion, the Crystal Edge", "type": "WEAPON", "price": 999,
+      "description": "The three shards made whole. It hums a note only you can hear.",
+      "weapon": { "tier": "SSS", "attack": 26, "critPct": 20, "ability": "Shardstorm" } },
+
+    { "id": "healing_draught", "name": "Healing Draught", "type": "CONSUMABLE", "price": 10,
+      "description": "Bitter herbs in honey. Restores 15 HP.",
+      "consumable": { "heal": 15, "energy": 0 } },
+    { "id": "energy_tonic", "name": "Energy Tonic", "type": "CONSUMABLE", "price": 15,
+      "description": "Fizzing blue water from the forest springs. Restores 2 energy.",
+      "consumable": { "heal": 0, "energy": 2 } },
+
+    { "id": "heartshard", "name": "Heartshard", "type": "KEY", "price": 0,
+      "description": "A fist-sized crystal that pulses with a slow, warm light, like a sleeping heart." }
+  ],
+
+  "enemies": [
+    { "id": "corvin_guard", "name": "Hired Blade", "hp": 18, "atk": 5, "def": 1, "spd": 4,
+      "xpReward": 40, "goldReward": 10, "ai": "AGGRESSIVE" }
+  ],
+
+  "encounters": [
+    { "id": "enc_corvin_guard", "name": "Corvin's Bodyguard", "canFlee": true,
+      "enemies": [ { "id": "corvin_guard", "qty": 1 } ] }
+  ],
+
+  "quests": [
+    { "id": "q_strange_light", "title": "A Strange Light", "isMain": true, "giver": null,
+      "description": "Something fell into the old ruins during the storm. Find out what it is, and keep it out of the wrong hands.",
+      "rewardItem": null, "rewardXp": 30, "rewardGold": 0, "prereqs": [] },
+    { "id": "q_woodcutter", "title": "Timber for the Mill", "isMain": false, "giver": null,
+      "description": "The mill's woodcutter needs help clearing storm-fallen trees.",
+      "rewardItem": "woodcutter_hatchet", "rewardXp": 20, "rewardGold": 5, "prereqs": [] },
+    { "id": "q_wolf_hunt", "title": "Wolves at the Fence", "isMain": false, "giver": null,
+      "description": "Something is taking Eldmere's sheep at night.",
+      "rewardItem": "hunter_longbow", "rewardXp": 30, "rewardGold": 10, "prereqs": [] },
+    { "id": "q_blacksmith", "title": "The Smith's Errand", "isMain": false, "giver": "brann",
+      "description": "Brann needs iron ore fetched from the quarry before the raid.",
+      "rewardItem": "iron_longsword", "rewardXp": 30, "rewardGold": 10, "prereqs": [] },
+    { "id": "q_shard_one", "title": "The First Shard", "isMain": true, "giver": "lyra",
+      "description": "The Wardens guard a second fragment deep in Whispering Wood.",
+      "rewardItem": null, "rewardXp": 80, "rewardGold": 20, "prereqs": ["q_strange_light"] },
+    { "id": "q_warden_trial", "title": "Trial of Thorns", "isMain": false, "giver": "lyra",
+      "description": "Prove yourself to the Sylvan Wardens.",
+      "rewardItem": "thornwood_spear", "rewardXp": 60, "rewardGold": 0, "prereqs": [] },
+    { "id": "q_shard_two", "title": "The Second Shard", "isMain": true, "giver": null,
+      "description": "The next fragment lies at the bottom of the Hollow Deep.",
+      "rewardItem": null, "rewardXp": 120, "rewardGold": 40, "prereqs": ["q_shard_one"] },
+    { "id": "q_side_vault", "title": "The Sealed Vault", "isMain": false, "giver": null,
+      "description": "A side chamber in the Deep is sealed with an old puzzle lock.",
+      "rewardItem": "moonsteel_blade", "rewardXp": 80, "rewardGold": 30, "prereqs": [] },
+    { "id": "q_hidden_boss", "title": "What Sleeps Below", "isMain": false, "giver": null,
+      "description": "Behind the vault, something enormous is breathing.",
+      "rewardItem": "dragonbone_greatsword", "rewardXp": 150, "rewardGold": 60, "prereqs": ["q_side_vault"] },
+    { "id": "q_shard_three", "title": "The Third Shard", "isMain": true, "giver": "hale",
+      "description": "The King keeps the last fragment in his treasury. Someone in court wants it more.",
+      "rewardItem": null, "rewardXp": 160, "rewardGold": 60, "prereqs": ["q_shard_two"] },
+    { "id": "q_tournament", "title": "The Royal Tournament", "isMain": false, "giver": "hale",
+      "description": "Win the tournament in Valdren City.",
+      "rewardItem": "kingsguard_halberd", "rewardXp": 100, "rewardGold": 100, "prereqs": [] },
+    { "id": "q_crystal_edge", "title": "The Crystal Edge", "isMain": false, "giver": null,
+      "description": "Three shards. One blade. Keep every faction's trust and the Heartshard might become whole.",
+      "rewardItem": "aetherion", "rewardXp": 200, "rewardGold": 0,
+      "prereqs": ["q_shard_one", "q_shard_two", "q_shard_three"] }
+  ],
+
+  "achievements": [
+    { "id": "FIRST_LIGHT",   "title": "First Light",   "hidden": false, "description": "Obtain the Heartshard." },
+    { "id": "FIRST_BLOOD",   "title": "First Blood",   "hidden": false, "description": "Win your first battle." },
+    { "id": "SHORT_TALE",    "title": "A Short Tale",  "hidden": false, "description": "Reach the quick ending." },
+    { "id": "SILVER_TONGUE", "title": "Silver Tongue", "hidden": false, "description": "Take 3 choices locked behind reputation or affinity." },
+    { "id": "ARMORY",        "title": "Armory",        "hidden": false, "description": "Own 5 weapons at once." },
+    { "id": "S_RANK",        "title": "S-Rank",        "hidden": false, "description": "Equip an S-tier weapon or better." },
+    { "id": "CRYSTAL_EDGE",  "title": "Crystal Edge",  "hidden": true,  "description": "Obtain Aetherion, the Crystal Edge." },
+    { "id": "SPEEDRUNNER",   "title": "Speedrunner",   "hidden": false, "description": "Reach any ending in under 6 minutes." },
+    { "id": "ALL_ENDINGS",   "title": "All Endings",   "hidden": false, "description": "See every ending." }
+  ],
+
+  "endings": [
+    { "id": "END_TRUE", "node": "END_TRUE", "title": "Aether Reborn", "priority": 1, "viaResolver": true,
+      "conditions": [
+        { "type": "QUEST", "key": "q_shard_one",   "op": "=",  "value": "COMPLETED" },
+        { "type": "QUEST", "key": "q_shard_two",   "op": "=",  "value": "COMPLETED" },
+        { "type": "QUEST", "key": "q_shard_three", "op": "=",  "value": "COMPLETED" },
+        { "type": "ITEM",  "key": "aetherion",     "op": ">=", "value": 1 },
+        { "type": "REP",   "key": "ELDMERE",       "op": ">=", "value": 0 },
+        { "type": "REP",   "key": "SYLVAN",        "op": ">=", "value": 0 },
+        { "type": "REP",   "key": "CROWN",         "op": ">=", "value": 0 },
+        { "type": "REP",   "key": "ASHEN",         "op": ">=", "value": 0 }
+      ] },
+    { "id": "END_TYRANT", "node": "END_TYRANT", "title": "The Shard Tyrant", "priority": 2, "viaResolver": true,
+      "conditions": [
+        { "type": "FLAG", "key": "used_dark_power", "op": ">=", "value": 3 }
+      ] },
+    { "id": "END_ASHEN", "node": "END_ASHEN", "title": "Ashen Dawn", "priority": 3, "viaResolver": true,
+      "conditions": [
+        { "type": "REP",  "key": "ASHEN",              "op": ">=", "value": 20, "grp": 0 },
+        { "type": "FLAG", "key": "gave_shard_to_cult", "op": "=",  "value": 1,  "grp": 1 }
+      ] },
+    { "id": "END_GUARDIAN", "node": "END_GUARDIAN", "title": "Guardian of Valdren", "priority": 4, "viaResolver": true,
+      "conditions": [
+        { "type": "REP", "key": "CROWN",   "op": ">=", "value": 30 },
+        { "type": "REP", "key": "ELDMERE", "op": ">=", "value": 30 }
+      ] },
+    { "id": "END_WANDERER", "node": "END_WANDERER", "title": "The Wanderer", "priority": 5, "viaResolver": true,
+      "conditions": [] },
+    { "id": "END_QUICK", "node": "END_QUICK", "title": "The Merchant's Bargain", "priority": 99, "viaResolver": false,
+      "conditions": [] }
+  ]
+}

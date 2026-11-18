@@ -1,0 +1,227 @@
+{
+  "chapter": 0,
+  "nodes": [
+    {
+      "id": "p01", "location": "eldmere_cottage", "type": "STORY",
+      "title": "Storm Night",
+      "text": "The storm arrives an hour after dusk and does not leave. Rain hammers the shutters of your cottage and the hearth gutters every time the wind finds the chimney. Then the thunder stops, all at once, and in the silence you see it: a thread of pale green light falling slowly from the clouds toward the old ruins on the hill. Outside, Corvin the travelling merchant is shouting at his horses, his wagon rocking as the gale tries to tip it into the ditch. The light touches the ruins. The ground hums under your bare feet, so softly you might have imagined it. You reach for your boots.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": [
+        { "label": "Help Corvin lash down his wagon before the wind takes it", "to": "p02",
+          "conditions": [],
+          "effects": [ { "type": "AFFINITY", "key": "corvin", "value": 10 } ] },
+        { "label": "Ignore the shouting and follow the light", "to": "p02",
+          "conditions": [], "effects": [] }
+      ]
+    },
+    {
+      "id": "p02", "location": "eldmere_ruins", "type": "STORY",
+      "title": "The Ruins",
+      "text": "The old ruins were a watchtower once, before anyone in Eldmere can remember. Tonight the fallen stones are steaming. In the middle of a fresh crater lies a crystal the size of your fist, beating with a slow green glow like a heart that is only half awake. The rain does not touch it; the drops turn to mist an inch above its surface. When you crouch beside it, the pulse quickens, as if it has noticed you. Somewhere far behind you, a dog begins to howl and does not stop. You have the strong, foolish feeling that the crystal is waiting to see what you will do.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": [
+        { "label": "Take the crystal in your bare hands", "to": "p03",
+          "conditions": [],
+          "effects": [
+            { "type": "GIVE_ITEM",   "key": "heartshard",      "value": 1 },
+            { "type": "START_QUEST", "key": "q_strange_light", "value": 0 }
+          ] },
+        { "label": "Wrap it in your cloak before you lift it", "to": "p03",
+          "conditions": [],
+          "effects": [
+            { "type": "GIVE_ITEM",   "key": "heartshard",      "value": 1 },
+            { "type": "START_QUEST", "key": "q_strange_light", "value": 0 },
+            { "type": "HEAL",        "key": "hp",              "value": 5 }
+          ] }
+      ]
+    },
+    {
+      "id": "p03", "location": "eldmere_square", "type": "STORY",
+      "title": "The Square at Dawn",
+      "text": "By morning the storm has blown itself out and Eldmere is picking up its roof tiles. You stand by the well in the square with the crystal hidden under your coat, still warm, still beating. Elder Maren's door is open across the square; she has kept the village's secrets for forty years. Corvin's wagon has survived the night, and he is already laying out his wares, watching you with merchant's eyes that miss nothing. Past the last houses, the dark line of the forest waits. People say the Sylvan Wardens can be found there, if they decide to be found. Nobody else has noticed the light. Not yet.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": [
+        { "label": "Take it to Elder Maren", "to": "p04e",
+          "conditions": [],
+          "effects": [ { "type": "REP", "key": "ELDMERE", "value": 5 } ] },
+        { "label": "Show it to Corvin the merchant", "to": "p04m",
+          "conditions": [], "effects": [] },
+        { "label": "Hide it at the old mill", "to": "p04h",
+          "conditions": [], "effects": [] },
+        { "label": "Ask the Wardens", "to": "p04w",
+          "conditions": [ { "type": "FLAG", "key": "met_wardens", "op": "=", "value": 1 } ],
+          "effects": [] }
+      ]
+    },
+    {
+      "id": "p04e", "location": "elder_house", "type": "STORY",
+      "title": "Elder Maren",
+      "text": "Elder Maren does not ask what you have brought. She closes the shutters first, then holds out her spotted hands, and when you unwrap the crystal she goes very still. \"Heartshard,\" she whispers, as if the word might wake something. She tells you about a blade of living crystal, broken into three before the kingdom had a name, and about the Ashen Circle, who have spent two hundred years trying to put it back together. \"They will have seen it fall,\" she says. \"They will come tonight.\" She does not tell you to run. She looks at you the way she looked at your father, once, before he went to war.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": [
+        { "label": "Promise to guard it through the night", "to": "p11",
+          "conditions": [],
+          "effects": [
+            { "type": "AFFINITY", "key": "maren",   "value": 10 },
+            { "type": "REP",      "key": "ELDMERE", "value": 5 }
+          ] },
+        { "label": "Ask her what the Ashen Circle really wants", "to": "p11",
+          "conditions": [],
+          "effects": [ { "type": "AFFINITY", "key": "maren", "value": 5 } ] }
+      ]
+    },
+    {
+      "id": "p04h", "location": "eldmere_mill", "type": "STORY",
+      "title": "The Old Mill",
+      "text": "The mill has not turned since the river shifted its course, and nobody comes here but owls and courting couples. The great millstone sits on its axle like a sleeping beast. Dust hangs in the shafts of light from the broken roof. You turn a slow circle, looking for a place where a beating crystal will not be found. Under the stone, where the grain once fell, there is a dry hollow just large enough. Or you could simply keep it on you, where you can feel it. It is strange how quickly you have grown used to that warmth against your ribs, and how little you want to let it go.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": [
+        { "label": "Bury it beneath the millstone", "to": "p11",
+          "conditions": [], "effects": [] },
+        { "label": "Keep it close, under your shirt", "to": "p11",
+          "conditions": [], "effects": [] }
+      ]
+    },
+    {
+      "id": "p04w", "location": "eldmere_outskirts", "type": "STORY",
+      "title": "The Forest Edge",
+      "text": "You walk to the last fence post and whistle the three falling notes, the way the Warden taught you. For a long time nothing happens. Then a woman in moss-green leathers is simply there, leaning on a spear of pale wood as if she has been waiting all morning. Her eyes go straight to the bulge under your coat. \"So it was you,\" she says. \"The whole forest felt it land.\" She does not reach for it. The Wardens, she explains, do not take what is not offered. But they would keep it safer than a village with thatched roofs and a single locked door.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": [
+        { "label": "Let the Wardens keep it safe", "to": "p11",
+          "conditions": [],
+          "effects": [ { "type": "REP", "key": "SYLVAN", "value": 10 } ] }
+      ]
+    },
+    {
+      "id": "p04m", "location": "corvin_stall", "type": "STORY",
+      "title": "Corvin's Offer",
+      "text": "Corvin's smile does not change when he sees the crystal, but his hands do; they stop moving among his ribbons and brass buckles, and rest flat on the counter. \"Pretty thing,\" he says lightly. \"Glass, probably. Storm-melted sand. I'll give you three hundred gold for it, and that's charity.\" Three hundred gold is more than your cottage is worth. Behind him, his wagon is packed for leaving, though he arrived only yesterday. He watches your face the way a cat watches a hole in the wall. \"Well?\" he says. \"I'm a busy man.\"",
+      "encounter": null, "win": null, "lose": null,
+      "choices": [
+        { "label": "Accept the three hundred gold", "to": "p05m",
+          "conditions": [],
+          "effects": [
+            { "type": "GOLD",      "key": "gold",       "value": 300 },
+            { "type": "TAKE_ITEM", "key": "heartshard", "value": 1 },
+            { "type": "REP",       "key": "ASHEN",      "value": 10 }
+          ] },
+        { "label": "\"You owe me for last night. Five hundred.\"", "to": "p05m",
+          "conditions": [ { "type": "AFFINITY", "key": "corvin", "op": ">=", "value": 10 } ],
+          "effects": [
+            { "type": "GOLD",      "key": "gold",       "value": 500 },
+            { "type": "TAKE_ITEM", "key": "heartshard", "value": 1 },
+            { "type": "REP",       "key": "ASHEN",      "value": 10 }
+          ] },
+        { "label": "Put it away and walk back to the square", "to": "p03",
+          "conditions": [], "effects": [] }
+      ]
+    },
+    {
+      "id": "p05m", "location": "corvin_stall", "type": "STORY",
+      "title": "The Tattoo",
+      "text": "The gold is heavy in your purse and heavier on your conscience. You tell yourself it was only glass. At dusk you pass Corvin's wagon on your way home and see him rolling up his sleeves to wash at the trough. On the inside of his forearm, where a merchant's guild mark should be, there is a circle of grey ash inked into the skin, with a thin green line through its centre. Every child in Eldmere knows that mark from the stories told to frighten them. Corvin dries his hands, glances once at the darkening sky, and slips into the alley behind the tannery with something wrapped under his arm.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": [
+        { "label": "Follow him", "to": "p06m",
+          "conditions": [], "effects": [] },
+        { "label": "Go home and pretend you saw nothing", "to": "p11",
+          "conditions": [], "effects": [] }
+      ]
+    },
+    {
+      "id": "p06m", "location": "eldmere_alley", "type": "STORY",
+      "title": "The Mouth of the Alley",
+      "text": "Tanner's Alley stinks of lye and old hides, and it is darker than it has any right to be. Halfway down, a lantern swings. You can hear Corvin's voice, low and quick, and another voice answering him, deeper and in no hurry at all. A broad shape steps into the lantern light: a hired blade with a scarred jaw and a hand already resting on the hilt of his sword. He has not seen you yet. This is the moment to steady yourself, to take stock of what you carry and what you might lose. Whatever happens in that alley, there will be no walking it back.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": [
+        { "label": "Step into the lantern light", "to": "p07m",
+          "conditions": [], "effects": [] },
+        { "label": "Climb the tannery roof and drop down behind them", "to": "p07m",
+          "conditions": [], "effects": [] }
+      ]
+    },
+    {
+      "id": "p07m", "location": "eldmere_alley", "type": "COMBAT",
+      "title": "Corvin's Bodyguard",
+      "text": "The hired blade sees you and grins as if you are the best thing to happen to his evening. Corvin backs away toward the far end of the alley, clutching the bundle to his chest. Steel whispers out of its scabbard.",
+      "encounter": "enc_corvin_guard", "win": "p08m", "lose": "p07l",
+      "choices": []
+    },
+    {
+      "id": "p07l", "location": "eldmere_alley", "type": "STORY",
+      "title": "In the Gutter",
+      "text": "You wake face down in the gutter with rainwater in your mouth and a ringing in your skull. Your purse is lighter. The lantern is gone, the alley is empty, and somewhere beyond the rooftops a horse is galloping hard toward the east road. Your ribs scream when you sit up. Every breath reminds you that you were lucky; the hired blade could have finished it and chose not to bother. The night is not over. Up in the square, people are running, and the bells of the shrine have begun to ring, ragged and urgent, the way they rang the year the river flooded.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": [
+        { "label": "Limp toward the bells", "to": "p11",
+          "conditions": [], "effects": [] }
+      ]
+    },
+    {
+      "id": "p08m", "location": "eldmere_alley", "type": "STORY",
+      "title": "Spoils of the Alley",
+      "text": "The hired blade lies still among the barrels, breathing but finished with fighting for tonight. At his belt hangs a woodcutter's hatchet, short and heavy, its edge freshly ground; clearly he valued it more than the sword he dropped. Further down the alley, Corvin has stopped running. He stands with his back to a locked gate, the bundle clutched tight, his merchant's smile gone entirely. You can hear your own heartbeat. Beneath it, faint and impossible, you can hear the crystal's beat answering it from inside his arms.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": [
+        { "label": "Take the hatchet", "to": "p09m",
+          "conditions": [],
+          "effects": [ { "type": "GIVE_ITEM", "key": "woodcutter_hatchet", "value": 1 } ] },
+        { "label": "Leave it and go after Corvin", "to": "p09m",
+          "conditions": [], "effects": [] }
+      ]
+    },
+    {
+      "id": "p09m", "location": "eldmere_alley", "type": "STORY",
+      "title": "Cornered",
+      "text": "\"You don't understand what it is,\" Corvin says. His voice shakes. \"The Circle will make it whole. No more kings, no more famines, no more storms. They promised.\" The bundle has begun to glow through the cloth, green light leaking between his fingers. He is sweating, though the night is cold. \"Let me go,\" he says, \"and I'll tell them you were never here. They'll leave Eldmere alone. I swear it.\" Behind you, from the direction of the square, comes the first scream, and then the smell of smoke.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": [
+        { "label": "Take the crystal back by force", "to": "p10m",
+          "conditions": [],
+          "effects": [
+            { "type": "GIVE_ITEM",      "key": "heartshard",      "value": 1 },
+            { "type": "REP",            "key": "ASHEN",           "value": -15 },
+            { "type": "COMPLETE_QUEST", "key": "q_strange_light", "value": 0 }
+          ] },
+        { "label": "Let him run", "to": "p10m",
+          "conditions": [],
+          "effects": [
+            { "type": "FAIL_QUEST", "key": "q_strange_light",    "value": 0 },
+            { "type": "SET_FLAG",   "key": "gave_shard_to_cult", "value": 1 }
+          ] }
+      ]
+    },
+    {
+      "id": "p10m", "location": "eldmere_burning", "type": "STORY",
+      "title": "Eldmere Burns",
+      "text": "You come out of the alley into firelight. The Ashen Circle did not wait for Corvin. Grey-robed figures move between the burning houses, and above the shrine roof the sky has turned the colour of the crystal: a sick, shimmering green. Wherever the heartshard is now, it is answering them. The thatch of the mill goes up with a roar. Somewhere Elder Maren is calling names. You understand, with sudden and total clarity, that this is what the crystal does. It does not choose sides. It only wakes up, and the world rearranges itself around it.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": [
+        { "label": "Run for the forest road", "to": "END_QUICK",
+          "conditions": [], "effects": [] },
+        { "label": "Turn back toward the fire", "to": "END_QUICK",
+          "conditions": [], "effects": [] }
+      ]
+    },
+    {
+      "id": "END_QUICK", "location": "eldmere_burning", "type": "ENDING",
+      "title": "The Merchant's Bargain",
+      "text": "By sunrise Eldmere is ash and the Ashen Circle is gone, taking the road east toward the capital. You stand in the ruins of the square with soot in your hair and whatever the night left you. Some will say the village burned because of a merchant's greed. You will know it burned because of a bargain, and that you were the one who struck it. The heartshard is out in the world now, awake and beating. The story will go on without you. Perhaps, one day, you will be ready to follow it.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": []
+    },
+    {
+      "id": "p11", "location": "eldmere_square", "type": "STORY",
+      "title": "The Cult Raid",
+      "text": "They come an hour after midnight, as Maren said they would. Grey robes, ash-smeared faces, and torches that burn with a green flame that gives no warmth. The shrine bell rings and keeps ringing. Neighbours you have known all your life stumble out of their doors with pitchforks and fire irons. At the head of the raiders walks a tall figure with no torch at all, and every flame in the square leans toward them as they pass. They stop in the middle of the square and turn their hooded face, slowly, toward you. Whatever comes next, Eldmere will not be the same village tomorrow.",
+      "encounter": null, "win": null, "lose": null,
+      "choices": [
+        { "label": "Stand your ground", "to": "c5_resolver",
+          "conditions": [], "effects": [] },
+        { "label": "Slip away into the dark", "to": "c5_resolver",
+          "conditions": [], "effects": [] }
+      ]
+    }
+  ]
+}
