@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Integration test for the student-implemented save transaction (spec §4.4).
+ * Integration test for the save transaction (spec §4.4, docs/STUDY_GUIDE.md).
  * Needs PostgreSQL and the test.db.* keys in db.properties (S6).
  * Run with {@code .\mvnw.cmd verify}. It rebuilds the shardbound_test schema
  * from database/*.sql and imports content/*.json first.
