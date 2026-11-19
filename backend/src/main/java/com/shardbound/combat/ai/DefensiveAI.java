@@ -19,4 +19,14 @@ public class DefensiveAI implements EnemyAI {
         }
         return Action.of(ActionType.ATTACK);
     }
+
+    @Override
+    public boolean memory() {
+        return hasDefended;
+    }
+
+    @Override
+    public void restoreMemory(boolean memory) {
+        this.hasDefended = memory;
+    }
 }

@@ -1,20 +1,15 @@
 package com.shardbound.engine;
 
-import com.shardbound.api.dto.ChoiceView;
-import com.shardbound.api.dto.GameView;
+import com.shardbound.view.ChoiceView;
+import com.shardbound.view.GameView;
 import com.shardbound.combat.Action;
 import com.shardbound.combat.ActionType;
 import com.shardbound.exception.ActionNotAllowedException;
 import com.shardbound.exception.InvalidChoiceException;
 import com.shardbound.exception.LockedChoiceException;
 import com.shardbound.model.Faction;
-import com.shardbound.tools.ConsoleRunner;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.PrintStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -22,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Whole-engine tests on the REAL prologue, offline (content from JSON, no DB).
+ * Whole-engine tests on the REAL prologue, in memory (content from JSON, no database).
  * Startup computes the quest order with QuestManager.topoOrder (Kahn).
  */
 class GameEngineTest {
@@ -31,7 +26,7 @@ class GameEngineTest {
 
     @BeforeAll
     static void setUp() {
-        engine = ConsoleRunner.offlineEngine(new File("../content"));
+        engine = TestEngines.inMemory();
     }
 
     private static GameView pick(GameEngine e, GameState s, String label) {
@@ -45,9 +40,11 @@ class GameEngineTest {
     }
 
     @Test
-    void quickRouteIsPlayableWithRealConditions() {             // spec §8.4 --auto-quick
-        ByteArrayOutputStream log = new ByteArrayOutputStream();
-        assertTrue(ConsoleRunner.playQuickRoute(engine, new PrintStream(log)), log.toString());
+    void quickRouteIsPlayableWithRealConditions() {             // spec §8.4
+        GameState s = engine.newGame(0, true, TestEngines.QUICK_ROUTE_SEED);
+        GameView end = TestEngines.playQuickRoute(engine, s);
+        assertNotNull(end.ending());
+        assertEquals("END_QUICK", end.ending().id());
     }
 
     @Test
@@ -96,7 +93,7 @@ class GameEngineTest {
         pick(engine, s, "Take it to Elder Maren");
         pick(engine, s, "Promise");
         GameView end = pick(engine, s, "Stand your ground");
-        assertEquals("ENDED", end.mode());
+        assertEquals(Mode.ENDED, end.mode());
         assertNotNull(end.ending());
         assertEquals("END_WANDERER", end.ending().id());
         assertEquals(6, end.ending().endingsTotal());

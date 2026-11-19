@@ -31,4 +31,14 @@ public class BossAI implements EnemyAI {
     public boolean isPhaseTwo() {
         return phaseTwo;
     }
+
+    @Override
+    public boolean memory() {
+        return phaseTwo;
+    }
+
+    @Override
+    public void restoreMemory(boolean memory) {
+        this.phaseTwo = memory;
+    }
 }

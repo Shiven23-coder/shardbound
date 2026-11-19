@@ -61,6 +61,14 @@ public class Enemy extends Combatant {
     public int turnsTaken()   { return turnsTaken; }
     void countTurn()          { turnsTaken++; }
 
+    /** Puts back the state a stored fight recorded for this enemy. */
+    void restore(CombatSnapshot.EnemyEntry entry) {
+        this.hp = Math.max(0, Math.min(maxHp, entry.hp()));
+        this.defending = entry.defending();
+        this.turnsTaken = entry.turnsTaken();
+        ai.restoreMemory(entry.aiMemory());
+    }
+
     @Override public String name()  { return name; }
     @Override public int hp()       { return hp; }
     @Override public int maxHp()    { return maxHp; }

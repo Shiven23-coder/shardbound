@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shardbound.game/schema/world.schema.json",
+  "title": "Shardbound world file (content/world.json)",
+  "type": "object",
+  "required": ["factions", "locations", "npcs", "items", "enemies", "encounters", "quests", "achievements", "endings"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "factions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "enum": ["ELDMERE", "SYLVAN", "CROWN", "ASHEN"] },
+          "name": { "$ref": "common.schema.json#/$defs/text" }
+        }
+      }
+    },
+    "locations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "region"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/id" },
+          "name": { "$ref": "common.schema.json#/$defs/text" },
+          "region": { "enum": ["VILLAGE", "FOREST", "DUNGEON", "KINGDOM", "SPIRE"] }
+        }
+      }
+    },
+    "npcs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/id" },
+          "name": { "$ref": "common.schema.json#/$defs/text" },
+          "faction": { "$ref": "common.schema.json#/$defs/nullableId" },
+          "location": { "$ref": "common.schema.json#/$defs/nullableId" }
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/item" }
+    },
+    "enemies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "hp", "atk", "def", "spd", "xpReward", "goldReward", "ai"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/id" },
+          "name": { "$ref": "common.schema.json#/$defs/text" },
+          "hp": { "type": "integer", "minimum": 1 },
+          "atk": { "type": "integer", "minimum": 0 },
+          "def": { "type": "integer", "minimum": 0 },
+          "spd": { "type": "integer", "minimum": 0 },
+          "xpReward": { "type": "integer", "minimum": 0 },
+          "goldReward": { "type": "integer", "minimum": 0 },
+          "ai": { "enum": ["AGGRESSIVE", "DEFENSIVE", "BOSS"] }
+        }
+      }
+    },
+    "encounters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "enemies"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/id" },
+          "name": { "$ref": "common.schema.json#/$defs/text" },
+          "canFlee": { "type": "boolean" },
+          "enemies": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["id", "qty"],
+              "additionalProperties": false,
+              "properties": {
+                "id": { "$ref": "common.schema.json#/$defs/id" },
+                "qty": { "type": "integer", "minimum": 1, "maximum": 4 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "quests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/id" },
+          "title": { "$ref": "common.schema.json#/$defs/text" },
+          "description": { "$ref": "common.schema.json#/$defs/text" },
+          "isMain": { "type": "boolean" },
+          "giver": { "$ref": "common.schema.json#/$defs/nullableId" },
+          "rewardItem": { "$ref": "common.schema.json#/$defs/nullableId" },
+          "rewardXp": { "type": "integer", "minimum": 0 },
+          "rewardGold": { "type": "integer", "minimum": 0 },
+          "prereqs": {
+            "type": "array",
+            "items": { "$ref": "common.schema.json#/$defs/id" },
+            "uniqueItems": true
+          }
+        }
+      }
+    },
+    "achievements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/id" },
+          "title": { "$ref": "common.schema.json#/$defs/text" },
+          "description": { "$ref": "common.schema.json#/$defs/text" },
+          "hidden": { "type": "boolean" }
+        }
+      }
+    },
+    "endings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "node", "title", "priority"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/id" },
+          "node": { "$ref": "common.schema.json#/$defs/id" },
+          "title": { "$ref": "common.schema.json#/$defs/text" },
+          "priority": { "type": "integer", "minimum": 1 },
+          "viaResolver": { "type": "boolean" },
+          "conditions": { "$ref": "common.schema.json#/$defs/conditions" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "item": {
+      "type": "object",
+      "required": ["id", "name", "type", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/id" },
+        "name": { "$ref": "common.schema.json#/$defs/text" },
+        "type": { "enum": ["WEAPON", "CONSUMABLE", "KEY"] },
+        "description": { "$ref": "common.schema.json#/$defs/text" },
+        "price": { "type": "integer", "minimum": 0 },
+        "weapon": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["tier", "attack", "critPct"],
+              "additionalProperties": false,
+              "properties": {
+                "tier": { "enum": ["F", "E", "D", "C", "B", "A", "S", "SS", "SSS"] },
+                "attack": { "type": "integer", "minimum": 0 },
+                "critPct": { "type": "integer", "minimum": 0, "maximum": 100 },
+                "ability": { "type": ["string", "null"] }
+              }
+            }
+          ]
+        },
+        "consumable": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "heal": { "type": "integer", "minimum": 0 },
+                "energy": { "type": "integer", "minimum": 0 }
+              }
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "WEAPON" } } },
+          "then": { "required": ["weapon"], "properties": { "weapon": { "type": "object" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "CONSUMABLE" } } },
+          "then": { "required": ["consumable"], "properties": { "consumable": { "type": "object" } } }
+        }
+      ]
+    }
+  }
+}

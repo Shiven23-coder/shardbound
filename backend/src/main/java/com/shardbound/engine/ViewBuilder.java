@@ -1,18 +1,18 @@
 package com.shardbound.engine;
 
-import com.shardbound.api.dto.ChoiceView;
-import com.shardbound.api.dto.CombatView;
-import com.shardbound.api.dto.GameView;
-import com.shardbound.api.dto.GameView.AffinityView;
-import com.shardbound.api.dto.GameView.EndingView;
-import com.shardbound.api.dto.GameView.InventoryView;
-import com.shardbound.api.dto.GameView.ItemView;
-import com.shardbound.api.dto.GameView.JournalView;
-import com.shardbound.api.dto.GameView.NodeInfo;
-import com.shardbound.api.dto.GameView.QuestView;
-import com.shardbound.api.dto.GameView.ReputationView;
-import com.shardbound.api.dto.HudView;
-import com.shardbound.api.dto.ToastView;
+import com.shardbound.view.ChoiceView;
+import com.shardbound.view.CombatView;
+import com.shardbound.view.GameView;
+import com.shardbound.view.GameView.AffinityView;
+import com.shardbound.view.GameView.EndingView;
+import com.shardbound.view.GameView.InventoryView;
+import com.shardbound.view.GameView.ItemView;
+import com.shardbound.view.GameView.JournalView;
+import com.shardbound.view.GameView.NodeInfo;
+import com.shardbound.view.GameView.QuestView;
+import com.shardbound.view.GameView.ReputationView;
+import com.shardbound.view.HudView;
+import com.shardbound.view.ToastView;
 import com.shardbound.combat.CombatEngine;
 import com.shardbound.combat.CombatState;
 import com.shardbound.combat.Enemy;
@@ -57,7 +57,7 @@ public class ViewBuilder {
         Location location = content.locationOf(node.locationId());
         boolean story = s.mode() == Mode.STORY;
         return new GameView(
-                s.sessionId(), s.mode().name(), location.region(), location.id(), location.name(), node.chapter(),
+                s.sessionId(), s.mode(), location.region(), location.id(), location.name(), node.chapter(),
                 s.demoMode(),
                 new NodeInfo(node.id(), node.title(), node.body()),
                 story ? choices(s, node) : List.of(),

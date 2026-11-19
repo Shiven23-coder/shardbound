@@ -1,4 +1,5 @@
 {
+  "$schema": "./schema/chapter.schema.json",
   "chapter": 5,
   "nodes": [
     {

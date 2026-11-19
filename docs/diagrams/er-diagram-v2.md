@@ -1,30 +1,96 @@
 # Shardbound — ER Diagram v2
 
-v2 additions and changes (V2_SPEC §6). The v1 diagram (`er-diagram.md`) still describes the baseline tables (`V1__baseline.sql`); this file shows what v2 adds or changes. Unchanged v1 entities appear with keys only.
+PostgreSQL holds **player data only** (V2_SPEC §6). Content (story, maps, creeps, bosses, balance) is JSON loaded at startup and has no tables (P-04). Saves and live runs are JSONB documents with a few real columns for what queries need (P-05, P-22). The migrations in `backend/src/main/resources/db/migration/` are authoritative; this file shows their shape.
 
 Keys: **PK**, **FK**, **UK**. Crow's-foot: `||` one, `|o` zero-or-one, `o{` zero-or-many.
 
+| Migration | Phase | Tables |
+|---|---|---|
+| `V1__baseline.sql` | P0 | player, save_slot, active_run, player_achievement, player_ending, view v_leaderboard |
+| `V2__accounts.sql` | V2a | account (replaces player), account_identity, auth_session, login_attempt, account_setting |
+| `V3__email_tokens.sql` | V2b | auth_token, email_outbox |
+| `V4__feedback.sql` | ALPHA | feedback |
+| `V5__telemetry.sql` | V10 | telemetry_event, views, mv_balance_summary |
+
 ---
 
-## 1. Accounts, sessions, tokens, email outbox (V2a / V2b)
+## 1. Baseline (P0)
+
+```mermaid
+erDiagram
+    player {
+        serial player_id PK "becomes account_id in V2a"
+        varchar(30) username UK
+        timestamptz created_at
+    }
+    save_slot {
+        serial save_id PK
+        int player_id FK, UK "CASCADE; UK(player_id, slot_no)"
+        smallint slot_no UK "CHECK 0..3; 0 = autosave"
+        int save_version "format version of data"
+        smallint level "summary column"
+        varchar(40) area_id "summary column"
+        int playtime_seconds "summary column"
+        jsonb data "SaveSnapshot; CHECK jsonb_typeof = object"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    active_run {
+        uuid run_id PK
+        int player_id FK "CASCADE"
+        bytea session_token_hash UK "SHA-256(X-Session) until V2a"
+        bigint version "optimistic lock"
+        jsonb data "live GameState + optional CombatSnapshot"
+        timestamptz updated_at
+    }
+    player_achievement {
+        int player_id PK, FK "CASCADE"
+        varchar(40) achievement_id PK "content id, no FK"
+        timestamptz unlocked_at
+    }
+    player_ending {
+        int player_id PK, FK "CASCADE"
+        varchar(40) ending_id PK "content id, no FK"
+        timestamptz first_reached
+        int best_seconds
+    }
+
+    player ||--o{ save_slot : "owns"
+    player ||--o{ active_run : "plays"
+    player ||--o{ player_achievement : "unlocked"
+    player ||--o{ player_ending : "reached"
+```
+
+`v_leaderboard` (view): endings, achievements and fastest ending per player.
+
+---
+
+## 2. Accounts and sessions (V2a)
 
 ```mermaid
 erDiagram
     account {
-        serial account_id PK "was player_id (v1)"
+        serial account_id PK "was player_id"
         text email UK "lowercase CHECK; NULL for guests and deleted"
         timestamptz email_verified_at "NULL = unverified"
-        text password_hash "PHC argon2id; NULL for guests"
+        text password_hash "PHC argon2id; V2b; NULL otherwise"
         varchar(20) display_name UK "case-insensitive unique index"
         boolean is_guest
-        smallint failed_logins
-        timestamptz locked_until
+        smallint failed_logins "V2b"
+        timestamptz locked_until "V2b"
         varchar(10) terms_version
         timestamptz terms_accepted_at
         boolean telemetry_opt_out
         timestamptz created_at
         timestamptz last_seen_at
         timestamptz deleted_at "tombstone: PII removed"
+    }
+    account_identity {
+        varchar(20) provider PK "google"
+        text subject PK "OIDC sub"
+        int account_id FK "CASCADE"
+        text email "as reported by the provider"
+        timestamptz created_at
     }
     auth_session {
         bytea token_hash PK "SHA-256 of cookie token"
@@ -34,15 +100,6 @@ erDiagram
         timestamptz expires_at "30 d idle, sliding"
         timestamptz absolute_expires_at "90 d"
         timestamptz revoked_at
-    }
-    auth_token {
-        bytea token_hash PK "SHA-256"
-        int account_id FK "CASCADE"
-        auth_purpose purpose "VERIFY | RESET | CHANGE_EMAIL"
-        text new_email "CHANGE_EMAIL only"
-        timestamptz expires_at "24 h / 30 min"
-        timestamptz used_at "single use"
-        timestamptz created_at
     }
     login_attempt {
         bigserial attempt_id PK
@@ -55,6 +112,32 @@ erDiagram
         int account_id PK, FK "CASCADE"
         varchar(40) setting_key PK "text_speed, music_volume, key_bindings..."
         text value
+    }
+
+    account ||--o{ account_identity : "signs in with"
+    account ||--o{ auth_session : "has"
+    account ||--o{ account_setting : "has"
+```
+
+`save_slot`, `active_run`, `player_achievement` and `player_ending` keep their rows; their `player_id` columns now reference `account.account_id`.
+
+---
+
+## 3. Email tokens and outbox (V2b)
+
+```mermaid
+erDiagram
+    account {
+        serial account_id PK
+    }
+    auth_token {
+        bytea token_hash PK "SHA-256"
+        int account_id FK "CASCADE"
+        auth_purpose purpose "VERIFY | RESET | CHANGE_EMAIL"
+        text new_email "CHANGE_EMAIL only"
+        timestamptz expires_at "24 h / 30 min"
+        timestamptz used_at "single use"
+        timestamptz created_at
     }
     email_outbox {
         bigserial outbox_id PK
@@ -70,325 +153,29 @@ erDiagram
         timestamptz sent_at
     }
 
-    account ||--o{ auth_session : "has"
     account ||--o{ auth_token : "has"
-    account ||--o{ account_setting : "has"
     account |o--o{ email_outbox : "queued for"
 ```
 
 ---
 
-## 2. World content (V3)
+## 4. Feedback (ALPHA)
 
 ```mermaid
 erDiagram
-    region {
-        varchar(20) region_id PK
-        varchar(60) name
-        varchar(60) music
-    }
-    area {
-        varchar(40) area_id PK
-        varchar(20) region_id FK
-        varchar(60) name
-        varchar(60) map_key "content/maps/<key>.tmj"
-        varchar(60) music "nullable: region default"
-    }
-    area_edge {
-        varchar(40) from_area PK, FK
-        varchar(40) to_area PK, FK
-        int weight "walking seconds, CHECK > 0"
-        varchar(40) gate_flag "nullable: needs this flag"
-    }
-    area_collision {
-        varchar(40) area_id PK, FK "CASCADE"
-        smallint width
-        smallint height
-        bytea bits "BitSet, index y*width + x"
-    }
-    map_object {
-        varchar(60) object_id PK "area:tiledId"
-        varchar(40) area_id FK "CASCADE"
-        varchar(20) type "spawn_point | exit | creep_spawn | npc | lantern | smith | chest | trigger"
-        smallint x
-        smallint y
-        jsonb props "type-specific (template, levelMin..)"
-    }
-    lantern {
-        varchar(40) lantern_id PK
-        varchar(60) object_id FK, UK
-        varchar(60) name
-    }
-    dialogue {
-        varchar(40) dialogue_id PK
-        varchar(40) npc_id FK
-        varchar(40) start_node
-    }
-    dialogue_node {
-        varchar(40) node_id PK
-        varchar(40) dialogue_id FK "CASCADE"
-        varchar(60) speaker
-        varchar(60) portrait
-        varchar(10) mood
-        text text
-    }
-    dialogue_choice {
-        serial choice_id PK "stable via UK (from_node, sort_order), D1"
-        varchar(40) from_node FK, UK
-        smallint sort_order UK
-        varchar(40) to_node FK "NULL = end"
-        varchar(160) label
-        boolean hidden_when_locked
-    }
-    dialogue_choice_condition {
-        int choice_id PK, FK
-        smallint seq PK
-        smallint grp "D4"
-        varchar(10) cond_type
-        varchar(40) key
-        varchar(2) op
-        int value
-    }
-    dialogue_choice_effect {
-        int choice_id PK, FK
-        smallint seq PK
-        varchar(16) effect_type
-        varchar(40) key
-        int value
-    }
-    npc {
-        varchar(40) npc_id PK
-    }
-
-    region ||--o{ area : "contains"
-    area ||--o{ area_edge : "from"
-    area ||--o{ area_edge : "to"
-    area ||--|| area_collision : "has"
-    area ||--o{ map_object : "places"
-    map_object ||--o| lantern : "is"
-    npc ||--o{ dialogue : "speaks"
-    dialogue ||--o{ dialogue_node : "has"
-    dialogue_node ||--o{ dialogue_choice : "offers"
-    dialogue_choice ||--o{ dialogue_choice_condition : "requires"
-    dialogue_choice ||--o{ dialogue_choice_effect : "applies"
-```
-
----
-
-## 3. Battle content (V4, V6, V7)
-
-```mermaid
-erDiagram
-    creature_family {
-        varchar(20) family_id PK
-        varchar(40) name
-    }
-    family_element {
-        varchar(20) family_id PK, FK
-        element element PK "PHYSICAL..CRYSTAL"
-        weakness_grade grade "W | N | R | I"
-    }
-    family_status_immunity {
-        varchar(20) family_id PK, FK
-        status status PK "BLEED..STUN"
-    }
-    skill {
-        varchar(40) skill_id PK
-        varchar(60) name
-        element element
-        numeric power
-        smallint fp_cost
-        varchar(8) scaling "WEAPON | MIND | ARCANE"
-        varchar(4) target "ONE | ALL"
-        status status "nullable"
-        smallint status_chance
-    }
-    creep_template {
-        varchar(40) template_id PK
-        varchar(60) name
-        varchar(20) family_id FK
-        varchar(60) sprite
-        int base_hp
-        int base_atk
-        int base_def
-        smallint base_spd
-    }
-    creep_skill {
-        varchar(40) template_id PK, FK
-        varchar(40) skill_id PK, FK
-        smallint weight
-    }
-    boss {
-        varchar(40) boss_id PK
-        varchar(60) name
-        varchar(20) family_id FK
-        smallint level
-        varchar(40) arena_area FK
-        varchar(40) intro_cutscene FK
-    }
-    boss_phase {
-        varchar(40) boss_id PK, FK
-        smallint phase PK "1 | 2"
-        smallint hp_pct_at "phase 2 threshold"
-        text transition_line
-        varchar(20) family_override "nullable"
-        smallint spd_delta
-    }
-    boss_move {
-        varchar(40) boss_id PK, FK
-        smallint phase PK, FK
-        varchar(40) skill_id PK, FK
-        smallint weight
-        text telegraph "nullable: announced a turn early"
-    }
-    cutscene {
-        varchar(40) cutscene_id PK
-        boolean skippable
-    }
-    cutscene_step {
-        varchar(40) cutscene_id PK, FK
-        smallint seq PK
-        varchar(10) kind "say | move | camera | music | wait | fade"
-        jsonb args
-    }
-    weapon {
-        varchar(40) item_id PK, FK
-        weapon_tier tier
-        int base_attack "NEW"
-        smallint crit_pct
-    }
-    weapon_scaling {
-        varchar(40) item_id PK, FK
-        attribute attribute PK "STR | DEX | ARC"
-        scaling_grade grade "S..E"
-    }
-    upgrade_cost {
-        smallint from_level PK "0..9"
-        int shards "150*(u+1)^2"
-        varchar(40) material_item FK
-        smallint material_qty
-    }
-    curve_point {
-        varchar(30) curve_id PK "vigor_hp, mind_fp, sat, ..."
-        smallint x PK
-        numeric y
-    }
-
-    creature_family ||--o{ family_element : "chart row"
-    creature_family ||--o{ family_status_immunity : "immune to"
-    creature_family ||--o{ creep_template : "classifies"
-    creep_template ||--o{ creep_skill : "uses"
-    skill ||--o{ creep_skill : "used by"
-    boss ||--o{ boss_phase : "has"
-    boss_phase ||--o{ boss_move : "moves"
-    skill ||--o{ boss_move : "is"
-    cutscene ||--o{ cutscene_step : "steps"
-    cutscene |o--o{ boss : "intro of"
-    weapon ||--o{ weapon_scaling : "scales with"
-```
-
----
-
-## 4. Saves v2 (V5–V9)
-
-```mermaid
-erDiagram
-    save_slot {
-        serial save_id PK
-        int account_id FK, UK "CASCADE"
-        smallint slot_no UK "0 autosave, 1..3"
-        int save_version "CHECK >= 1; current 2"
-        uuid run_id "anonymous telemetry key"
-        varchar(40) area_id FK "RESTRICT"
-        smallint x
-        smallint y
-        char(1) facing
-        int hp "CHECK 0..curve(vigor) enforced in Java + range CHECK"
-        int fp
-        int shards "CHECK >= 0"
-        smallint draught_charges
-        varchar(40) last_lantern FK
-        bigint rng_seed
-        boolean demo_mode
-        int play_seconds
-        int version
-        timestamptz updated_at
-    }
-    save_attribute {
-        int save_id PK, FK "CASCADE"
-        attribute attribute PK "VIG MND STR DEX END ARC"
-        smallint value "CHECK 10..99"
-    }
-    save_weapon {
-        int save_id PK, FK
-        varchar(40) item_id PK, FK
-        smallint upgrade "CHECK 0..10"
-    }
-    save_skill_loadout {
-        int save_id PK, FK
-        smallint slot PK "1..4"
-        varchar(40) skill_id FK
-    }
-    save_quick_slot {
-        int save_id PK, FK
-        smallint slot PK "1..4"
-        varchar(40) item_id FK
-    }
-    save_lost_shards {
-        int save_id PK, FK "at most one"
-        varchar(40) area_id FK
-        smallint x
-        smallint y
-        int amount "CHECK > 0"
-    }
-    save_defeated_creep {
-        int save_id PK, FK "cleared on rest/death"
-        varchar(60) object_id PK, FK
-    }
-    save_defeated_boss {
-        int save_id PK, FK
-        varchar(40) boss_id PK, FK
-    }
-    save_discovered_lantern {
-        int save_id PK, FK
-        varchar(40) lantern_id PK, FK
-    }
-    save_cutscene_seen {
-        int save_id PK, FK
-        varchar(40) cutscene_id PK, FK
-    }
-    save_bestiary {
-        int save_id PK, FK
-        varchar(40) template_id PK, FK
-        timestamptz seen_at
-        boolean stats_revealed
-        boolean weakness_revealed
-    }
-    save_quest_step {
-        int save_id PK, FK
-        varchar(40) quest_id PK, FK
-        smallint step PK
-        timestamptz done_at
-    }
     account {
         serial account_id PK
     }
-
-    account ||--o{ save_slot : "owns"
-    save_slot ||--o{ save_attribute : "has"
-    save_slot ||--o{ save_weapon : "has"
-    save_slot ||--o{ save_skill_loadout : "has"
-    save_slot ||--o{ save_quick_slot : "has"
-    save_slot ||--o| save_lost_shards : "may have"
-    save_slot ||--o{ save_defeated_creep : "has"
-    save_slot ||--o{ save_defeated_boss : "has"
-    save_slot ||--o{ save_discovered_lantern : "has"
-    save_slot ||--o{ save_cutscene_seen : "has"
-    save_slot ||--o{ save_bestiary : "has"
-    save_slot ||--o{ save_quest_step : "has"
+    feedback {
+        bigserial feedback_id PK
+        int account_id FK "SET NULL"
+        varchar(40) area_id "where the player was"
+        text message
+        varchar(40) client_version
+        timestamptz created_at
+    }
+    account |o--o{ feedback : "sent"
 ```
-
-v1 child tables `save_inventory`, `save_flag`, `save_reputation`, `save_affinity`, `save_quest` and `save_history` stay unchanged. `current_node` is dropped after the v1→v2 migration (V10__saves_v2).
 
 ---
 
@@ -417,7 +204,11 @@ erDiagram
 
 Views: `v_deaths_by_area`, `v_time_per_area` (`LEAD(at) OVER (PARTITION BY run_id ORDER BY at)`), `v_fights_per_level` (`ROW_NUMBER()`, `SUM() OVER`).
 
-## 6. Normal-form notes (v2)
-- Still 3NF. Max HP/FP, defence, AR and spell power are **derived** from attributes, curves and weapons, never stored (D6/D28 extended).
-- `save_slot.hp` keeps a plain range CHECK (`hp >= 0`); the curve-based upper bound is enforced in Java, because a CHECK cannot read `curve_point` rows (V-15).
-- `map_object.props` is JSONB because each object type has different properties. It is the one deliberate semi-structured column; everything the server queries by (type, area, x, y) is a real column.
+---
+
+## 6. Design notes
+- **Saves and runs are documents.** A save is always read and written whole, so `data JSONB` replaces a dozen child tables; the format evolves through versioned upgrades (`SaveUpgrader`), not schema migrations. Only fields that queries need (`level`, `area_id`, `playtime_seconds`) are real columns, written in the same UPSERT.
+- **No player → content foreign keys.** Content ids (`area_id`, `achievement_id`, `ending_id`) are checked against the loaded content instead; a save with unknown ids is refused with `SAVE_INCOMPATIBLE`.
+- **Derived stats are never stored.** Max HP/FP, defence, AR and spell power come from attributes, curves and weapons (D6 extended).
+- **Optimistic locking** on `active_run.version`: every write-through is `UPDATE … WHERE run_id = ? AND version = ?`; zero rows means `RUN_CONFLICT`.
+- Merged migrations are never edited; columns like the `feedback` fields above are settled when their phase is planned.

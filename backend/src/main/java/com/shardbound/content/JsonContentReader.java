@@ -1,7 +1,5 @@
 package com.shardbound.content;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shardbound.content.RawContent.AchievementDef;
 import com.shardbound.content.RawContent.ChoiceDef;
 import com.shardbound.content.RawContent.ConsumableDef;
@@ -20,25 +18,32 @@ import com.shardbound.content.RawContent.WeaponDef;
 import com.shardbound.exception.ContentValidationException;
 import com.shardbound.quest.QuestStatus;
 
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
- * Reads content/world.json and content/ch*.json (file I/O, spec §8) into a
- * {@link RawContent}. Shape errors (missing fields, wrong types) are reported
- * with the file and the id of the object, so content authors can find them.
+ * Reads world.json and the ch*.json chapter files into a {@link RawContent}.
+ * {@link ContentLoader} checks the files against their JSON Schemas first; the
+ * checks here are a second line of defence with readable messages.
  */
 public class JsonContentReader {
 
-    private final ObjectMapper mapper = new ObjectMapper();
-    private final File contentDir;
+    private final JsonMapper mapper = JsonMapper.builder().build();
+    private final ContentFiles files;
     private int nextChoiceId = 1;     // JSON has no choice ids; number them in file order
 
+    public JsonContentReader(ContentFiles files) {
+        this.files = files;
+    }
+
+    /** Reads the files of a content folder on disk (tests and tools). */
     public JsonContentReader(File contentDir) {
-        this.contentDir = contentDir;
+        this(ContentFiles.fromDirectory(contentDir.toPath()));
     }
 
     /**
@@ -46,10 +51,10 @@ public class JsonContentReader {
      * Time O(total JSON size), space O(total content).
      */
     public RawContent read() {
-        JsonNode world = readFile(new File(contentDir, "world.json"));
+        JsonNode world = parse(ContentFiles.WORLD);
         List<NodeDef> nodes = new ArrayList<>();
         List<ChoiceDef> choices = new ArrayList<>();
-        for (File chapterFile : chapterFiles()) {
+        for (String chapterFile : files.chapterNames()) {
             readChapter(chapterFile, nodes, choices);
         }
         return new RawContent(
@@ -62,20 +67,11 @@ public class JsonContentReader {
     // files
     // ---------------------------------------------------------------------
 
-    private File[] chapterFiles() {
-        File[] files = contentDir.listFiles((dir, name) -> name.startsWith("ch") && name.endsWith(".json"));
-        if (files == null) {
-            throw new ContentValidationException("Content folder not found: " + contentDir.getAbsolutePath());
-        }
-        Arrays.sort(files);
-        return files;
-    }
-
-    private JsonNode readFile(File file) {
+    private JsonNode parse(String fileName) {
         try {
-            return mapper.readTree(file);
-        } catch (IOException e) {
-            throw new ContentValidationException("Cannot read " + file.getName() + ": " + e.getMessage());
+            return mapper.readTree(files.text(fileName));
+        } catch (JacksonException e) {
+            throw new ContentValidationException("Cannot read " + fileName + ": " + e.getOriginalMessage());
         }
     }
 
@@ -154,7 +150,7 @@ public class JsonContentReader {
         for (JsonNode n : array(world, "quests")) {
             List<String> prereqs = new ArrayList<>();
             for (JsonNode p : array(n, "prereqs")) {
-                prereqs.add(p.asText());
+                prereqs.add(p.asString());
             }
             result.add(new QuestDef(text(n, "id"), text(n, "title"), text(n, "description"),
                     optText(n, "giver"), optText(n, "rewardItem"), optInt(n, "rewardXp", 0),
@@ -187,8 +183,8 @@ public class JsonContentReader {
     // chapter files
     // ---------------------------------------------------------------------
 
-    private void readChapter(File file, List<NodeDef> nodes, List<ChoiceDef> choices) {
-        JsonNode root = readFile(file);
+    private void readChapter(String fileName, List<NodeDef> nodes, List<ChoiceDef> choices) {
+        JsonNode root = parse(fileName);
         int chapter = integer(root, "chapter");
         for (JsonNode n : array(root, "nodes")) {
             String nodeId = text(n, "id");
@@ -225,14 +221,14 @@ public class JsonContentReader {
     }
 
     private int questOrdinal(JsonNode value, String where) {
-        if (value == null || !value.isTextual()) {
+        if (value == null || !value.isString()) {
             throw new ContentValidationException("QUEST condition in " + where
                     + " must use a status name such as \"COMPLETED\" (D13)");
         }
         try {
-            return QuestStatus.valueOf(value.asText()).ordinal();
+            return QuestStatus.valueOf(value.asString()).ordinal();
         } catch (IllegalArgumentException e) {
-            throw new ContentValidationException("Unknown quest status '" + value.asText() + "' in " + where);
+            throw new ContentValidationException("Unknown quest status '" + value.asString() + "' in " + where);
         }
     }
 
@@ -253,15 +249,15 @@ public class JsonContentReader {
 
     private static String text(JsonNode node, String field) {
         JsonNode value = node.get(field);
-        if (value == null || value.isNull() || value.asText().isBlank()) {
+        if (value == null || value.isNull() || value.asString().isBlank()) {
             throw new ContentValidationException("Missing '" + field + "' in " + describe(node));
         }
-        return value.asText();
+        return value.asString();
     }
 
     private static String optText(JsonNode node, String field) {
         JsonNode value = node.get(field);
-        return value == null || value.isNull() ? null : value.asText();
+        return value == null || value.isNull() ? null : value.asString();
     }
 
     private static int integer(JsonNode node, String field) {
@@ -280,9 +276,9 @@ public class JsonContentReader {
     private static String describe(JsonNode node) {
         JsonNode id = node.get("id");
         if (id != null) {
-            return "object '" + id.asText() + "'";
+            return "object '" + id.asString() + "'";
         }
         JsonNode label = node.get("label");
-        return label != null ? "choice '" + label.asText() + "'" : "an object";
+        return label != null ? "choice '" + label.asString() + "'" : "an object";
     }
 }

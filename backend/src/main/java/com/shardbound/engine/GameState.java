@@ -29,6 +29,9 @@ import java.util.Random;
  *
  * <p>Not thread-safe by itself: every public GameEngine method holds
  * {@code synchronized (state)} while it uses the state (D16).
+ *
+ * <p>A GameState is a cache of the durable run in {@code active_run} (P-22);
+ * {@link #runVersion()} is the version it was last written as.
  */
 public class GameState {
 
@@ -57,6 +60,7 @@ public class GameState {
     private boolean offerReload;                // true right after a boss loss (S3)
     private int endingSeconds;                  // set when an ending is reached
     private int endingsFound;                   // set when an ending is reached
+    private long runVersion;                    // optimistic-locking version in active_run
 
     public GameState(String sessionId, int playerId, String startNode, Stats stats, Inventory inventory,
                      long rngSeed, boolean demoMode, int playSecondsBefore) {
@@ -221,23 +225,14 @@ public class GameState {
         return fresh;
     }
 
-    /**
-     * Copies every saved field into new collections (D24). Deliberately
-     * excludes {@code bus} (listeners belong to the live session),
-     * {@code combat} (saving is STORY-only) and {@code pendingToasts} (UI-only).
-     * Time O(n) over all collections, space O(n).
-     */
-    public GameState deepCopy() {
-        GameState copy = new GameState(sessionId, playerId, currentNode, stats.copy(), inventory.copy(),
-                rngSeed, demoMode, playSeconds());
-        copy.mode = mode;
-        copy.flags.putAll(flags);
-        copy.reputation.putAll(reputation);
-        copy.affinity.putAll(affinity);
-        copy.quests.putAll(quests);
-        copy.history.addAll(history);   // Step is an immutable record, so sharing elements is safe
-        return copy;
-    }
+    // =====================================================================
+    // Durable runs (P-22)
+    // =====================================================================
+
+    /** The stored version this in-memory copy was last written as (0 = never stored). */
+    public long runVersion()               { return runVersion; }
+
+    void setRunVersion(long runVersion)    { this.runVersion = runVersion; }
 
     private static int clamp(int value) {
         return Math.max(AFFINITY_MIN, Math.min(AFFINITY_MAX, value));

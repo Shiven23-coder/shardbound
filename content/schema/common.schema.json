@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shardbound.game/schema/common.schema.json",
+  "title": "Shardbound shared content definitions",
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_]+$",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "nullableId": {
+      "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }]
+    },
+    "text": { "type": "string", "minLength": 1 },
+    "op": { "enum": ["=", "!=", ">", ">=", "<", "<="] },
+    "questStatus": { "enum": ["LOCKED", "AVAILABLE", "ACTIVE", "COMPLETED", "FAILED"] },
+    "condition": {
+      "type": "object",
+      "required": ["type", "key", "op", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["FLAG", "REP", "AFFINITY", "ITEM", "QUEST", "STAT"] },
+        "key": { "$ref": "#/$defs/id" },
+        "op": { "$ref": "#/$defs/op" },
+        "value": { "type": ["integer", "string"] },
+        "grp": { "type": "integer", "minimum": 0 }
+      },
+      "if": { "properties": { "type": { "const": "QUEST" } } },
+      "then": { "properties": { "value": { "$ref": "#/$defs/questStatus" } } },
+      "else": { "properties": { "value": { "type": "integer" } } }
+    },
+    "conditions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/condition" }
+    },
+    "effect": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": ["SET_FLAG", "REP", "AFFINITY", "GIVE_ITEM", "TAKE_ITEM", "START_QUEST",
+                   "COMPLETE_QUEST", "FAIL_QUEST", "HEAL", "GOLD", "XP"]
+        },
+        "key": { "$ref": "#/$defs/nullableId" },
+        "value": { "type": "integer" }
+      }
+    }
+  }
+}

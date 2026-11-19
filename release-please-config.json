@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "2a17e8ab37f0724cb0e42b963fa161574898f59f",
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "package-name": "shardbound",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "extra-files": [
+        "backend/pom.xml",
+        { "type": "json", "path": "frontend/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "package.json", "jsonpath": "$.version" }
+      ]
+    }
+  }
+}

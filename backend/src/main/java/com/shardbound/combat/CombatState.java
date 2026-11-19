@@ -93,7 +93,26 @@ public class CombatState {
         return count == 0 ? 0 : (double) total / count;
     }
 
+    /** The fight as plain data for the active run (P-22). */
+    public CombatSnapshot snapshot() {
+        List<CombatSnapshot.EnemyEntry> entries = new ArrayList<>();
+        for (Enemy enemy : enemies) {
+            entries.add(new CombatSnapshot.EnemyEntry(enemy.hp(), enemy.isDefending(), enemy.turnsTaken(),
+                    enemy.ai().memory()));
+        }
+        return new CombatSnapshot(encounterId, round, logView(), lastHits, player.isDefending(), entries);
+    }
+
     // ---- package-private: only CombatEngine changes the fight ----
+
+    /** Restores round, log and hits from a stored fight. */
+    void restore(CombatSnapshot snapshot) {
+        this.round = snapshot.round();
+        this.log.clear();
+        this.log.addAll(snapshot.log());
+        this.lastHits = new ArrayList<>(snapshot.lastHits());
+        this.player.setDefending(snapshot.playerDefending());
+    }
 
     List<Enemy> enemies() {
         return enemies;

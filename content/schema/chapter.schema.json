@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shardbound.game/schema/chapter.schema.json",
+  "title": "Shardbound chapter file (content/ch*.json)",
+  "type": "object",
+  "required": ["chapter", "nodes"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "chapter": { "type": "integer", "minimum": 0 },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/node" }
+    }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": ["id", "location", "type", "title", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/id" },
+        "location": { "$ref": "common.schema.json#/$defs/id" },
+        "type": { "enum": ["STORY", "COMBAT", "RESOLVER", "ENDING"] },
+        "title": { "$ref": "common.schema.json#/$defs/text" },
+        "text": { "$ref": "common.schema.json#/$defs/text" },
+        "encounter": { "$ref": "common.schema.json#/$defs/nullableId" },
+        "win": { "$ref": "common.schema.json#/$defs/nullableId" },
+        "lose": { "$ref": "common.schema.json#/$defs/nullableId" },
+        "flee": { "$ref": "common.schema.json#/$defs/nullableId" },
+        "choices": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/choice" }
+        }
+      },
+      "if": { "properties": { "type": { "const": "COMBAT" } } },
+      "then": {
+        "required": ["encounter", "win", "lose"],
+        "properties": {
+          "encounter": { "$ref": "common.schema.json#/$defs/id" },
+          "win": { "$ref": "common.schema.json#/$defs/id" },
+          "lose": { "$ref": "common.schema.json#/$defs/id" }
+        }
+      }
+    },
+    "choice": {
+      "type": "object",
+      "required": ["label", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "$ref": "common.schema.json#/$defs/text" },
+        "to": { "$ref": "common.schema.json#/$defs/id" },
+        "hiddenWhenLocked": { "type": "boolean" },
+        "conditions": { "$ref": "common.schema.json#/$defs/conditions" },
+        "effects": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/effect" }
+        }
+      }
+    }
+  }
+}

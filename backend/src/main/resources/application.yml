@@ -1,0 +1,74 @@
+# Shardbound server settings. Secrets never live here: the database URL and
+# credentials come from SPRING_DATASOURCE_* (or Docker Compose in dev).
+spring:
+  application:
+    name: shardbound
+  threads:
+    virtual:
+      enabled: true
+  mvc:
+    problemdetails:
+      enabled: true
+  jackson:
+    default-property-inclusion: non_null
+  docker:
+    compose:
+      enabled: false
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  info:
+    git:
+      mode: simple
+
+springdoc:
+  writer-with-order-by-keys: true
+  api-docs:
+    path: /v3/api-docs
+
+shardbound:
+  run-cache:
+    max-size: 10000
+    idle-timeout: 30m
+  run-retention: 30d
+
+---
+# Local development: `npm run dev` at the repo root, or
+# `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` in backend/.
+spring:
+  config:
+    activate:
+      on-profile: dev
+  docker:
+    compose:
+      enabled: true
+      file: ../docker-compose.yml
+      lifecycle-management: start-only
+# The Vite proxy targets :8080, and dev runners often set PORT for Vite itself,
+# so the dev API ignores PORT.
+server:
+  port: 8080
+shardbound:
+  content-dir: ../content
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+springdoc:
+  api-docs:
+    enabled: false

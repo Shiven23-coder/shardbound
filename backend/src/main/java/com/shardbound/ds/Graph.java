@@ -8,7 +8,9 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
+import java.util.function.ToIntFunction;
 
 /**
  * A directed graph stored as an adjacency list.
@@ -19,9 +21,10 @@ import java.util.Set;
  * only 1–4 exits, so storing edges per vertex costs O(V + E) memory instead of
  * the O(V²) of an adjacency matrix.
  *
- * <p>The traversal methods {@link #bfs}, {@link #dfs} and {@link #shortestPath}
- * are viva algorithms (CLAUDE.md rule 8): step-by-step comments here, a dry run
- * and viva questions in docs/STUDY_GUIDE.md, tests in {@code GraphTest}.
+ * <p>The traversal methods {@link #bfs}, {@link #dfs}, {@link #shortestPath} and
+ * {@link #dijkstra} are viva algorithms (CLAUDE.md rule 8): step-by-step comments
+ * here, a dry run and viva questions in docs/STUDY_GUIDE.md, tests in
+ * {@code GraphTest} and {@code DijkstraTest}.
  *
  * @param <V> vertex type; must implement equals/hashCode correctly
  * @param <E> edge value type
@@ -239,5 +242,84 @@ public class Graph<V, E> {
         }
         Collections.reverse(path);
         return path;
+    }
+
+    /**
+     * Dijkstra's single-source shortest paths for NON-NEGATIVE edge weights.
+     *
+     * <p>{@code weight} turns each edge value into its cost (e.g. walking seconds
+     * on the v2 area graph). Returns the shortest distance to every vertex reachable
+     * from {@code source} and the parent links to rebuild each path
+     * ({@link ShortestPaths#pathTo}). Unreachable vertices are absent. An unknown
+     * source gives an empty result. When two paths tie, the one found first is kept
+     * (a parent changes only on a strictly shorter distance), and equal distances
+     * leave the queue in the order they entered it, so results are deterministic.
+     *
+     * <p>Complexity: time O((V + E) log V) — every successful relaxation adds one
+     * queue entry (at most E entries), and each insert/poll costs O(log of the queue
+     * size); space O(V + E) for the maps and the queue (lazy deletion keeps stale
+     * entries until they are polled). Used by fast travel, quest next-hop hints, the
+     * playtest bot and region preloading (V-17).
+     *
+     * @throws IllegalArgumentException if any examined edge has a negative weight
+     */
+    public ShortestPaths<V> dijkstra(V source, ToIntFunction<E> weight) {
+        Map<V, Long> distance = new HashMap<>();
+        Map<V, V> parent = new HashMap<>();
+        // Step 0: an unknown source reaches nothing.
+        if (!adjacency.containsKey(source)) {
+            return new ShortestPaths<>(source, distance, parent);
+        }
+        // Step 1: the source is 0 away. Every queue entry is (vertex, distance-when-queued,
+        // order); the queue always gives back the smallest distance first, ties by order.
+        Set<V> settled = new HashSet<>();
+        PriorityQueue<QueueEntry<V>> queue = new PriorityQueue<>();
+        long order = 0;
+        distance.put(source, 0L);
+        queue.add(new QueueEntry<>(source, 0L, order++));
+
+        while (!queue.isEmpty()) {
+            // Step 2: take the closest vertex not yet settled. A vertex can be in the queue
+            // several times (once per improvement); only its first poll counts — later,
+            // larger copies are stale and skipped ("lazy deletion").
+            QueueEntry<V> entry = queue.poll();
+            V current = entry.vertex();
+            if (settled.contains(current)) {
+                continue;
+            }
+            // Step 3: with non-negative weights nothing can later offer a shorter way to
+            // 'current', so its distance is now final.
+            settled.add(current);
+
+            // Step 4: relax every outgoing edge: is going through 'current' shorter than
+            // the best distance known so far for the neighbour?
+            for (Edge<V, E> edge : adjacency.get(current)) {
+                int w = weight.applyAsInt(edge.value());
+                if (w < 0) {
+                    throw new IllegalArgumentException("Dijkstra needs non-negative weights; got " + w
+                            + " on " + current + " -> " + edge.to());
+                }
+                V next = edge.to();
+                long candidate = entry.distance() + w;
+                Long known = distance.get(next);
+                if (!settled.contains(next) && (known == null || candidate < known)) {
+                    distance.put(next, candidate);
+                    parent.put(next, current);
+                    queue.add(new QueueEntry<>(next, candidate, order++));
+                }
+            }
+        }
+        return new ShortestPaths<>(source, distance, parent);
+    }
+
+    /** A priority-queue entry: smaller distance first; equal distances in insertion order. */
+    private record QueueEntry<V>(V vertex, long distance, long order) implements Comparable<QueueEntry<V>> {
+        @Override
+        public int compareTo(QueueEntry<V> other) {
+            if (distance != other.distance) {
+                return Long.compare(distance, other.distance);
+            }
+            return Long.compare(order, other.order);
+        }
     }
 }

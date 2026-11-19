@@ -1,84 +1,100 @@
 package com.shardbound.engine;
 
 import com.shardbound.achievement.AchievementManager;
-import com.shardbound.api.dto.GameView;
-import com.shardbound.api.dto.MetaViews.InspectorView;
-import com.shardbound.api.dto.MetaViews.QuestStatusView;
 import com.shardbound.combat.Action;
 import com.shardbound.combat.ActionType;
 import com.shardbound.combat.CombatEngine;
 import com.shardbound.combat.CombatOutcome;
 import com.shardbound.combat.CombatState;
 import com.shardbound.content.GameContent;
+import com.shardbound.engine.port.MetaStore;
+import com.shardbound.engine.port.RunStore;
+import com.shardbound.engine.port.SaveStore;
 import com.shardbound.event.EventBus;
 import com.shardbound.event.EventType;
 import com.shardbound.event.GameEvent;
 import com.shardbound.exception.ActionNotAllowedException;
 import com.shardbound.exception.InvalidChoiceException;
 import com.shardbound.exception.LockedChoiceException;
+import com.shardbound.exception.SaveNotFoundException;
 import com.shardbound.item.Consumable;
 import com.shardbound.item.Inventory;
 import com.shardbound.item.Item;
 import com.shardbound.item.Weapon;
 import com.shardbound.model.Faction;
 import com.shardbound.model.Stats;
-import com.shardbound.persistence.MetaRepository;
-import com.shardbound.persistence.SaveData;
-import com.shardbound.persistence.SaveRepository;
-import com.shardbound.persistence.SqlLog;
-import com.shardbound.quest.QuestStatus;
 import com.shardbound.rules.Rewards;
+import com.shardbound.save.SaveSnapshot;
+import com.shardbound.save.SlotSummary;
 import com.shardbound.story.Choice;
 import com.shardbound.story.StoryGraph;
 import com.shardbound.story.StoryNode;
+import com.shardbound.view.GameView;
+import com.shardbound.view.MetaViews.InspectorView;
+import com.shardbound.view.MetaViews.QuestStatusView;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
  * The game's rules in motion: choices, combat routing, equipment, saving and
- * loading. Controllers call ONLY this class for gameplay (D21, D22).
+ * loading. The web layer calls ONLY this class for gameplay (D21, D22).
  *
  * <p>Thread safety: one GameEngine serves every session. It holds only
  * immutable content and thread-safe collaborators; every public method that
- * touches a GameState runs inside {@code synchronized (state)} (D16), so two
- * requests for the same session run one after the other.
+ * touches a GameState runs inside {@code synchronized (state)} (D16).
  *
- * <p>{@code saves} and {@code meta} may be null in offline console mode
- * (content loaded from JSON, no database): saving is then refused and
- * achievements/endings are not persisted.
+ * <p>Durability (P-22): after every state change the engine writes the run
+ * through to {@link RunStore} before it builds the response, so a restart or
+ * deploy never loses progress. A write that loses an optimistic-locking race
+ * throws {@link com.shardbound.exception.RunConflictException}.
+ *
+ * <p>The three stores may be null for in-memory use (unit tests, tools):
+ * saving is then refused and nothing outlives the process.
  */
 public class GameEngine {
 
     private static final Logger LOG = LoggerFactory.getLogger(GameEngine.class);
 
     public static final String STARTING_WEAPON = "rusty_shortsword";
+    public static final int AUTOSAVE_SLOT = 0;
+    public static final int FIRST_MANUAL_SLOT = 1;
+    public static final int LAST_MANUAL_SLOT = 3;
 
     private final GameContent content;
     private final StoryGraph graph;
     private final CombatEngine combatEngine;
     private final EndingResolver endingResolver;
     private final ViewBuilder views;
-    private final SaveRepository saves;          // null offline
-    private final MetaRepository meta;           // null offline
+    private final GameSnapshots snapshots;
+    private final @Nullable SaveStore saves;
+    private final @Nullable MetaStore meta;
+    private final @Nullable RunStore runs;
     private final ExecutorService autosaver;     // single thread: autosaves never overlap
 
-    public GameEngine(GameContent content, SaveRepository saves, MetaRepository meta) {
+    public GameEngine(GameContent content, @Nullable SaveStore saves, @Nullable MetaStore meta,
+                      @Nullable RunStore runs) {
         this.content = content;
         this.graph = content.graph();
         this.combatEngine = new CombatEngine(content.enemies(), content.encounters());
         this.endingResolver = new EndingResolver(content.endings());
         this.views = new ViewBuilder(content);
+        this.snapshots = new GameSnapshots(content, combatEngine);
         this.saves = saves;
         this.meta = meta;
+        this.runs = runs;
         this.autosaver = Executors.newSingleThreadExecutor(runnable -> {
             Thread thread = new Thread(runnable, "autosave");
             thread.setDaemon(true);
@@ -86,33 +102,60 @@ public class GameEngine {
         });
     }
 
+    /** An engine with no persistence at all (tests and tools). */
+    public static GameEngine inMemory(GameContent content) {
+        return new GameEngine(content, null, null, null);
+    }
+
     public GameContent content() {
         return content;
     }
 
+    /** A fresh random session id, also the client's X-Session token. */
+    public static String newSessionId() {
+        return UUID.randomUUID().toString();
+    }
+
     // =====================================================================
-    // New game and views
+    // New game, resume and views
     // =====================================================================
 
-    /** Creates a session at p01 with the starting kit (spec §6.1). O(q) for q quests. */
+    /** Creates a game at p01 with the starting kit (spec §6.1) and stores it as a new run. */
     public GameState newGame(int playerId, boolean demoMode) {
         return newGame(playerId, demoMode, new Random().nextLong());
     }
 
-    /** Same, with a chosen RNG seed (tests and ConsoleRunner --auto-quick). */
+    /** Same, with a chosen RNG seed (tests). */
     public GameState newGame(int playerId, boolean demoMode, long seed) {
         Inventory inventory = new Inventory();
         inventory.add(content.items().get(STARTING_WEAPON), 1);
         inventory.equip(STARTING_WEAPON);
-        GameState s = new GameState(SessionStore.newSessionId(), playerId, StoryGraph.START_NODE,
+        GameState s = new GameState(newSessionId(), playerId, StoryGraph.START_NODE,
                 Stats.starting(), inventory, seed, demoMode, 0);
         content.questManager().initialStates(s);
         wireSession(s);
         s.bus().publish(new GameEvent(EventType.NODE_ENTERED, Map.of("node", StoryGraph.START_NODE)));
+        storeAsNewRun(s);
         return s;
     }
 
-    /** The current screen. O(n) in the state's size. */
+    /**
+     * Rebuilds a game from its durable run after a restart or cache eviction.
+     * Empty if there is no stored run for this session.
+     */
+    public Optional<GameState> resume(String sessionId) {
+        if (runs == null) {
+            return Optional.empty();
+        }
+        return runs.find(sessionId).map(stored -> {
+            GameState s = snapshots.restoreRun(stored.snapshot(), sessionId, stored.playerId());
+            s.setRunVersion(stored.version());
+            wireSession(s);
+            return s;
+        });
+    }
+
+    /** The current screen. */
     public GameView view(GameState s) {
         synchronized (s) {
             return views.build(s);
@@ -124,9 +167,8 @@ public class GameEngine {
     // =====================================================================
 
     /**
-     * Takes a choice: re-checks it exists and is unlocked (React is never
+     * Takes a choice: re-checks it exists and is unlocked (the client is never
      * trusted), applies its effects, records the step and enters the target.
-     * Time O(k + c + e) for k choices, c conditions, e effects, plus the view.
      */
     public GameView choose(GameState s, int choiceId) {
         synchronized (s) {
@@ -146,7 +188,8 @@ public class GameEngine {
                 effect.apply(s, bus);
             }
             s.historyStack().push(new Step(s.currentNode(), choiceId));
-            return enterNode(s, c.to());
+            enterNode(s, c.to());
+            return persistAndView(s);
         }
     }
 
@@ -155,7 +198,7 @@ public class GameEngine {
      * Autosave runs BEFORE the type switch, so the snapshot is always taken
      * in STORY mode (D17). Recursion depth ≤ 2 (RESOLVER → ENDING).
      */
-    private GameView enterNode(GameState s, String nodeId) {
+    private void enterNode(GameState s, String nodeId) {
         StoryNode previous = graph.node(s.currentNode());
         StoryNode n = graph.node(nodeId);
         s.setCurrentNode(nodeId);
@@ -163,23 +206,22 @@ public class GameEngine {
         if (previous != null && n.chapter() != previous.chapter()) {
             autosave(s);
         }
-        return switch (n.type()) {
-            case STORY -> views.build(s);
+        switch (n.type()) {
+            case STORY -> { }
             case COMBAT -> {
                 s.setCombat(combatEngine.start(s, n.encounterId()));
                 s.setMode(Mode.COMBAT);
-                yield views.build(s);
             }
             case RESOLVER -> enterNode(s, endingResolver.resolve(s).nodeId());
             case ENDING -> finish(s, n);
-        };
+        }
     }
 
     /**
      * Ending reached (spec §6.9): record it (keeping the best time), publish
-     * ENDING_REACHED for SHORT_TALE / SPEEDRUNNER, switch to ENDED.
+     * ENDING_REACHED for SHORT_TALE, SPEEDRUNNER and ALL_ENDINGS, switch to ENDED.
      */
-    private GameView finish(GameState s, StoryNode node) {
+    private void finish(GameState s, StoryNode node) {
         Ending ending = content.endingAtNode(node.id());
         String endingId = ending == null ? node.id() : ending.id();
         int seconds = s.playSeconds();
@@ -193,8 +235,9 @@ public class GameEngine {
         Map<String, Object> data = new HashMap<>();
         data.put("endingId", endingId);
         data.put("seconds", seconds);
+        data.put("endingsFound", found);
+        data.put("endingsTotal", content.endings().size());
         s.bus().publish(new GameEvent(EventType.ENDING_REACHED, data));
-        return views.build(s);
     }
 
     // =====================================================================
@@ -212,16 +255,17 @@ public class GameEngine {
             StoryNode node = graph.node(s.currentNode());
             boolean boss = s.combat().hasBoss();
             CombatOutcome outcome = combatEngine.act(s, action);
-            return switch (outcome) {
-                case ONGOING -> views.build(s);
+            switch (outcome) {
+                case ONGOING -> { }
                 case WON -> leaveCombat(s, node.winNode(), false);
                 case LOST -> leaveCombat(s, node.loseNode(), boss);
                 case FLED -> leaveCombat(s, node.fleeNode() != null ? node.fleeNode() : node.loseNode(), false);
-            };
+            }
+            return persistAndView(s);
         }
     }
 
-    /** Rejects actions the current fight does not allow (409, D27). O(1). */
+    /** Rejects actions the current fight does not allow (409, D27). */
     private void checkCombatAction(GameState s, Action action) {
         CombatState combat = s.combat();
         if (action.type() == ActionType.FLEE && !combat.canFlee()) {
@@ -235,11 +279,11 @@ public class GameEngine {
         }
     }
 
-    private GameView leaveCombat(GameState s, String nextNode, boolean bossLoss) {
+    private void leaveCombat(GameState s, String nextNode, boolean bossLoss) {
         s.setCombat(null);
         s.setMode(Mode.STORY);
         s.setOfferReload(bossLoss);
-        return enterNode(s, nextNode);
+        enterNode(s, nextNode);
     }
 
     // =====================================================================
@@ -255,7 +299,7 @@ public class GameEngine {
             }
             s.bus().publish(GameEvent.of(EventType.ITEM_EQUIPPED, "Equipped: " + weapon.name()
                     + " (" + weapon.tier() + ")", "itemId", weapon.id()));
-            return views.build(s);
+            return persistAndView(s);
         }
     }
 
@@ -267,123 +311,95 @@ public class GameEngine {
                 throw new ActionNotAllowedException("That item cannot be used.");
             }
             Rewards.useConsumable(s, s.bus(), consumable);
-            return views.build(s);
+            return persistAndView(s);
         }
     }
 
     // =====================================================================
-    // Saving and loading (spec §6.10, D7, D22, D24)
+    // Save slots (spec §6.10, D7, D22, D24)
     // =====================================================================
 
-    /** Manual save to slot 1–3: lock, STORY-only, reseed the live state, write. */
+    /**
+     * Manual save to slot 1–3: STORY mode only. The live run is reseeded and
+     * written first, and the slot gets the same snapshot, so continuing and
+     * loading this slot later roll the same dice (D7).
+     */
     public void save(GameState s, int slot) {
         synchronized (s) {
             if (saves == null) {
-                throw new ActionNotAllowedException("Saving needs the database (offline mode).");
+                throw new ActionNotAllowedException("Saving is not available on this server.");
             }
-            if (slot < 1 || slot > 3) {
+            if (slot < FIRST_MANUAL_SLOT || slot > LAST_MANUAL_SLOT) {
                 throw new ActionNotAllowedException("Choose slot 1, 2 or 3 (slot 0 is the autosave).");
             }
             if (s.mode() != Mode.STORY) {
                 throw new ActionNotAllowedException("You cannot save during combat or after the ending.");
             }
-            s.reseedForSave();                                  // D7, on the live state
-            saves.save(s, s.playerId(), slot);                  // student-implemented transaction
+            reseedAndPersist(s);
+            saves.save(s.playerId(), slot, snapshots.save(s), snapshots.areaOf(s));
         }
     }
 
     /**
-     * Autosave (D24), called with the lock held: reseed the LIVE state, copy
-     * it (without bus, combat, toasts), then let the single background thread
-     * write the copy. A failure is logged and never interrupts play.
+     * Autosave to slot 0 (D17, D24), called with the lock held. The snapshot is
+     * an immutable record, so the background thread can write it without the
+     * lock. A failure is logged and never interrupts play.
      */
     private void autosave(GameState s) {
         if (saves == null) {
             return;
         }
         s.reseedForSave();
-        GameState snapshot = s.deepCopy();
+        SaveSnapshot snapshot = snapshots.save(s);
+        String area = snapshots.areaOf(s);
+        int playerId = s.playerId();
+        SaveStore store = saves;
         autosaver.submit(() -> {
             try {
-                saves.save(snapshot, snapshot.playerId(), 0);
+                store.save(playerId, AUTOSAVE_SLOT, snapshot, area);
             } catch (RuntimeException e) {
-                LOG.warn("Autosave failed: {}", e.getMessage());
+                LOG.warn("Autosave failed for player {}: {}", playerId, e.getMessage());
             }
         });
     }
 
     /**
-     * Loads a slot into a NEW GameState (D22): raw rows → objects via the
-     * in-memory catalog, fresh EventBus + listeners, no effects re-applied.
-     * The caller stores it in SessionStore. Time O(n) rows.
+     * Loads a slot into a NEW GameState (D22) and makes it the session's run.
+     * No effects are re-applied.
      *
-     * @param sessionId reuse this id (the caller's session) or null for a new one
+     * @param sessionId reuse this session (the caller's) or null for a new one
      */
-    public GameState load(int playerId, int slot, String sessionId) {
+    public GameState load(int playerId, int slot, @Nullable String sessionId) {
         if (saves == null) {
-            throw new ActionNotAllowedException("Loading needs the database (offline mode).");
+            throw new ActionNotAllowedException("Loading is not available on this server.");
         }
-        SaveData data = saves.load(playerId, slot);
-        String id = sessionId != null ? sessionId : SessionStore.newSessionId();
-        GameState s = rebuild(data, id);
+        SaveSnapshot snapshot = saves.load(playerId, slot)
+                .orElseThrow(() -> new SaveNotFoundException(playerId, slot));
+        String id = sessionId != null ? sessionId : newSessionId();
+        GameState s = snapshots.restoreSave(snapshot, id, playerId);
         wireSession(s);
+        storeAsNewRun(s);
         return s;
     }
 
-    public List<SaveData.SlotSummary> listSaves(int playerId) {
+    public List<SlotSummary> listSaves(int playerId) {
         if (saves == null) {
             return List.of();
         }
-        return saves.listSlots(playerId);
+        return saves.list(playerId);
     }
 
     public void deleteSave(int playerId, int slot) {
         if (saves == null) {
-            throw new ActionNotAllowedException("Saves need the database (offline mode).");
+            throw new ActionNotAllowedException("Saves are not available on this server.");
         }
-        saves.delete(playerId, slot);
-    }
-
-    /** SaveData (ids) → GameState (objects). Unknown ids from old content are skipped. O(n). */
-    private GameState rebuild(SaveData d, String sessionId) {
-        Stats stats = new Stats(d.hp(), d.energy(), d.level(), d.xp(), d.gold());   // the rest is derived (D6, D28)
-        Inventory inventory = new Inventory();
-        String equipped = null;
-        for (SaveData.InventoryRow row : d.inventory()) {
-            Item item = content.items().get(row.itemId());
-            if (item != null) {
-                inventory.add(item, row.qty());
-                if (row.equipped()) {
-                    equipped = row.itemId();
-                }
-            }
+        if (!saves.delete(playerId, slot)) {
+            throw new SaveNotFoundException(playerId, slot);
         }
-        if (equipped != null) {
-            inventory.equip(equipped);
-        }
-        GameState s = new GameState(sessionId, d.playerId(), d.currentNode(), stats, inventory, d.rngSeed(),
-                d.demoMode(), d.playSeconds());
-        content.questManager().initialStates(s);                // quests added to content since the save
-        for (Map.Entry<String, String> quest : d.quests().entrySet()) {
-            s.setQuestStatus(quest.getKey(), QuestStatus.valueOf(quest.getValue()));
-        }
-        for (Map.Entry<String, Integer> flag : d.flags().entrySet()) {
-            s.setFlag(flag.getKey(), flag.getValue());
-        }
-        for (Map.Entry<String, Integer> rep : d.reputation().entrySet()) {
-            s.putReputation(Faction.valueOf(rep.getKey()), rep.getValue());
-        }
-        for (Map.Entry<String, Integer> aff : d.affinity().entrySet()) {
-            s.putAffinity(aff.getKey(), aff.getValue());
-        }
-        for (SaveData.HistoryRow row : d.history()) {          // oldest first → newest ends on top
-            s.historyStack().push(new Step(row.nodeId(), row.choiceId()));
-        }
-        return s;
     }
 
     // =====================================================================
-    // Inspector (spec §9.1)
+    // Inspector (dev profile only)
     // =====================================================================
 
     public InspectorView inspect(GameState s) {
@@ -392,18 +408,41 @@ public class GameEngine {
             for (Map.Entry<Faction, Integer> e : s.reputationView().entrySet()) {
                 reputation.put(e.getKey().name(), e.getValue());
             }
-            List<QuestStatusView> quests = new java.util.ArrayList<>();
+            List<QuestStatusView> quests = new ArrayList<>();
             for (String questId : content.questManager().logOrder()) {
                 quests.add(new QuestStatusView(questId, s.questStatus(questId).name()));
             }
-            return new InspectorView(s.currentNode(), s.mode().name(), s.rngSeed(), new HashMap<>(s.flagsView()),
-                    reputation, new HashMap<>(s.affinityView()), quests, SqlLog.lastFive());
+            return new InspectorView(s.currentNode(), s.mode().name(), s.rngSeed(), s.runVersion(),
+                    new HashMap<>(s.flagsView()), reputation, new HashMap<>(s.affinityView()), quests);
         }
     }
 
     // =====================================================================
     // helpers
     // =====================================================================
+
+    /** Writes the run through (P-22), then builds the response. Called with the lock held. */
+    private GameView persistAndView(GameState s) {
+        reseedAndPersist(s);
+        return views.build(s);
+    }
+
+    /**
+     * Continues the dice into a fresh seed (D7) and stores the run with it, so
+     * a reloaded run rolls exactly what this one would have rolled.
+     */
+    private void reseedAndPersist(GameState s) {
+        s.reseedForSave();
+        if (runs != null) {
+            s.setRunVersion(runs.update(s.sessionId(), s.runVersion(), snapshots.run(s)));
+        }
+    }
+
+    private void storeAsNewRun(GameState s) {
+        if (runs != null) {
+            s.setRunVersion(runs.replace(s.sessionId(), s.playerId(), snapshots.run(s)));
+        }
+    }
 
     /** One EventBus per session: toast listener + this player's AchievementManager (D23). */
     private void wireSession(GameState s) {

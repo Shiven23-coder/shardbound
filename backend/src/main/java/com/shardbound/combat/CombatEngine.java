@@ -52,7 +52,35 @@ public class CombatEngine {
      * refilled to max (S2). Time O(n) for n enemies, space O(n).
      */
     public CombatState start(GameState state, String encounterId) {
+        CombatState combat = build(state, encounterId);
+        state.stats().refillEnergy();
+        combat.addLog(combat.encounterName() + ": the fight begins!");
+        return combat;
+    }
+
+    /**
+     * Rebuilds a stored fight (P-22): the same enemies as {@link #start}, then
+     * the recorded hit points, guards, turns and AI memory put back on top.
+     */
+    public CombatState restore(GameState state, CombatSnapshot snapshot) {
+        CombatState combat = build(state, snapshot.encounterId());
+        List<Enemy> enemies = combat.enemies();
+        if (enemies.size() != snapshot.enemies().size()) {
+            throw new IllegalStateException("Stored fight " + snapshot.encounterId() + " has "
+                    + snapshot.enemies().size() + " enemies; the encounter now has " + enemies.size());
+        }
+        for (int i = 0; i < enemies.size(); i++) {
+            enemies.get(i).restore(snapshot.enemies().get(i));
+        }
+        combat.restore(snapshot);
+        return combat;
+    }
+
+    private CombatState build(GameState state, String encounterId) {
         Encounter encounter = encounters.get(encounterId);
+        if (encounter == null) {
+            throw new IllegalStateException("Unknown encounter " + encounterId);
+        }
         List<Enemy> enemies = new ArrayList<>();
         for (EncounterSlot slot : encounter.slots()) {
             EnemyTemplate template = templates.get(slot.enemyId());
@@ -61,11 +89,8 @@ public class CombatEngine {
                 enemies.add(Enemy.from(template, enemies.size(), name, state.demoMode()));
             }
         }
-        state.stats().refillEnergy();
         PlayerCombatant player = new PlayerCombatant("You", state.stats(), state.inventory().equippedWeapon());
-        CombatState combat = new CombatState(encounterId, encounter.name(), player, enemies, encounter.canFlee());
-        combat.addLog(encounter.name() + ": the fight begins!");
-        return combat;
+        return new CombatState(encounterId, encounter.name(), player, enemies, encounter.canFlee());
     }
 
     /**

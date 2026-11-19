@@ -1,118 +1,93 @@
 package com.shardbound.persistence;
 
-import com.shardbound.config.AppConfig;
-import com.shardbound.config.Database;
-import com.shardbound.content.JsonContentReader;
-import com.shardbound.engine.GameEngine;
-import com.shardbound.engine.GameState;
-import com.shardbound.exception.SaveFailedException;
-import com.shardbound.model.Faction;
-import com.shardbound.tools.ConsoleRunner;
-import com.shardbound.tools.ContentImporter;
-import org.junit.jupiter.api.BeforeAll;
+import com.shardbound.save.SaveCodec;
+import com.shardbound.save.SaveSnapshot;
+import com.shardbound.save.SaveUpgrade;
+import com.shardbound.save.SaveUpgrader;
+import com.shardbound.save.SlotSummary;
+import com.shardbound.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import tools.jackson.databind.node.ObjectNode;
 
-import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Integration test for the save transaction (spec §4.4, docs/STUDY_GUIDE.md).
- * Needs PostgreSQL and the test.db.* keys in db.properties (S6).
- * Run with {@code .\mvnw.cmd verify}. It rebuilds the shardbound_test schema
- * from database/*.sql and imports content/*.json first.
- */
-class SaveRepositoryIT {
+/** JSONB save slots on a real PostgreSQL (P-05). */
+class SaveRepositoryIT extends IntegrationTest {
 
-    private static Database db;
-    private static int playerId;
+    @Autowired
+    private SaveRepository saves;
 
-    @BeforeAll
-    static void setUpDatabase() throws Exception {
-        AppConfig config = AppConfig.load().forTests();
-        db = Database.from(config);
-        try (Connection c = db.getConnection(); Statement st = c.createStatement()) {
-            for (String file : new String[]{"99_reset.sql", "01_schema.sql", "02_functions_triggers.sql", "03_views_indexes.sql"}) {
-                st.execute(Files.readString(Path.of("../database", file)));   // pgjdbc runs multi-statement scripts
-            }
-        }
-        new ContentImporter(db).importAll(new JsonContentReader(new File("../content")).read());
-        playerId = new PlayerRepository(db).findOrCreate("it-player");
-    }
+    @Autowired
+    private PlayerRepository players;
 
-    private static GameState playedState() {
-        GameEngine offline = ConsoleRunner.offlineEngine(new File("../content"));
-        GameState s = offline.newGame(playerId, true, 7L);
-        var view = offline.view(s);
-        offline.choose(s, view.choices().get(0).id());           // help Corvin: affinity +10
-        view = offline.view(s);
-        offline.choose(s, view.choices().get(0).id());           // take the crystal: item + quest
-        return s;
+    @Autowired
+    private JdbcClient jdbc;
+
+    private static SaveSnapshot fixture() throws IOException {
+        return SaveCodec.standard().readSave(Files.readString(Path.of("src/test/resources/saves/v1/prologue-square.json")), 1);
     }
 
     @Test
-    void saveThenLoadRoundTrips() {
-        GameState s = playedState();
-        s.addReputation(Faction.SYLVAN, 7);
-        s.reseedForSave();
-        SaveRepository repo = new SaveRepository(db, false);
-        repo.save(s, playerId, 1);
-
-        SaveData d = repo.load(playerId, 1);
-        assertEquals(s.currentNode(), d.currentNode());
-        assertEquals(s.stats().hp(), d.hp());
-        assertEquals(s.rngSeed(), d.rngSeed());
-        assertTrue(d.demoMode());
-        assertEquals(7, d.reputation().get("SYLVAN"));
-        assertEquals(10, d.affinity().get("corvin"));
-        assertEquals("ACTIVE", d.quests().get("q_strange_light"));
-        assertEquals(1, d.inventory().stream().filter(SaveData.InventoryRow::equipped).count());
-        assertEquals(2, d.history().size());
-        assertEquals(1, d.history().get(0).stepNo());
-        assertEquals("p01", d.history().get(0).nodeId(), "step 1 is the OLDEST step (S7)");
+    void aSaveRoundTripsThroughJsonb() throws IOException {
+        int player = players.findOrCreate("save-roundtrip");
+        SaveSnapshot snapshot = fixture();
+        saves.save(player, 1, snapshot, "eldmere_square");
+        assertEquals(snapshot, saves.load(player, 1).orElseThrow());
+        assertTrue(saves.load(player, 2).isEmpty());
     }
 
     @Test
-    void overwritingBumpsVersionAndAudits() throws SQLException {
-        SaveRepository repo = new SaveRepository(db, false);
-        GameState s = playedState();
-        repo.save(s, playerId, 2);
-        repo.save(s, playerId, 2);
-        try (Connection c = db.getConnection(); Statement st = c.createStatement();
-             ResultSet rs = st.executeQuery("SELECT version, save_id FROM save_slot WHERE player_id = "
-                     + playerId + " AND slot_no = 2")) {
-            rs.next();
-            assertEquals(2, rs.getInt(1));
-            int saveId = rs.getInt(2);
-            try (ResultSet audit = c.createStatement().executeQuery(
-                    "SELECT COUNT(*) FROM save_audit WHERE save_id = " + saveId)) {
-                audit.next();
-                assertEquals(2, audit.getInt(1), "one INSERT + one UPDATE audit row (trigger audit_save)");
-            }
-        }
+    void overwritingKeepsOneRowAndUpdatesTheSummary() throws IOException {
+        int player = players.findOrCreate("save-overwrite");
+        SaveSnapshot first = fixture();
+        saves.save(player, 2, first, "eldmere_square");
+        SaveSnapshot later = new SaveSnapshot("p03", 40, 3, 2, 10, 50, first.inventory(), first.equipped(),
+                first.flags(), first.reputation(), first.affinity(), first.quests(), first.history(), 99L, false, 600);
+        saves.save(player, 2, later, "eldmere_mill");
+
+        List<SlotSummary> slots = saves.list(player);
+        assertEquals(1, slots.size());
+        SlotSummary slot = slots.get(0);
+        assertEquals(2, slot.slot());
+        assertEquals("eldmere_mill", slot.areaId());
+        assertEquals(2, slot.level());
+        assertEquals(600, slot.playSeconds());
+        assertEquals(later, saves.load(player, 2).orElseThrow());
     }
 
     @Test
-    void crashedSaveRollsBackAndKeepsThePreviousSave() {        // spec §4.4 crash simulation
-        GameState first = playedState();
-        new SaveRepository(db, false).save(first, playerId, 3);
-        int goldBefore = new SaveRepository(db, false).load(playerId, 3).gold();
+    void deletingReportsWhetherThereWasASave() throws IOException {
+        int player = players.findOrCreate("save-delete");
+        saves.save(player, 3, fixture(), "eldmere_square");
+        assertTrue(saves.delete(player, 3));
+        assertFalse(saves.delete(player, 3));
+        assertTrue(saves.list(player).isEmpty());
+    }
 
-        GameState second = playedState();
-        second.stats().addGold(999);
-        SaveRepository crashing = new SaveRepository(db, true);
-        assertThrows(SaveFailedException.class, () -> crashing.save(second, playerId, 3));
+    @Test
+    void anOldSaveIsUpgradedOnLoadAndWrittenBackOnce() throws IOException {
+        int player = players.findOrCreate("save-upgrade");
+        saves.save(player, 1, fixture(), "eldmere_square");          // stored as format 1
 
-        SaveData after = new SaveRepository(db, false).load(playerId, 3);
-        assertEquals(goldBefore, after.gold(), "the old save is intact");
-        assertTrue(after.inventory().size() > 0, "old inventory rows survived the rollback");
+        SaveUpgrade addGold = new SaveUpgrade() {
+            public int fromVersion() { return 1; }
+            public ObjectNode apply(ObjectNode d) { d.put("gold", d.get("gold").asInt() + 100); return d; }
+        };
+        SaveRepository newerServer = new SaveRepository(jdbc,
+                new SaveCodec(new SaveUpgrader(2, List.of(addGold))));
+
+        assertEquals(112, newerServer.load(player, 1).orElseThrow().gold());
+        assertEquals(2, jdbc.sql("SELECT save_version FROM save_slot WHERE player_id = :p AND slot_no = 1")
+                .param("p", player).query(Integer.class).single());
+        assertEquals(112, newerServer.load(player, 1).orElseThrow().gold(), "upgraded once, not on every load");
     }
 }

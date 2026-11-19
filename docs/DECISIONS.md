@@ -1,11 +1,14 @@
 # Shardbound — Decision Log
 
-Why the spec says what it says. `docs/PROJECT_SPEC.md` is the source of truth for **what** to build; this file records **why** each post-draft change was made. Every decision is tagged in the spec as **(Dn)** or **(Sn)** so you can jump between the two.
+Why the specs say what they say. `docs/V2_SPEC.md` is the source of truth for **what** to build (`docs/PROJECT_SPEC.md` is the historical v1 spec); this file records **why** each change was made. Decisions are tagged in the specs as **(Dn)**, **(Sn)**, **(V-nn)** or **(P-nn)** so you can jump between them.
 
-- **D1–D19** came from the Phase 0 spec review (contradictions and gaps).
+- **D1–D19** came from the v1 spec review (contradictions and gaps).
 - **S1–S9** are the smaller points approved at the same time.
-- **D20–D32** came from the review of the ER and class diagrams.
-- Status: all accepted on 2026-11-18, before Phase 1. Where a later decision changes an earlier one, the earlier entry says so.
+- **D20–D32** came from the review of the v1 ER and class diagrams.
+- **I1–I12** are implementation choices made while building v1.
+- **V-01 … V-35** are the v2 design decisions.
+- **P-01 … P-28** are the platform reset (Phase P0) and its follow-ups: the project became a public game, and these entries win over anything older.
+- Old entries are never deleted. Where a later decision changes an earlier one, the earlier entry says so ("Revised by" or "Superseded by").
 
 Format for each entry: **Problem** → **Decision** → **Why** → **Where in spec**.
 
@@ -24,6 +27,8 @@ Format for each entry: **Problem** → **Decision** → **Why** → **Where in s
 **Why.** Upserting keeps ids stable, so existing saves stay valid. Deleting removed rows keeps the DB an exact mirror of the JSON. RESTRICT turns "silently corrupt a save" into "refuse loudly", and the pre-check query gives a human-readable message instead of a raw SQLState. A removed choice only loses a journal label, which is harmless, so SET NULL is the right trade-off there. It also gives a strong viva answer on referential actions (CASCADE vs RESTRICT vs SET NULL) and transaction atomicity.
 
 **Spec.** §4.1 (choice comment, player-table header, FK actions), §8.3.
+
+**Superseded by P-04.** Content is schema-validated JSON loaded at startup; there are no content tables and no importer.
 
 ---
 
@@ -171,6 +176,8 @@ Format for each entry: **Problem** → **Decision** → **Why** → **Where in s
 
 **Spec.** §3, §6.2, §8.2, §10.
 
+**Superseded by P-04.** Quest status stays a name in JSON; there is no DB column for it any more.
+
 ---
 
 ## D14 — Quest transitions never crash play
@@ -273,6 +280,8 @@ Format for each entry: **Problem** → **Decision** → **Why** → **Where in s
 
 ## D22 — Save and load go through GameEngine; repository returns raw rows
 
+> **Revised by P-05:** the repository now reads and writes a `SaveSnapshot` JSON document instead of raw rows, behind the `SaveStore` port (P-02). Save and load still go through `GameEngine`.
+
 **Problem.** If `SaveController` called `SaveRepository` directly, it would have to handle the lock, the D7 reseed, the in-combat check and rebuilding listeners on load — game logic in a controller. Also, to rebuild items from ids, `SaveRepository` would need the content catalog, mixing persistence with content.
 
 **Decision.** `SaveController` calls `GameEngine.save(s, slot)` and `GameEngine.load(playerId, slot)` (plus thin `listSaves`/`deleteSave`). `GameEngine` takes the lock, rejects saves outside STORY mode, reseeds, and on load rebuilds the `EventBus` and listeners. `SaveRepository.load` returns a `SaveData` record of raw rows (ids and numbers only); `GameEngine` turns ids into objects using the in-memory catalog.
@@ -329,6 +338,8 @@ Format for each entry: **Problem** → **Decision** → **Why** → **Where in s
 
 **Spec.** §5.
 
+**Superseded by P-02.** `SqlLog` and the Inspector's SQL panel were deleted in the move to Spring Boot.
+
 ---
 
 ## D27 — ActionNotAllowedException (409) and SaveNotFoundException (404)
@@ -352,6 +363,8 @@ Format for each entry: **Problem** → **Decision** → **Why** → **Where in s
 **Why.** A CHECK can compute an expression from other columns in the same row, so the database still rejects impossible hp without storing derived data. Every table is now in 3NF with no exceptions. Keeping the formula in two places is the risk, and the test removes it.
 
 **Spec.** §3, §4.1, §4.4, §6.1, §10.
+
+**Superseded by P-05.** Saves are JSONB snapshots; there is no `hp` column or CHECK. Max HP is still derived, never stored.
 
 ---
 
@@ -411,11 +424,11 @@ Format for each entry: **Problem** → **Decision** → **Why** → **Where in s
 | S2 | Energy refills to max at the start of every combat; consumables also restore it. | Each fight starts fair; consumables still matter mid-fight. | §6.6 |
 | S3 | Boss loss → Java sets `offerReload: true`; the UI shows a reload button that calls the normal load endpoint. | Java decides when to offer it; React only renders. | §6.6, §9.2 |
 | S4 | `POST /api/profiles` with an existing username returns that player. | There are no passwords, so the username acts as a simple login. Avoids a confusing 409 on the title screen. | §9.1 |
-| S5 | Vite dev server proxies `/api` to `localhost:7070`. | One origin in the browser, so no CORS configuration and the `X-Session` header passes untouched. | §2, §3 |
-| S6 | `SaveRepositoryIT` runs on a separate `shardbound_test` database via the failsafe plugin (`mvnw verify`). | Integration tests must not touch real saves; `mvnw test` stays fast and DB-free. | §3, §4.4, §10 |
+| S5 | Vite dev server proxies `/api` to `localhost:7070`. | One origin in the browser, so no CORS configuration and the `X-Session` header passes untouched. | §2, §3 **Superseded by P-02** (API on :8080). |
+| S6 | `SaveRepositoryIT` runs on a separate `shardbound_test` database via the failsafe plugin (`mvnw verify`). | Integration tests must not touch real saves; `mvnw test` stays fast and DB-free. | §3, §4.4, §10 **Superseded by P-08** (Testcontainers). |
 | S7 | `insertHistory` walks the history stack with `descendingIterator()` so `step_no` 1 is the oldest step. | `ArrayDeque` used as a stack iterates newest-first; without this the journal loads reversed. | §4.1, §4.4 |
 | S8 | Phase 2 cannot go green until the student-written `Graph.bfs/dfs/shortestPath` exists, because `StoryValidator` uses it. | Makes the dependency explicit in the phase plan. | §10 |
-| S9 | Language level Java 21 via `maven.compiler.release=21`; the installed JDK 25 is fine. | `--release 21` rejects any API added after 21, so the code runs on any Java 21 machine. | §2 |
+| S9 | Language level Java 21 via `maven.compiler.release=21`; the installed JDK 25 is fine. | `--release 21` rejects any API added after 21, so the code runs on any Java 21 machine. | §2 **Superseded by P-02** (Java 25). |
 
 ---
 
@@ -426,7 +439,7 @@ Made while writing the code, where the spec was silent. Listed in spec §12. **N
 | # | Choice | Why |
 |---|---|---|
 | I1 | `content/` package with one raw shape (`RawContent`) for both the JSON and the DB path | One validator and one assembler serve the importer, the server and the tests. Testable without a database. |
-| I2 | Offline mode (`ConsoleRunner --json`, `ContentImporter --dry-run`, unit tests from JSON) | PostgreSQL was not installed yet; the engine could still be built and verified. Offline mode refuses saves rather than faking them. |
+| I2 | Offline mode (`ConsoleRunner --json`, `ContentImporter --dry-run`, unit tests from JSON) | PostgreSQL was not installed yet; the engine could still be built and verified. Offline mode refuses saves rather than faking them. **Superseded by P-04** (`ConsoleRunner` and `ContentImporter` deleted). |
 | I3 | Event types `ITEM_LOST`, `FLAG_SET`, `GOLD_CHANGED`, `HEALED`, `XP_GAINED` | Spec §6.2 says every effect publishes an event, but §6.8's list had no type for these effects. |
 | I4 | Helper types (`Rewards`, `Encounter`, `DamageRoll`, `Hit`, `ActionType`, `ItemType`, `RepositoryException`, `Sessions`, request/response records) | Keep methods small (CLAUDE.md rule 12) and avoid duplicating reward logic in effects, quests and combat. |
 | I5 | Full bag → item left behind with a toast, no exception | An exception halfway through a choice's effect list would leave the state half-changed. |
@@ -436,7 +449,7 @@ Made while writing the code, where the spec was silent. Listed in spec §12. **N
 | I9 | Extra CHECK constraints (non-negative values) | Cheap integrity, consistent with the existing constraints. |
 | I10 | `?playerId=` accepted when no session; load without a session creates one | The title screen's "Load" happens before any game session exists. |
 | I11 | GameView ships all panel fields now | All phases' engine code was written in one pass. |
-| I12 | `compile exec:java`; default main class as a property | Found while running the tools: plugin configuration silently overrode `-Dexec.mainClass`. |
+| I12 | `compile exec:java`; default main class as a property | Found while running the tools: plugin configuration silently overrode `-Dexec.mainClass`. **Superseded by P-02** (`exec:java` removed; `spring-boot:run`). |
 
 ---
 
@@ -447,27 +460,27 @@ Recorded with the v2 design (2026-11-18). The specification is `docs/V2_SPEC.md`
 | # | Decision | Why |
 |---|---|---|
 | V-01 | Names: **Lanterns**, **Shards**, **Lost Shards**, **"FOE VANQUISHED"**, **Lantern Draught** | Souls-like mood without the identifiable Elden Ring names (Sites of Grace, runes, "ENEMY FELLED"). Your choice. |
-| V-02 | v1 tagged `v1-semester`; all v2 work on branch `v2` | The graded semester version stays reproducible while v2 changes almost every layer. |
-| V-03 | Grid-locked 4-direction movement, one tile per step | Server validation becomes simple and exact (adjacent tile, walkable bit, rate). Free pixel movement would need physics on the server. |
-| V-04 | WebSocket only for the world (movement, interact, pushes); REST for everything else | Steps are frequent and small; battles, dialogue and menus are request/response and easier to test over REST. |
-| V-05 | WS handshake checks the `sb_session` cookie and `Origin` | Browsers send cookies with cross-site WS upgrades; the Origin check is the CSRF defence for WebSockets. |
-| V-06 | WS frames ≤ 1 KB, ≤ 20 msgs/s, one socket per game | Bounds memory and CPU per client; stops a client from spamming steps faster than the step rate limiter can reject them cheaply. |
-| V-07 | Reconnect = full snapshot from server state | The server is the truth, so resuming is "send everything"; no client-side replay logic to get wrong. |
-| V-08 | WS messages use the same `synchronized (state)` lock as REST (D16 extended) | A move arriving while a REST request ends a battle could otherwise interleave on one GameState. |
+| V-02 | v1 tagged `v1-archive`; all v2 work on branch `v2` | The graded semester version stays reproducible while v2 changes almost every layer. **Superseded by P-26** (archive tag, no PostgreSQL run) and P-17 (`main` is the trunk). |
+| V-03 | Grid-locked 4-direction movement, one tile per step | Server validation becomes simple and exact (adjacent tile, walkable bit, rate). Free pixel movement would need physics on the server. **Superseded by P-06.** |
+| V-04 | WebSocket only for the world (movement, interact, pushes); REST for everything else | Steps are frequent and small; battles, dialogue and menus are request/response and easier to test over REST. **Superseded by P-06.** |
+| V-05 | WS handshake checks the `sb_session` cookie and `Origin` | Browsers send cookies with cross-site WS upgrades; the Origin check is the CSRF defence for WebSockets. **Superseded by P-06.** |
+| V-06 | WS frames ≤ 1 KB, ≤ 20 msgs/s, one socket per game | Bounds memory and CPU per client; stops a client from spamming steps faster than the step rate limiter can reject them cheaply. **Superseded by P-06.** |
+| V-07 | Reconnect = full snapshot from server state | The server is the truth, so resuming is "send everything"; no client-side replay logic to get wrong. **Superseded by P-06.** |
+| V-08 | WS messages use the same `synchronized (state)` lock as REST (D16 extended) | A move arriving while a REST request ends a battle could otherwise interleave on one GameState. **Superseded by P-06** (no WebSocket; the D16 lock still covers every REST handler). |
 | V-09 | Creeps are static with an aggro radius; patrol is cosmetic | The server never simulates moving creeps, so encounters are deterministic and testable. |
-| V-10 | All constants in `content/balance.json` → `curve_point`; soft caps as piecewise-linear `Curve`s (✍ `valueAt`) | Balance is data (rule 4), tunable without code; TreeMap interpolation is a good DS exercise. |
+| V-10 | All constants in `content/balance.json` → `curve_point`; soft caps as piecewise-linear `Curve`s (✍ `valueAt`) | Balance is data (rule 4), tunable without code; TreeMap interpolation is a good DS exercise. **Superseded by P-04 and P-01** (constants stay in `balance.json`, no `curve_point` table, no ✍ marker). |
 | V-11 | `cost(L) = round(100·L^1.5)`, `creepShards(lvl) = round(35·lvl^1.45)`, boss ×5 | Grid-searched against the §10.2 progression table: every boss target hit exactly, first level-up after fight 3. |
 | V-12 | Defence as a ratio `100 / (100 + DEF)` instead of v1's subtraction | Subtraction collapses to the 1-damage floor at larger numbers; a ratio keeps every hit meaningful. |
 | V-13 | ATTACK = Strike / Guard; Guard halves damage, quarters a telegraphed heavy | The required menu has no DEFEND; telegraphs need a counter that rewards reading the text box. |
 | V-14 | FP persists between battles; heals come from refillable Lantern Draughts | The Souls-like resource loop: resting matters. v1's "refill energy every fight" (S2) does not apply in v2. |
-| V-15 | `save_slot.hp` upper bound enforced in Java, not by CHECK | Max HP now comes from a curve stored in rows; a CHECK can only read its own row. D28's idea holds where possible. |
+| V-15 | `save_slot.hp` upper bound enforced in Java, not by CHECK | Max HP now comes from a curve stored in rows; a CHECK can only read its own row. D28's idea holds where possible. **Superseded by P-05.** |
 | V-16 | Weapon upgrades only at Smith NPCs | Gives the hub areas a purpose and makes fast travel useful. |
-| V-17 | Dijkstra (✍) drives fast travel, quest next hop, the bot and region preloading | One algorithm with four visible uses in the viva. |
+| V-17 | Dijkstra (✍) drives fast travel, quest next hop, the bot and region preloading | One algorithm with four visible uses in the viva. **Superseded by P-01** (Dijkstra still drives these features; the ✍ framing is gone). |
 | V-18 | Flyway migrations replace `database/0x_*.sql` | Versioned, repeatable schema changes; the SQL is still hand-written. |
 | V-19 | DB roles: owner (migrations), app (DML only), telemetry read-only | Least privilege: a SQL-injection bug in the app could not drop tables. |
 | V-20 | Argon2id m=19 MiB, t=2, p=1 (Bouncy Castle) | OWASP's minimum Argon2id setting; pure Java, no native library in Docker. |
 | V-21 | Sign-up and forgot-password always return the same 202; an existing email gets an "account exists" mail | Prevents account enumeration through either form. |
-| V-22 | Random 32-byte session token in an HttpOnly/Secure/SameSite=Strict cookie; DB stores SHA-256; Origin check on writes | A stolen DB backup cannot be used to log in; JS cannot read the cookie; SameSite + Origin stop CSRF. |
+| V-22 | Random 32-byte session token in an HttpOnly/Secure/SameSite=Strict cookie; DB stores SHA-256; Origin check on writes | A stolen DB backup cannot be used to log in; JS cannot read the cookie; SameSite + Origin stop CSRF. **Superseded by P-11** (SameSite=Lax + CSRF token). |
 | V-23 | Transactional outbox for email | The email row commits with the account/token change or not at all; sending is retried outside the request. |
 | V-24 | Eclipse Angus Mail for SMTP (**approved**) | SMTP with STARTTLS and auth by hand is error-prone; Angus is the reference Jakarta Mail implementation. |
 | V-25 | Guests are real accounts with `is_guest`; upgrade keeps `account_id` | Progress survives the upgrade without copying saves. |
@@ -475,9 +488,373 @@ Recorded with the v2 design (2026-11-18). The specification is `docs/V2_SPEC.md`
 | V-27 | Telemetry keyed by an anonymous `run_id`, with an opt-out setting | Balancing needs runs, not people; less personal data to protect on a public deploy. Your choice. |
 | V-28 | Dev chapter select: route registered only in dev, server rejects it otherwise, frontend code dead-code-eliminated, CI greps the prod bundle | Defence in depth: a presentation tool must never ship. |
 | V-29 | CI bundle-size budget from V3; Vitest for the event store and mappers | Budgets regress silently without a gate; the mappers are the only frontend logic worth unit-testing. |
-| V-30 | Rule 8 adds `Graph.dijkstra`, `Curve.valueAt`, `SlidingWindowRateLimiter` | Three more DS/algorithm pieces you write and explain yourself (8 in total). |
-| V-31 | `map_object.props` as JSONB | Each object type has different properties; the queried fields (type, area, x, y) are real columns. |
+| V-30 | Rule 8 adds `Graph.dijkstra`, `Curve.valueAt`, `SlidingWindowRateLimiter` | Three more DS/algorithm pieces you write and explain yourself (8 in total). **Superseded by P-01.** |
+| V-31 | `map_object.props` as JSONB | Each object type has different properties; the queried fields (type, area, x, y) are real columns. **Superseded by P-04** (maps are loaded from `.tmj` at startup; no `map_object` table). |
 | V-32 | Fonts self-hosted (not Google Fonts CDN) | No third-party requests (privacy page stays short), and a CSP of `font-src 'self'`. |
 | V-33 | Loose, configurable rate limits: login 100 per IP / 15 min, 5 failures per email / 15 min, guests 30 per IP / hour; every value in config, none hardcoded | Whole college campuses and mobile carriers share one public IP (NAT), so tight per-IP limits would lock out real players. The per-email limit protects each account, and Turnstile is the main bot defence. Config lets limits be tuned after launch without a release. |
 | V-34 | Cloudflare's official Turnstile test keys in dev and CI; the playtest bot runs only in dev mode; no Turnstile or rate-limit bypass in production builds | Dev and CI exercise the real verification code; a bypass switch is exactly what leaks into production. |
 | V-35 | §10.2 adds a robustness scenario (one death per boss, half the Lost Shards never recovered); the model script lives in `tools/balance/`; V10 requires every boss beatable (≥ 40 %) at target level − 2 with the weapon one upgrade lower | The progression must hold for imperfect players and be re-runnable from the repo. The simulator check covers the harsh cases the economy model cannot (dying with a full purse, being under-levelled). |
+
+---
+
+## Platform reset decisions (P-01 … P-28)
+
+Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfolio piece instead of a course project. These entries win over every older entry; superseded entries above say so. The specification is `docs/V2_SPEC.md`.
+
+---
+
+## P-01 — Product goal replaces the course goal
+
+**Problem.** The rules existed to show concepts to an examiner: hand-implemented algorithm methods with a study guide, a syllabus map, mandated data structures and complexity comments on every method. None of that serves players or code reviewers.
+
+**Decision.** The goal is a public, well-engineered game. The hand-implemented (✍) method rule, `STUDY_GUIDE.md`, `SYLLABUS_MAPPING.md`, the exam deadline and every exam-only rule are removed (the two docs are preserved in tag `v1-archive`). The algorithms stay where the game needs them.
+
+**Why.** The audience is players and reviewers.
+
+**Supersedes.** V-10 (✍ marker), V-17 (framing), V-30; CLAUDE.md rule 8.
+
+**Spec.** V2_SPEC header, §1, §5, §13.
+
+---
+
+## P-02 — Spring Boot 4 on Java 25; framework-free engine
+
+**Problem.** Javalin and hand-built plumbing (`AppConfig`, `Database`, `Migrations`, `exec:java` tools) were chosen to keep wiring visible, not because they fit a public service best. Java 21 was the course level.
+
+**Decision.** Spring Boot 4.1 on Java 25 (web, JDBC, Flyway, Actuator, validation; Security from V2a). The engine packages (`engine`, `combat`, `quest`, `rules`, `story`, `item`, `model`, `ds`, `event`, `achievement`, `content`, `exception`, `save`, `view`) stay free of Spring, `jakarta.*` and `java.sql`, enforced by ArchUnit. Persistence is reached through ports (`SaveStore`, `MetaStore`, `RunStore`). The API listens on :8080. `SqlLog`, the SQL panel, `ConsoleRunner`, `App` and the `config` plumbing are deleted.
+
+**Why.** Spring Boot is the industry default with a maintained ecosystem (security, observability, testing). A framework-free engine stays fast to test and portable.
+
+**Supersedes.** D26, S5, S9, I12; the Javalin choice in the old TECH_STACK.
+
+**Spec.** §2, §3.
+
+---
+
+## P-03 — JdbcClient + hand-written SQL, Flyway via Spring, no JPA
+
+**Problem.** Raw JDBC needs boilerplate for connections, mapping and transactions; an ORM would hide the SQL.
+
+**Decision.** Repositories use Spring's `JdbcClient` with hand-written SQL. Flyway runs through Spring at startup. Multi-row writes use `@Transactional`. No JPA, Hibernate or other ORM. Merged migrations are never edited.
+
+**Why.** Explicit, reviewable SQL without JDBC plumbing.
+
+**Spec.** §2, §6.
+
+---
+
+## P-04 — Content is schema-validated JSON loaded at startup
+
+**Problem.** Content was imported into PostgreSQL by `ContentImporter`, then loaded back into memory. The DB copy could drift from the repo, re-imports could collide with saves (D1), and content changes needed a separate import step.
+
+**Decision.** Content stays JSON (and `.tmj` maps) under `content/`, validated against JSON Schemas (2020-12) in `content/schema/` and loaded at startup by `ContentLoader`. Any error stops startup. There are no content tables, no importer and no `MapImporter`. The `all_endings` check moves into `AchievementManager`; `fn_best_weapon` is dropped. Unknown content ids in a save give `SAVE_INCOMPATIBLE` (409).
+
+**Why.** Content ships with code review, there is no DB/repo drift, and failures surface at startup.
+
+**Supersedes.** D1, D13, I2, V-10 (`curve_point`), V-31.
+
+**Spec.** §2, §6, §9.
+
+---
+
+## P-05 — Saves are JSONB snapshots with versioned upgrades
+
+**Problem.** Normalised save tables (a dozen `save_*` children) made every save a multi-table delete-and-insert and every format change a schema migration. The v1 → v2 node conversion (`SaveMigrator`, `content/migration/v1_nodes.json`) existed for saves that never existed in production.
+
+**Decision.** One `save_slot` row per slot with `data JSONB` (a `SaveSnapshot`), `save_version`, and summary columns `level`, `area_id`, `playtime_seconds`, written in one UPSERT. `SaveUpgrader` applies a `SortedMap<Integer, SaveUpgrade>` of JSON transforms on load and writes the result back in the same transaction. The v1 → v2 conversion is dropped.
+
+**Why.** A save is a document. No v1 saves exist in production.
+
+**Supersedes.** D28, V-15; revises D22.
+
+**Spec.** §4.12, §6.
+
+---
+
+## P-06 — Free movement, REST event validation, no WebSocket
+
+**Problem.** Grid-locked movement over a WebSocket feels stiff on phones, needs a socket protocol (handshake, frame limits, reconnect snapshots) and a host that supports WebSockets, and is harder to test.
+
+**Decision.** The client moves freely and smoothly. The server validates three REST events (`/api/world/exit`, `/interact`, `/encounter`) that carry the client position: walkable tile, BFS reachability from the last validated position, speed check (P-19), and target in range. Saves store the last validated position. The per-game lock is unchanged. No WebSocket.
+
+**Why.** Smooth mobile movement; simpler hosting and testing; the server still owns every outcome.
+
+**Supersedes.** V-03, V-04, V-05, V-06, V-07, V-08.
+
+**Spec.** §2, §4.11, §7.
+
+---
+
+## P-07 — OpenAPI contract and generated TypeScript client
+
+**Problem.** Hand-written TypeScript view types drift from the Java records, and errors were an ad-hoc `{error, message}` shape.
+
+**Decision.** springdoc generates `api/openapi.json` (committed; CI fails on drift). openapi-typescript generates the client types; openapi-fetch is the client. Errors are RFC 9457 `ProblemDetail` with a stable `code`.
+
+**Why.** One contract, no drifting hand-written types, a standard error format.
+
+**Spec.** §7, §8.
+
+---
+
+## P-08 — Testcontainers for all integration tests
+
+**Problem.** Integration tests needed a locally installed PostgreSQL with a hand-made `shardbound_test` database, and CI used a different setup.
+
+**Decision.** Every IT runs against `postgres:17-alpine` through Testcontainers, one shared container per run (`@ServiceConnection`). `shardbound_test` and the `TEST_DB_*` settings go away.
+
+**Why.** The same Postgres locally and in CI.
+
+**Supersedes.** S6.
+
+**Spec.** §4.15.
+
+---
+
+## P-09 — Docker Compose and one-command dev
+
+**Problem.** Setup meant installing PostgreSQL, creating databases, copying `db.properties` and starting two processes by hand.
+
+**Decision.** Root `docker-compose.yml` runs `postgres:17` and `mailpit` (bound to localhost). `npm run dev` at the repo root starts compose, the API (`dev` profile) and Vite. The backend runs on the host for hot reload; there is no nginx or backend container in dev.
+
+**Why.** Fast onboarding and hot reload on the host.
+
+**Spec.** §4.15.
+
+---
+
+## P-10 — Mobile-first controls and layout
+
+**Problem.** The UI targeted desktop browsers with keyboard input.
+
+**Decision.** Touch D-pad, tap to interact, landscape responsive HUD, battle touch targets ≥ 48 px. Keyboard and gamepad stay supported.
+
+**Why.** Most target players are on phones.
+
+**Spec.** §4.16.
+
+---
+
+## P-11 — Guest + Google at alpha, email in V2b; Spring Security; SameSite=Lax + CSRF
+
+**Problem.** Email accounts are only safe in public once verification and password reset exist, which pushed accounts far ahead of the playable slice. A `SameSite=Strict` cookie breaks the OAuth callback.
+
+**Decision.** V2a ships guest accounts and Google sign-in (OIDC) with guest → Google upgrade; email + password follows in V2b. Spring Security handles sessions, CSRF and headers. The session cookie is `SameSite=Lax`, with a CSRF token and an Origin check. Google is linked to an existing account only when both Google's and the account's email are verified. Argon2id comes from Spring Security's encoder (Bouncy Castle). Limits are `shardbound.security.*` properties.
+
+**Why.** No public email accounts without reset and verification. Strict breaks the cross-site callback navigation. Verified-only linking prevents account pre-hijacking.
+
+**Supersedes.** V-22 (cookie attribute).
+
+**Spec.** §4.10.
+
+---
+
+## P-12 — Sentry, JSON logs, Actuator
+
+**Problem.** A public game needs to see player-facing errors; console logs on one machine are not enough.
+
+**Decision.** Sentry in frontend and backend without PII, structured JSON logs, Actuator health and metrics (V2c).
+
+**Why.** Find player-facing errors.
+
+**Spec.** §4.17.
+
+---
+
+## P-13 — Backups, Dependabot, secret scanning, preview deploys, release-please
+
+**Problem.** There was no release process, dependency updating, secret scanning or backup plan.
+
+**Decision.** Managed Postgres with PITR or daily backups and a tested restore; Dependabot (maven, npm, actions, docker); gitleaks; preview deploys per PR; release-please for semver tags and `CHANGELOG.md`.
+
+**Why.** Standard release hygiene.
+
+**Spec.** §4.15.
+
+---
+
+## P-14 — Installable PWA; `/api` never cached
+
+**Problem.** Repeat loads re-download large region atlases, and mobile players expect a home-screen app.
+
+**Decision.** Manifest + service worker: precached shell, versioned region atlases cache-first, `/api` never cached.
+
+**Why.** Home-screen install and fast repeat loads, without ever serving stale game state.
+
+**Spec.** §4.16.
+
+---
+
+## P-15 — Privacy policy, data export, account deletion
+
+**Problem.** A public game that stores accounts needs a privacy baseline.
+
+**Decision.** Privacy policy and terms pages, JSON data export, and account deletion with anonymised leaderboard rows, from V2a. India's DPDP Act and the GDPR are the reference.
+
+**Why.** Legal and trust baseline.
+
+**Spec.** §4.18.
+
+---
+
+## P-16 — Hosting shape
+
+**Problem.** The host was to be chosen at V12 and had to support WebSockets; the audience's location was not considered.
+
+**Decision.** Backend in Mumbai or Singapore, frontend on a CDN that proxies `/api`, managed Postgres. The provider is chosen at deploy time (V2c).
+
+**Why.** Low latency for the audience; one origin keeps cookies first-party.
+
+**Spec.** §4.15.
+
+---
+
+## P-17 — Phase order and feedback button
+
+**Problem.** Accounts and ops came before the game was playable, so nothing public could ship until late.
+
+**Decision.** P0 → V3 → V4 → V5 → V7 → V2a → V2c → ALPHA → V6, V8, V2b, V9, V10, V11a–d, V12. ALPHA adds an in-game feedback button. `main` is the trunk; each phase is one branch and one PR into `main`.
+
+**Why.** A public vertical slice early.
+
+**Supersedes.** V-02 (branching); the old V2_SPEC §12 order.
+
+**Spec.** §12.
+
+**Amended by P-27** (Whispering Wood placed after V6).
+
+---
+
+## P-18 — Engineering standards replace course rules
+
+**Problem.** CLAUDE.md's rules were written for grading (visible wiring, mandated structures, complexity comments everywhere).
+
+**Decision.** Twelve engineering rules: server-authoritative rules, framework-free engine, JdbcClient + hand-written SQL, transactions, schema-validated content, production-quality code, behaviour tests, OWASP ASVS L1 and no secrets, Conventional Commits and one PR per phase, libraries chosen on merit, mobile-first UI, and a phase report.
+
+**Why.** These are the standards a reviewer of a public project expects.
+
+**Spec.** CLAUDE.md.
+
+---
+
+## P-19 — Speed check on movement events
+
+**Problem.** Reachability alone lets a client teleport to any reachable tile.
+
+**Decision.** A world event is rejected unless the BFS path from the last validated position is ≤ `speed × elapsed × 1.25 + slack` tiles.
+
+**Why.** Blocks teleporting to reachable tiles while tolerating latency.
+
+**Spec.** §4.11.
+
+---
+
+## P-20 — V2a split into V2a and V2c
+
+**Problem.** V2a (accounts, security, compose, deploy) was the largest phase.
+
+**Decision.** V2a covers accounts and privacy; V2c covers observability, deploy, PWA and version skew.
+
+**Why.** Accounts and ops ship and get reviewed separately.
+
+**Spec.** §12.
+
+---
+
+## P-21 — PostgreSQL 17
+
+**Problem.** PostgreSQL 16 was chosen for a local install.
+
+**Decision.** PostgreSQL 17 in compose, Testcontainers and CI. Revisited at deploy time against the managed provider.
+
+**Why.** Current managed-provider default.
+
+**Spec.** §2, §4.15.
+
+---
+
+## P-22 — Durable sessions: `active_run`
+
+**Problem.** Live runs existed only in memory, so a deploy or restart lost every player's unsaved progress.
+
+**Decision.** `active_run(run_id, player_id, session_token_hash, version, data JSONB, updated_at)` is the source of truth; the in-memory `GameState` is a bounded Caffeine cache. Every state-changing action writes through with optimistic locking (`… WHERE version = ?`; 0 rows → `409 RUN_CONFLICT`). A cache miss reloads from the table.
+
+**Why.** Deploys and restarts must not lose progress.
+
+**Spec.** §4.12.
+
+---
+
+## P-23 — Version skew handling
+
+**Problem.** PWA caches mean old clients meet new servers.
+
+**Decision.** `X-API-Version` / `X-Client-Version` headers, an "Update available — reload" prompt, a backend compatible with the previous frontend for one release, and `oasdiff` in CI (V2c).
+
+**Why.** Old cached clients must keep working or be told to reload.
+
+**Spec.** §4.19.
+
+---
+
+## P-24 — Mobile performance budget
+
+**Problem.** Desktop load budgets say nothing about frame rate or memory on phones.
+
+**Decision.** Target a mid-range Android (~4 GB RAM, Snapdragon 6-series class): 60 fps target, 30 fps floor (p95 frame ≤ 33 ms), JS heap ≤ 100 MB and texture memory ≤ 64 MB per region. Measured with Playwright + CDP 4× CPU throttling in CI, plus one real-device check per region (from V3).
+
+**Why.** The target device class is mid-range Android.
+
+**Spec.** §4.13.
+
+---
+
+## P-25 — Licences decided before ALPHA
+
+**Problem.** The repository goes public at ALPHA without stated terms.
+
+**Decision.** Choose licences for code and for story/art separately before ALPHA (a launch-checklist item).
+
+**Why.** A public repo needs clear terms for code and creative work.
+
+**Spec.** §11, §12.
+
+---
+
+## P-26 — v1 archived as `v1-archive` without the PostgreSQL run
+
+**Problem.** The planned semester tag for v1 waited on a PostgreSQL verification run that only mattered for submission.
+
+**Decision.** Annotated tag `v1-archive` on `main` at `2a17e8a` ("v1 archived; never verified on PostgreSQL"). The PostgreSQL run is skipped. The deleted study docs are preserved in the tag.
+
+**Why.** v1 is no longer submitted.
+
+**Supersedes.** V-02 (tag name).
+
+**Spec.** §12, §13.
+
+---
+
+## P-27 — Whispering Wood is phase WW, released as Alpha 2
+
+**Problem.** The new phase order (P-17) left Whispering Wood (5 areas, 15 fights, Thornmother) without a phase: V7 became Eldmere-only and V11a starts at Hollow Deep.
+
+**Decision.** Add phase **WW** right after V6 and release it as **Alpha 2**. Order after ALPHA: V6 → WW → V8 → V2b → V9 → V10 → V11a Hollow Deep → V11b Valdren City → V11c Ashen Wastes → V11d Crystal Spire → V12. WW is verified by manual playtests and the §10.2 progression table; the V10 playtest bot re-checks its 18-minute budget later.
+
+**Why.** Whispering Wood is the second region on the critical path and its boss expects a +3 weapon (§10.2), so it belongs right after gear (V6). Shipping it as Alpha 2 gives alpha players new content early, before the bot exists.
+
+**Supersedes.** The open note under V2_SPEC §12; amends P-17.
+
+**Spec.** §12.
+
+---
+
+## P-28 — CI guards content ids against unmapped removal
+
+**Problem.** Saves and active runs store content ids (P-05). Renaming or removing an id in content makes those saves fail with 409 `SAVE_INCOMPATIBLE` on load, which a player only discovers after a deploy.
+
+**Decision.** From V2c, next to the `oasdiff` check, CI compares every content id with the last release's content and fails if an id is removed or renamed without a `SaveUpgrade` that maps it. The 409 on load stays as the last line of defence.
+
+**Why.** It moves the failure from a player's load screen to the pull request that caused it, the same way `oasdiff` guards the API.
+
+**Spec.** §4.12, §12 (V2c).

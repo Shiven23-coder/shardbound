@@ -1,3 +1,5 @@
+> **Historical (v1).** The current schema is player data only: see `er-diagram-v2.md`.
+
 # Shardbound — ER Diagram
 
 Source for `docs/ER-diagram.png` (exported in Phase 10). Matches spec §4.1 including decisions D1, D4, D6, D9, D11, D15, D19, D25, D28, D29, D31.

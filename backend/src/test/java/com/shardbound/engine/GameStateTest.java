@@ -1,19 +1,15 @@
 package com.shardbound.engine;
 
-import com.shardbound.item.Consumable;
 import com.shardbound.model.Faction;
-import com.shardbound.quest.QuestStatus;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-/** Encapsulation (D30), reseeding (D7) and deep copies (D24). */
+/** Encapsulation (D30) and reseeding (D7). */
 class GameStateTest {
 
     @Test
@@ -26,33 +22,6 @@ class GameStateTest {
         GameState loaded = TestStates.fresh(savedSeed, false);  // what a load would rebuild
         assertEquals(liveNext, loaded.rng().nextInt(1000));
         assertEquals(savedSeed, live.rngSeed());
-    }
-
-    @Test
-    void deepCopyCopiesDataButNotBusCombatOrToasts() {          // D24
-        GameState s = TestStates.fresh();
-        s.setFlag("met_wardens", 1);
-        s.addReputation(Faction.SYLVAN, 10);
-        s.setQuestStatus("q", QuestStatus.ACTIVE);
-        s.inventory().add(new Consumable("potion", "Potion", "", 0, 15, 0), 2);
-        s.historyStack().push(new Step("p01", 1));
-        s.addToast(new Toast("INFO", "hello"));
-
-        GameState copy = s.deepCopy();
-        assertEquals(1, copy.flag("met_wardens"));
-        assertEquals(10, copy.reputation(Faction.SYLVAN));
-        assertEquals(QuestStatus.ACTIVE, copy.questStatus("q"));
-        assertEquals(2, copy.inventory().count("potion"));
-        assertEquals(List.of(new Step("p01", 1)), copy.historyOldestFirst());
-        assertNull(copy.bus());
-        assertNull(copy.combat());
-        assertEquals(0, copy.toastQueue().size());
-
-        copy.setFlag("met_wardens", 2);
-        copy.inventory().remove("potion", 2);
-        assertEquals(1, s.flag("met_wardens"), "changing the copy never changes the live state");
-        assertEquals(2, s.inventory().count("potion"));
-        assertNotSame(s.stats(), copy.stats());
     }
 
     @Test

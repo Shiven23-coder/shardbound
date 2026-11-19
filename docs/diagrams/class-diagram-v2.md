@@ -1,46 +1,236 @@
 # Shardbound — Class Diagram v2
 
-New and changed classes for v2 (V2_SPEC §3–§5). Unchanged v1 classes (rules, quest, event, achievement, item, persistence, api) are described in `class-diagram.md` and appear here as plain boxes only.
-Legend: `+` public, `-` private, `~` package-private, `$` static. ✍ = student-implemented (CLAUDE.md rule 8). Two-parameter generics are written `Map‹K, V›`.
+Classes for v2 (V2_SPEC §3–§5). Rule classes kept from v1 (rules, quest, story, item, event, achievement, combat) are described in `class-diagram.md` and appear here as plain boxes only. Signatures are indicative; the code is authoritative.
+Legend: `+` public, `-` private, `~` package-private, `$` static. Two-parameter generics are written `Map‹K, V›`.
 
 ---
 
-## 1. Accounts, sessions, email
+## 1. Engine, ports and persistence (P0)
+
+The engine is framework-free (ArchUnit). It reaches the database only through the ports in `engine/port/`, which `persistence/` implements with `JdbcClient` and hand-written SQL.
 
 ```mermaid
 classDiagram
     direction LR
-    class AuthService {
-        +signup(SignupRequest r, String ip) void
-        +login(String email, String password, String ip) Session
-        +logout(String token)
-        +createGuest(String ip, String turnstile) Session
-        +upgradeGuest(int accountId, UpgradeRequest r)
-        +verifyEmail(String token)
-        +resendVerification(int accountId)
-        +forgotPassword(String email, String turnstile, String ip)
-        +resetPassword(String token, String newPassword)
-        +changePassword(int accountId, String current, String next)
-        +changeEmail(int accountId, String password, String newEmail)
-        +deleteAccount(int accountId, String password)
+    class GameEngine {
+        -SaveStore saves
+        -MetaStore meta
+        -RunStore runs
+        +newGame(String sessionToken, int playerId) SessionView
+        +state(String sessionToken) SessionView
+        +choose(String sessionToken, int choiceId) SessionView
+        +combatAction(String sessionToken, Action a) SessionView
+        +save(String sessionToken, int slot)
+        +load(String sessionToken, int slot) SessionView
+        -writeThrough(GameState s)
     }
-    class PasswordHasher {
-        <<Argon2id, Bouncy Castle>>
-        -int memoryKiB = 19456
-        -int iterations = 2
-        -int parallelism = 1
-        +hash(char[] password) String
-        +verify(char[] password, String phc) boolean
-        +needsRehash(String phc) boolean
+    class SaveStore {
+        <<interface, engine.port>>
+        +save(int playerId, int slot, SaveSnapshot s)
+        +load(int playerId, int slot) Optional~SaveSnapshot~
+        +list(int playerId) List~SaveSummary~
+        +delete(int playerId, int slot)
+    }
+    class MetaStore {
+        <<interface, engine.port>>
+        +unlockedAchievements(int playerId) Set~String~
+        +unlockAchievement(int playerId, String id)
+        +recordEnding(int playerId, String endingId, int seconds)
+        +leaderboard() List~LeaderboardRow~
+    }
+    class RunStore {
+        <<interface, engine.port>>
+        +create(UUID runId, int playerId, byte[] tokenHash, SaveSnapshot s)
+        +find(byte[] tokenHash) Optional~StoredRun~
+        +update(UUID runId, long expectedVersion, SaveSnapshot s) long
+    }
+    class SaveRepository {
+        <<persistence, JdbcClient>>
+    }
+    class MetaRepository {
+        <<persistence, JdbcClient>>
+    }
+    class ActiveRunRepository {
+        <<persistence, JdbcClient>>
+    }
+    class PlayerRepository {
+        <<persistence, JdbcClient>>
+        +findOrCreate(String username) int
+    }
+    class GameState {
+        -Random rng
+        +reseedForSave()
+        +toSnapshot() SaveSnapshot
+        +fromSnapshot(SaveSnapshot s, GameContent c)$ GameState
+    }
+    class RunCache {
+        <<Caffeine, bounded, expire after access>>
+        +get(String sessionToken) GameState
+    }
+    class AchievementManager
+
+    GameEngine --> SaveStore
+    GameEngine --> MetaStore
+    GameEngine --> RunStore
+    GameEngine --> RunCache
+    GameEngine ..> GameState : synchronized(state)
+    AchievementManager --> MetaStore
+    SaveStore <|.. SaveRepository
+    MetaStore <|.. MetaRepository
+    RunStore <|.. ActiveRunRepository
+```
+
+`RunStore.update` returns the new version; a stale `expectedVersion` updates zero rows and the engine throws `RunConflictException` (409 `RUN_CONFLICT`).
+
+---
+
+## 2. Web layer (P0)
+
+```mermaid
+classDiagram
+    direction LR
+    class GameController {
+        <<RestController>>
+    }
+    class CombatController {
+        <<RestController>>
+    }
+    class SaveController {
+        <<RestController>>
+    }
+    class ProfileController {
+        <<RestController>>
+    }
+    class MetaController {
+        <<RestController>>
+    }
+    class WorldController {
+        <<RestController, V3>>
+        +exit(ExitEvent e) SessionView
+        +interact(InteractEvent e) SessionView
+        +encounter(EncounterEvent e) SessionView
+    }
+    class InspectorController {
+        <<RestController, dev profile>>
+    }
+    class SessionArgumentResolver {
+        <<HandlerMethodArgumentResolver>>
+        +resolveArgument(…) Session
+    }
+    class ProblemDetailAdvice {
+        <<RestControllerAdvice>>
+        +handle(GameException e) ProblemDetail
+    }
+    class ShardboundProperties {
+        <<ConfigurationProperties "shardbound">>
+    }
+    class GameEngine
+
+    GameController --> GameEngine
+    CombatController --> GameEngine
+    SaveController --> GameEngine
+    WorldController --> GameEngine
+    GameController ..> SessionArgumentResolver : X-Session (cookie from V2a)
+    ProblemDetailAdvice ..> GameController : maps exceptions to code
+```
+
+---
+
+## 3. Saves and content (P0)
+
+```mermaid
+classDiagram
+    direction LR
+    class SaveSnapshot {
+        <<record, save>>
+        int saveVersion
+        String areaId
+        int level
+        int playtimeSeconds
+        long rngSeed
+        CombatSnapshot combat
+    }
+    class CombatSnapshot {
+        <<record, save>>
+        List enemies
+        int round
+        List~String~ log
+    }
+    class SaveUpgrader {
+        -SortedMap‹Integer, SaveUpgrade› upgrades
+        +CURRENT_VERSION$ int
+        +upgrade(JsonNode doc, int fromVersion) JsonNode
+    }
+    class SaveUpgrade {
+        <<interface>>
+        +fromVersion() int
+        +apply(ObjectNode doc) ObjectNode
+    }
+    class ContentLoader {
+        +load(Path or classpath root) GameContent
+        -validate(file, schema) List~SchemaError~
+    }
+    class JsonContentReader {
+        +read(root) RawContent
+    }
+    class ContentAssembler {
+        +assemble(RawContent raw) GameContent
+    }
+    class GameContent {
+        +prepareForPlay()
+    }
+    class MapLoader {
+        <<V3>>
+        +load(String areaId) MapData
+    }
+    class MapValidator {
+        <<V3>>
+        +validate(MapData m) List~String~
+    }
+
+    SaveSnapshot *-- CombatSnapshot
+    SaveUpgrader o-- SaveUpgrade
+    ContentLoader --> JsonContentReader
+    ContentLoader --> ContentAssembler
+    ContentAssembler ..> GameContent
+    ContentLoader ..> MapLoader
+    MapLoader ..> MapValidator : BFS reachability
+```
+
+---
+
+## 4. Accounts, sessions, email (V2a / V2b)
+
+```mermaid
+classDiagram
+    direction LR
+    class AccountService {
+        +createGuest(String ip, String turnstile) Session
+        +upgradeGuestWithGoogle(int accountId, OidcUser u)
+        +deleteAccount(int accountId)
+        +export(int accountId) AccountExport
+    }
+    class GoogleLoginHandler {
+        <<AuthenticationSuccessHandler>>
+        +onAuthenticationSuccess(…)
+        -linkOnlyIfBothEmailsVerified(OidcUser u, Account a) boolean
     }
     class SessionService {
+        <<SecurityContextRepository>>
         +create(int accountId) String
         +resolve(String token) Session
         +revoke(String token)
         +revokeAll(int accountId, String exceptToken)
-        -sha256(String token) byte[]
+    }
+    class PasswordService {
+        <<V2b>>
+        -Argon2PasswordEncoder encoder
+        +hash(CharSequence password) String
+        +matches(CharSequence password, String phc) boolean
+        +needsRehash(String phc) boolean
     }
     class TokenService {
+        <<V2b>>
         +issue(int accountId, Purpose p, Duration ttl, String newEmail) String
         +consume(String token, Purpose p) TokenRow
     }
@@ -48,8 +238,8 @@ classDiagram
         -ConcurrentHashMap‹String, ArrayDeque‹Long›› windows
         -int limit
         -long windowMillis
-        +tryAcquire(String key, long nowMillis) boolean ✍
-        +remaining(String key, long nowMillis) int ✍
+        +tryAcquire(String key, long nowMillis) boolean
+        +remaining(String key, long nowMillis) int
     }
     class LoginGuard {
         -SlidingWindowRateLimiter perIp
@@ -60,68 +250,62 @@ classDiagram
     class TurnstileVerifier {
         +verify(String token, String ip) boolean
     }
-    class SecurityHeaders {
-        +register(Javalin app)$
-    }
-    class OriginCheck {
-        +register(Javalin app, String appOrigin)$
+    class SecurityConfig {
+        <<Configuration>>
+        +filterChain(HttpSecurity http) SecurityFilterChain
     }
     class AccountCleanupJob {
-        -ScheduledExecutorService scheduler
+        <<Scheduled, hourly>>
         +runOnce()
     }
     class EmailSender {
-        <<interface>>
+        <<interface, V2b>>
         +send(EmailMessage m)
     }
     class SmtpEmailSender
-    class MailpitEmailSender
     class EmailOutboxWorker {
-        -EmailSender sender
-        -EmailTemplates templates
+        <<V2b>>
         +pollOnce() int
         -backoff(int attempts) Duration
     }
     class EmailTemplates {
         +render(String template, Map vars) EmailMessage
     }
-    class Purpose {
-        <<enumeration>>
-        VERIFY
-        RESET
-        CHANGE_EMAIL
-    }
 
-    AuthService --> PasswordHasher
-    AuthService --> SessionService
-    AuthService --> TokenService
-    AuthService --> LoginGuard
-    AuthService --> TurnstileVerifier
-    AuthService ..> EmailOutboxWorker : inserts outbox row in same tx
+    SecurityConfig ..> SessionService
+    SecurityConfig ..> GoogleLoginHandler
+    GoogleLoginHandler --> AccountService
+    AccountService --> SessionService
+    AccountService --> TurnstileVerifier
+    AccountService --> PasswordService
+    AccountService --> TokenService
+    AccountService --> LoginGuard
+    AccountService ..> EmailOutboxWorker : inserts outbox row in same tx
     LoginGuard --> SlidingWindowRateLimiter
-    TokenService --> Purpose
     EmailSender <|.. SmtpEmailSender
-    EmailSender <|.. MailpitEmailSender
     EmailOutboxWorker --> EmailSender
     EmailOutboxWorker --> EmailTemplates
 ```
 
 ---
 
-## 2. World and movement
+## 5. World and world events (V3)
 
 ```mermaid
 classDiagram
     direction LR
     class WorldEngine {
         +snapshot(GameState s) WorldView
-        +move(GameState s, int seq, Dir dir) MoveResult
-        +interact(GameState s) SessionView
-        -checkTriggers(GameState s) TriggerResult
+        +exit(GameState s, String exitId, Position p) SessionView
+        +interact(GameState s, String targetId, Position p) SessionView
+        +encounter(GameState s, String creepId, Position p) SessionView
     }
-    class MovementValidator {
-        -SlidingWindowRateLimiter steps
-        +validate(GameState s, Dir dir, long now) Verdict
+    class WorldEventValidator {
+        +validate(GameState s, Position p, Target t, long nowMillis) Verdict
+        -walkable(MapData m, int tx, int ty) boolean
+        -pathLength(MapData m, Tile from, Tile to) int
+        -withinSpeed(int tiles, long elapsedMillis) boolean
+        -inRange(Tile at, Target t) boolean
     }
     class CollisionGrid {
         -BitSet bits
@@ -154,27 +338,19 @@ classDiagram
         +respawnAll(GameState s)
         +levelFor(CreepSpawn spawn, Random rng) int
     }
-    class WorldSocket {
-        <<Javalin WS handler>>
-        +onConnect(WsConnectContext c)
-        +onMessage(WsMessageContext c)
-        +onClose(WsCloseContext c)
-        -handshake(WsConnectContext c) boolean
-    }
     class Graph~V~ {
         <<generic Graph‹V, E›, ds>>
-        +bfs(V start) List~V~ ✍
-        +dfs(V start) List~V~ ✍
-        +shortestPath(V from, V to) List~V~ ✍
-        +dijkstra(V source, ToIntFunction w) ShortestPaths ✍
+        +bfs(V start) List~V~
+        +dfs(V start) List~V~
+        +shortestPath(V from, V to) List~V~
+        +dijkstra(V source, ToIntFunction w) ShortestPaths
     }
 
-    WorldSocket --> WorldEngine : synchronized(state)
-    WorldEngine --> MovementValidator
+    WorldEngine --> WorldEventValidator
     WorldEngine --> EncounterService
     WorldEngine --> CreepSpawner
     WorldEngine --> MapData
-    MovementValidator --> CollisionGrid
+    WorldEventValidator --> CollisionGrid : BFS + speed check
     MapData *-- CollisionGrid
     EncounterService --> SpatialHash
     AreaGraph --> Graph : dijkstra
@@ -182,7 +358,7 @@ classDiagram
 
 ---
 
-## 3. Battle
+## 6. Battle (V4, V7)
 
 ```mermaid
 classDiagram
@@ -251,23 +427,6 @@ classDiagram
         +announce(BossMove m)
         +next() BossMove
     }
-    class Element {
-        <<enumeration>>
-        PHYSICAL
-        FIRE
-        FROST
-        LIGHTNING
-        HOLY
-        CRYSTAL
-    }
-    class Status {
-        <<enumeration>>
-        BLEED
-        POISON
-        BURN
-        FROST
-        STUN
-    }
 
     BattleEngine --> DamageCalculator
     BattleEngine --> ElementChart
@@ -278,13 +437,11 @@ classDiagram
     BattleEngine --> BossAI
     BossAI --> BossScript
     DamageCalculator ..> Skill
-    ElementChart --> Element
-    StatusTracker --> Status
 ```
 
 ---
 
-## 4. Progression, gear, dialogue, cutscenes
+## 7. Progression, gear, dialogue, cutscenes (V5–V8)
 
 ```mermaid
 classDiagram
@@ -299,7 +456,7 @@ classDiagram
     }
     class Curve {
         -TreeMap‹Integer, Double› points
-        +valueAt(int x) double ✍
+        +valueAt(int x) double
     }
     class LevelCost {
         +cost(int level)$ int
@@ -323,17 +480,6 @@ classDiagram
         -Weapon weapon
         -int upgrade
         +grade(Attribute a) ScalingGrade
-    }
-    class ScalingGrade {
-        <<enumeration>>
-        S
-        A
-        B
-        C
-        D
-        E
-        NONE
-        +coefficient double
     }
     class UpgradeService {
         +upgrade(GameState s, String itemId) SessionView
@@ -361,7 +507,6 @@ classDiagram
     LanternService --> Attributes
     LanternService --> LevelCost
     LanternService ..> LostShards
-    WeaponInstance --> ScalingGrade
     UpgradeService ..> WeaponInstance
     DialogueEngine --> DialogueGraph
     DialogueGraph ..> ConditionGroup : reused from v1
@@ -371,26 +516,11 @@ classDiagram
 
 ---
 
-## 5. Saves, telemetry, tools, dev
+## 8. Telemetry, tools, dev (V9–V10)
 
 ```mermaid
 classDiagram
     direction LR
-    class SaveMigrator {
-        -TreeMap‹Integer, Migration› migrations
-        +migrate(SaveData d) SaveData
-        +CURRENT_VERSION$ int = 2
-    }
-    class Migration {
-        <<interface>>
-        +fromVersion() int
-        +apply(SaveData d) SaveData
-    }
-    class V1toV2Migration
-    class SaveV2Repository {
-        +save(GameState s, int accountId, int slot)
-        +load(int accountId, int slot) SaveData
-    }
     class TelemetryRecorder {
         -LinkedBlockingQueue~TelemetryEvent~ queue
         -Thread writer
@@ -405,16 +535,12 @@ classDiagram
         +main(String[] args)$
         +playRegion(String regionId) RegionReport
     }
-    class ChapterSelect {
-        <<dev only>>
-        +register(Javalin app, AppConfig c)$
+    class ChapterSelectController {
+        <<RestController, dev profile>>
     }
-
-    Migration <|.. V1toV2Migration
-    SaveMigrator o-- Migration
-    SaveV2Repository ..> SaveMigrator : on load
-    BalanceSimulator ..> BattleEngine : headless, seeded
-    PlaytestBot ..> WorldSocket : real API
     class BattleEngine
-    class WorldSocket
+    class WorldController
+
+    BalanceSimulator ..> BattleEngine : headless, seeded
+    PlaytestBot ..> WorldController : real REST API, paced for the speed check
 ```

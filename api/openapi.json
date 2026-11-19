@@ -1,0 +1,1501 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "description" : "REST API of the Shardbound game server. Every game rule runs on the server.",
+    "title" : "Shardbound API",
+    "version" : "0.1.0"
+  },
+  "servers" : [ {
+    "url" : "/"
+  } ],
+  "paths" : {
+    "/api/achievements" : {
+      "get" : {
+        "operationId" : "listAchievements",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "playerId",
+          "required" : false,
+          "schema" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/AchievementView"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "Every achievement with this player's unlocks",
+        "tags" : [ "meta" ]
+      }
+    },
+    "/api/combat/action" : {
+      "post" : {
+        "operationId" : "combatAction",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CombatRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GameView"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "Play one combat round",
+        "tags" : [ "game" ]
+      }
+    },
+    "/api/debug/inspector" : {
+      "get" : {
+        "operationId" : "inspect",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InspectorView"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "Raw state behind the current screen (dev only)",
+        "tags" : [ "dev" ]
+      }
+    },
+    "/api/endings" : {
+      "get" : {
+        "operationId" : "listEndings",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "playerId",
+          "required" : false,
+          "schema" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/EndingInfoView"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "Every ending with this player's best times",
+        "tags" : [ "meta" ]
+      }
+    },
+    "/api/game" : {
+      "get" : {
+        "operationId" : "getGame",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GameView"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "The current screen of this session's game",
+        "tags" : [ "game" ]
+      }
+    },
+    "/api/game/choose" : {
+      "post" : {
+        "operationId" : "choose",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ChooseRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GameView"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "Take a story choice",
+        "tags" : [ "game" ]
+      }
+    },
+    "/api/game/new" : {
+      "post" : {
+        "operationId" : "newGame",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/NewGameRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GameView"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "summary" : "Start a new game; the view's sessionId is the X-Session token",
+        "tags" : [ "game" ]
+      }
+    },
+    "/api/inventory/equip" : {
+      "post" : {
+        "operationId" : "equip",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ItemRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GameView"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "Equip a weapon outside combat",
+        "tags" : [ "game" ]
+      }
+    },
+    "/api/inventory/use" : {
+      "post" : {
+        "operationId" : "useItem",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ItemRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GameView"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "Use a consumable outside combat",
+        "tags" : [ "game" ]
+      }
+    },
+    "/api/leaderboard" : {
+      "get" : {
+        "operationId" : "leaderboard",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/LeaderboardView"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "summary" : "Top players by endings, achievements and fastest ending",
+        "tags" : [ "meta" ]
+      }
+    },
+    "/api/profiles" : {
+      "post" : {
+        "operationId" : "createProfile",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProfileRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "summary" : "Create the profile, or return the existing one",
+        "tags" : [ "profiles" ]
+      }
+    },
+    "/api/saves" : {
+      "get" : {
+        "operationId" : "listSaves",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "playerId",
+          "required" : false,
+          "schema" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/SlotView"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "All four slots; empty slots have exists=false",
+        "tags" : [ "saves" ]
+      }
+    },
+    "/api/saves/{slot}" : {
+      "delete" : {
+        "operationId" : "deleteSave",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slot",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 3,
+            "minimum" : 0
+          }
+        }, {
+          "in" : "query",
+          "name" : "playerId",
+          "required" : false,
+          "schema" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "Delete a slot",
+        "tags" : [ "saves" ]
+      },
+      "post" : {
+        "operationId" : "saveGame",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slot",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 3,
+            "minimum" : 0
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "Save this session's game to slot 1, 2 or 3",
+        "tags" : [ "saves" ]
+      }
+    },
+    "/api/saves/{slot}/load" : {
+      "post" : {
+        "operationId" : "loadGame",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slot",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 3,
+            "minimum" : 0
+          }
+        }, {
+          "in" : "query",
+          "name" : "playerId",
+          "required" : false,
+          "schema" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GameView"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "Load a slot into this session (or a new one)",
+        "tags" : [ "saves" ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "AchievementView" : {
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "hidden" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "unlocked" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "description", "hidden", "id", "title", "unlocked" ]
+      },
+      "AffinityView" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "npcId" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "name", "npcId", "value" ]
+      },
+      "ChoiceView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "lockReason" : {
+            "type" : "string"
+          },
+          "locked" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "id", "label", "locked" ]
+      },
+      "ChooseRequest" : {
+        "type" : "object",
+        "properties" : {
+          "choiceId" : {
+            "type" : "integer",
+            "format" : "int32",
+            "exclusiveMinimum" : 0
+          }
+        },
+        "required" : [ "choiceId" ]
+      },
+      "CombatRequest" : {
+        "type" : "object",
+        "properties" : {
+          "itemId" : {
+            "type" : "string",
+            "maxLength" : 64,
+            "minLength" : 0
+          },
+          "target" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "ATTACK", "DEFEND", "SKILL", "ITEM", "FLEE" ]
+          }
+        },
+        "required" : [ "target", "type" ]
+      },
+      "CombatView" : {
+        "type" : "object",
+        "properties" : {
+          "canFlee" : {
+            "type" : "boolean"
+          },
+          "encounterName" : {
+            "type" : "string"
+          },
+          "enemies" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/EnemyView"
+            }
+          },
+          "lastHits" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/HitView"
+            }
+          },
+          "log" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "round" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "skillCost" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "usableItems" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/UsableItem"
+            }
+          }
+        },
+        "required" : [ "canFlee", "encounterName", "enemies", "lastHits", "log", "round", "skillCost", "usableItems" ]
+      },
+      "EndingInfoView" : {
+        "type" : "object",
+        "properties" : {
+          "bestSeconds" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "reached" : {
+            "type" : "boolean"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "reached", "title" ]
+      },
+      "EndingView" : {
+        "type" : "object",
+        "properties" : {
+          "endingsFound" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "endingsTotal" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "seconds" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "text" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "endingsFound", "endingsTotal", "id", "seconds", "text", "title" ]
+      },
+      "EnemyView" : {
+        "type" : "object",
+        "properties" : {
+          "alive" : {
+            "type" : "boolean"
+          },
+          "defending" : {
+            "type" : "boolean"
+          },
+          "hp" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "index" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "maxHp" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "alive", "defending", "hp", "index", "maxHp", "name" ]
+      },
+      "GameView" : {
+        "type" : "object",
+        "properties" : {
+          "affinity" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AffinityView"
+            }
+          },
+          "chapter" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "choices" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ChoiceView"
+            }
+          },
+          "combat" : {
+            "$ref" : "#/components/schemas/CombatView"
+          },
+          "demoMode" : {
+            "type" : "boolean"
+          },
+          "ending" : {
+            "$ref" : "#/components/schemas/EndingView"
+          },
+          "hud" : {
+            "$ref" : "#/components/schemas/HudView"
+          },
+          "inventory" : {
+            "$ref" : "#/components/schemas/InventoryView"
+          },
+          "journal" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/JournalView"
+            }
+          },
+          "location" : {
+            "type" : "string"
+          },
+          "locationName" : {
+            "type" : "string"
+          },
+          "mode" : {
+            "type" : "string",
+            "enum" : [ "STORY", "COMBAT", "ENDED" ]
+          },
+          "node" : {
+            "$ref" : "#/components/schemas/NodeInfo"
+          },
+          "offerReload" : {
+            "type" : "boolean"
+          },
+          "quests" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/QuestView"
+            }
+          },
+          "region" : {
+            "type" : "string"
+          },
+          "reputation" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ReputationView"
+            }
+          },
+          "sessionId" : {
+            "type" : "string"
+          },
+          "toasts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ToastView"
+            }
+          }
+        },
+        "required" : [ "affinity", "chapter", "choices", "demoMode", "hud", "inventory", "journal", "location", "locationName", "mode", "node", "offerReload", "quests", "region", "reputation", "sessionId", "toasts" ]
+      },
+      "HitView" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "crit" : {
+            "type" : "boolean"
+          },
+          "targetIndex" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "amount", "crit", "targetIndex" ]
+      },
+      "HudView" : {
+        "type" : "object",
+        "properties" : {
+          "atk" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "def" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "energy" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "gold" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "hp" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "level" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "maxEnergy" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "maxHp" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "weapon" : {
+            "$ref" : "#/components/schemas/WeaponInfo"
+          },
+          "xp" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "xpToNext" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "atk", "def", "energy", "gold", "hp", "level", "maxEnergy", "maxHp", "xp", "xpToNext" ]
+      },
+      "InspectorView" : {
+        "type" : "object",
+        "properties" : {
+          "affinity" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "integer",
+              "format" : "int32"
+            }
+          },
+          "flags" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "integer",
+              "format" : "int32"
+            }
+          },
+          "mode" : {
+            "type" : "string"
+          },
+          "nodeId" : {
+            "type" : "string"
+          },
+          "quests" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/QuestStatusView"
+            }
+          },
+          "reputation" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "integer",
+              "format" : "int32"
+            }
+          },
+          "rngSeed" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "runVersion" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "affinity", "flags", "mode", "nodeId", "quests", "reputation", "rngSeed", "runVersion" ]
+      },
+      "InventoryView" : {
+        "type" : "object",
+        "properties" : {
+          "capacity" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ItemView"
+            }
+          },
+          "usedSlots" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "capacity", "items", "usedSlots" ]
+      },
+      "ItemRequest" : {
+        "type" : "object",
+        "properties" : {
+          "itemId" : {
+            "type" : "string",
+            "maxLength" : 64,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "itemId" ]
+      },
+      "ItemView" : {
+        "type" : "object",
+        "properties" : {
+          "attack" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "critPct" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "energy" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "equipped" : {
+            "type" : "boolean"
+          },
+          "heal" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "qty" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "tier" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "usable" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "description", "equipped", "id", "name", "qty", "type", "usable" ]
+      },
+      "JournalView" : {
+        "type" : "object",
+        "properties" : {
+          "choiceLabel" : {
+            "type" : "string"
+          },
+          "nodeTitle" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "choiceLabel", "nodeTitle" ]
+      },
+      "LeaderboardView" : {
+        "type" : "object",
+        "properties" : {
+          "achievements" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "endings" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "fastestEndingSeconds" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "username" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "achievements", "endings", "username" ]
+      },
+      "NewGameRequest" : {
+        "type" : "object",
+        "properties" : {
+          "demoMode" : {
+            "type" : "boolean"
+          },
+          "playerId" : {
+            "type" : "integer",
+            "format" : "int32",
+            "exclusiveMinimum" : 0
+          }
+        },
+        "required" : [ "demoMode", "playerId" ]
+      },
+      "NodeInfo" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "text" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "text", "title" ]
+      },
+      "Problem" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string",
+            "description" : "Stable machine-readable error code"
+          },
+          "detail" : {
+            "type" : "string"
+          },
+          "fields" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "description" : "Per-field messages when code is VALIDATION_FAILED"
+          },
+          "instance" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "status" ]
+      },
+      "ProfileRequest" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string",
+            "maxLength" : 30,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "username" ]
+      },
+      "ProfileResponse" : {
+        "type" : "object",
+        "properties" : {
+          "playerId" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "username" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "playerId", "username" ]
+      },
+      "QuestStatusView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "status" ]
+      },
+      "QuestView" : {
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "main" : {
+            "type" : "boolean"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "description", "id", "main", "status", "title" ]
+      },
+      "ReputationView" : {
+        "type" : "object",
+        "properties" : {
+          "faction" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "faction", "name", "value" ]
+      },
+      "SlotView" : {
+        "type" : "object",
+        "properties" : {
+          "areaId" : {
+            "type" : "string"
+          },
+          "areaName" : {
+            "type" : "string"
+          },
+          "exists" : {
+            "type" : "boolean"
+          },
+          "level" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "playSeconds" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "slot" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "updatedAt" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "exists", "slot" ]
+      },
+      "ToastView" : {
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          },
+          "text" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "kind", "text" ]
+      },
+      "UsableItem" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "qty" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "id", "name", "qty" ]
+      },
+      "WeaponInfo" : {
+        "type" : "object",
+        "properties" : {
+          "attack" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "tier" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "attack", "id", "name", "tier" ]
+      }
+    },
+    "securitySchemes" : {
+      "session" : {
+        "description" : "Game session token returned as sessionId by POST /api/game/new",
+        "in" : "header",
+        "name" : "X-Session",
+        "type" : "apiKey"
+      }
+    }
+  }
+}

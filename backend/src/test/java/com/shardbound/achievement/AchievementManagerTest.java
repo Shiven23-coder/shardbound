@@ -82,6 +82,18 @@ class AchievementManagerTest {
     }
 
     @Test
+    void allEndingsUnlocksOnlyWhenEveryEndingIsFound() {
+        GameState s = TestStates.fresh();
+        AchievementManager m = manager(Set.of());
+        m.onEvent(new GameEvent(EventType.ENDING_REACHED,
+                Map.of("endingId", "END_TRUE", "seconds", 900, "endingsFound", 5, "endingsTotal", 6)), s);
+        assertFalse(m.unlocked().contains("ALL_ENDINGS"));
+        m.onEvent(new GameEvent(EventType.ENDING_REACHED,
+                Map.of("endingId", "END_EXILE", "seconds", 900, "endingsFound", 6, "endingsTotal", 6)), s);
+        assertTrue(m.unlocked().contains("ALL_ENDINGS"));
+    }
+
+    @Test
     void rulesMustMatchContent() {
         Set<String> all = new HashSet<>(AchievementManager.ruleIds());
         all.add("ALL_ENDINGS");

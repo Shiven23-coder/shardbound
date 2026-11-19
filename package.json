@@ -1,0 +1,17 @@
+{
+  "name": "shardbound",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Shardbound monorepo tasks: one command to run the whole game locally.",
+  "type": "module",
+  "scripts": {
+    "postinstall": "npm --prefix frontend install",
+    "dev": "concurrently --kill-others-on-fail --names api,web --prefix-colors blue,magenta \"node scripts/dev-backend.mjs\" \"npm --prefix frontend run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.7"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

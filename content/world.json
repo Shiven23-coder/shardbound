@@ -1,4 +1,5 @@
 {
+  "$schema": "./schema/world.schema.json",
   "factions": [
     { "id": "ELDMERE", "name": "Eldmere" },
     { "id": "SYLVAN",  "name": "Sylvan Wardens" },

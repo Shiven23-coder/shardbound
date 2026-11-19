@@ -1,8 +1,7 @@
 package com.shardbound.tools;
 
-import com.shardbound.content.ContentAssembler;
+import com.shardbound.content.ContentLoader;
 import com.shardbound.content.GameContent;
-import com.shardbound.content.JsonContentReader;
 import com.shardbound.ds.Edge;
 import com.shardbound.ds.Graph;
 import com.shardbound.story.StoryGraph;
@@ -17,15 +16,15 @@ import java.nio.charset.StandardCharsets;
  * Writes the structural story graph as Graphviz DOT (file I/O, spec §5).
  * Turn it into the image for docs with: {@code dot -Tsvg docs/story-graph.dot -o docs/story-graph.svg}.
  *
- * <pre>.\mvnw.cmd exec:java -Dexec.mainClass=com.shardbound.tools.GraphExporter</pre>
- * Reads content/*.json directly, so it works without a database.
+ * <pre>.\mvnw.cmd spring-boot:run "-Dspring-boot.run.main-class=com.shardbound.tools.GraphExporter"</pre>
+ * Reads content/*.json directly; no database and no Spring context.
  */
 public class GraphExporter {
 
     public static void main(String[] args) throws IOException {
         File contentDir = new File("../content").isDirectory() ? new File("../content") : new File("content");
         File out = new File(args.length > 0 ? args[0] : "../docs/story-graph.dot");
-        GameContent content = new ContentAssembler().assemble(new JsonContentReader(contentDir).read());
+        GameContent content = ContentLoader.fromDirectory(contentDir.toPath());
         try (PrintWriter writer = new PrintWriter(out, StandardCharsets.UTF_8)) {
             writer.print(toDot(content.graph()));
         }

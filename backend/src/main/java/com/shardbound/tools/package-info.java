@@ -1,4 +1,4 @@
 /**
- * Command-line tools: ContentImporter (JSON to DB), ConsoleRunner (terminal play), GraphExporter (DOT output). Spec section 8.3.
+ * Developer tools run from the command line: GraphExporter writes the story graph as Graphviz DOT.
  */
 package com.shardbound.tools;

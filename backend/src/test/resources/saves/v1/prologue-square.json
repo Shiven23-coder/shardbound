@@ -1,0 +1,24 @@
+{
+  "currentNode": "p03",
+  "hp": 34,
+  "energy": 3,
+  "level": 1,
+  "xp": 30,
+  "gold": 12,
+  "inventory": [
+    { "itemId": "rusty_shortsword", "qty": 1 },
+    { "itemId": "heartshard", "qty": 1 }
+  ],
+  "equipped": "rusty_shortsword",
+  "flags": { "found_shard": 1 },
+  "reputation": { "ELDMERE": 5, "SYLVAN": 0, "CROWN": 0, "ASHEN": 0 },
+  "affinity": { "corvin": 10 },
+  "quests": { "q_strange_light": "ACTIVE" },
+  "history": [
+    { "nodeId": "p01", "choiceId": 1 },
+    { "nodeId": "p02", "choiceId": 3 }
+  ],
+  "rngSeed": 123456789,
+  "demoMode": false,
+  "playSeconds": 95
+}

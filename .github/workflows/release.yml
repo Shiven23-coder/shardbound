@@ -1,0 +1,21 @@
+name: Release
+
+# release-please reads the Conventional Commits merged into main, keeps a
+# release PR with the next semver version and CHANGELOG.md up to date, and
+# tags the release when that PR is merged.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

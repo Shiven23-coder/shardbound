@@ -1,81 +1,66 @@
 # CLAUDE.md — Shardbound
 
-## Vision (v2)
+## Vision
 Shardbound is a 2D top-down, walkable dark-fantasy RPG on 32×32 pixel art: carry the Heartshard across six regions of Valdren.
-Visible foes start Java-authoritative, turn-based battles in a classic monster-battler layout, with elements, statuses, skills and two-phase bosses.
+Visible foes start server-authoritative, turn-based battles in a classic monster-battler layout, with elements, statuses, skills and two-phase bosses.
 Souls-like progression: rest at Lanterns, spend Shards on six attributes and weapon upgrades, and risk them as Lost Shards on every death.
-Real email accounts, anonymous telemetry, a balance simulator and a playtest bot make it a portfolio-grade, publicly deployable game.
-It started as a college project for **Java-2, Data Structures, and DBMS**, and those graded parts stay visible: Java rules, hand-written SQL, chosen data structures.
+It is a public, mobile-first web game and a flagship portfolio piece: guest and Google accounts, anonymous telemetry, a balance simulator and a playtest bot.
 
-**Specs:** `docs/V2_SPEC.md` is the source of truth for v2 work. `docs/PROJECT_SPEC.md` (v1) applies wherever V2_SPEC does not override it. Read the sections relevant to the current phase before writing code. If a spec and a request conflict, ask before acting.
-Decision history: docs/DECISIONS.md
+**Specs:** `docs/V2_SPEC.md` is the source of truth. `docs/PROJECT_SPEC.md` is the historical v1 spec; its engine rules (conditions, ConditionGroup, effects, quest state machine, combat, endings) still apply where V2_SPEC does not override them. Read the sections for the current phase before writing code. If a spec and a request conflict, ask before acting.
+Decision history: `docs/DECISIONS.md` (P-01 … P-28 win over older entries).
 
-## Tech (v2 changes)
-- Backend unchanged at its core: Java 21, Javalin 6 (now also **WebSocket** `/ws/world`), plain JDBC.
-- **Flyway** runs hand-written SQL migrations (`backend/src/main/resources/db/migration/V*__*.sql`).
-- **Bouncy Castle** provides Argon2id. Email goes through a transactional outbox (SMTP; Mailpit in dev).
-- Frontend: **TypeScript**. React for the HUD, menus, dialogue and auth pages; **Phaser 3** for the world and battle scenes (lazy-loaded). A small typed event store connects them. Vitest + Playwright.
-- Ops: **Docker Compose** (postgres, migrate, backend, nginx, mailpit), **GitHub Actions** CI, Cloudflare Turnstile.
+## Tech
+- Backend: **Spring Boot 4.1** on **Java 25**; **JdbcClient** with hand-written SQL; **Flyway via Spring**; springdoc-openapi; JUnit 5, **Testcontainers**, ArchUnit.
+- Database: **PostgreSQL 17**, player data only (JSONB saves, `active_run`). Content is JSON in `content/`, validated against `content/schema/` and loaded at startup.
+- Frontend: **TypeScript**, React (HUD, menus, dialogue, auth), Phaser 3 (world and battle, lazy-loaded), Vite, Vitest, Playwright. The API client is **generated from `api/openapi.json`** (openapi-typescript + openapi-fetch).
+- Ops: **Docker Compose** (postgres + mailpit for dev), GitHub Actions, Dependabot, gitleaks, release-please, Cloudflare Turnstile, Sentry.
 
 ## Why the rules below exist
-The project is graded on visible Java, hand-written SQL, and deliberately chosen data structures. Anything that hides those (ORMs, logic in the frontend, hardcoded content) loses marks, even if it works.
+The project is judged as a product: players on phones, and reviewers reading a public repo. The rules keep it correct, secure, maintainable and pleasant to play.
 
-## Non-negotiable rules
-1. **All game rules live in Java.** React and Phaser only render the server's views and send player intents. No damage math, condition checks, encounter rolls, loot or quest logic in the frontend. The one exception: the client may *predict* grid movement for responsiveness, and the server validates and corrects every step.
-2. **No Spring Boot, no JPA/Hibernate, no ORM.** Use Javalin + plain JDBC + `PreparedStatement` with hand-written SQL. Flyway (migrations runner) and Bouncy Castle (Argon2id) are allowed. New dependencies need my OK.
-3. **Multi-row writes run in one transaction** (`setAutoCommit(false)` → commit, rollback on failure). This includes every account change together with its `email_outbox` row.
-4. **Content is data.** Story, dialogue, maps (Tiled `.tmj`), creeps, bosses, skills, cutscenes and balance constants live in `content/**`, are imported into PostgreSQL, and are loaded into memory at startup. Never hardcode content in Java or TypeScript.
-5. **Use the data structures listed in PROJECT_SPEC §5 and V2_SPEC §5.** Don't substitute one without asking.
-6. Every non-trivial method gets a short comment stating time/space complexity.
-7. **Phase gates:** finish one phase at a time (V2_SPEC §12: V1, V2a, V2b, V3 … V11a–V11d, V12). A phase is done only when its acceptance criteria pass, all tests are green and the game is playable. Do not start the next phase until I say so.
-8. **Algorithm methods I must explain in my viva.** Claude implements the algorithm methods, but each must have: step-by-step comments, complexity in the Javadoc, and a section in docs/STUDY_GUIDE.md.
-   - `ds/Graph` — `bfs`, `dfs`, `shortestPath`, `dijkstra`
-   - `quest/QuestManager.topoOrder` (Kahn's algorithm)
-   - `persistence/SaveRepository.save` (+ helpers: the save transaction)
-   - `progression/Curve.valueAt` (V5: TreeMap `floorEntry`/`ceilingEntry` interpolation)
-   - `auth/SlidingWindowRateLimiter` (V2a: Deque of timestamps)
-
-   Standard for these: follow the Javadoc contract, make the existing tests pass without weakening any test, plain loops and clear names (rule 12, no streams inside these methods). Each STUDY_GUIDE section has: the idea in 3 lines, a dry run on a small example with a table of the queue/stack/map contents at each step, the complexity and why, common mistakes, and 5 viva questions with answers.
-9. After each phase, give me:
-   - which files changed and why
-   - how to run it
-   - 3 viva questions a strict professor might ask about that code, with model answers
-10. Don't add features outside the spec. Put ideas under a "Suggestions" heading instead.
-11. **Secrets come from environment variables** (`DB_URL`, `DB_APP_USER`, `DB_APP_PASSWORD`, `SMTP_*`, `TURNSTILE_SECRET`, …; full list in V2_SPEC §4.10). Never commit them. `backend/src/main/resources/db.properties` (gitignored) is a local-dev fallback only; only `db.properties.example` and `.env.example` are committed.
-12. Keep code readable for a 3rd-semester student: clear names, small methods, no clever one-liners where a loop is clearer.
+## Rules
+1. **The server owns the game rules.** The client renders server views, sends intents and moves the player freely; the server validates every event (V2_SPEC §4.11). No damage math, encounter rolls, loot or quest logic in the frontend.
+2. **Engine packages are framework-free.** No Spring, `jakarta.*` or `java.sql` in `engine`, `combat`, `quest`, `rules`, `story`, `item`, `model`, `ds`, `event`, `achievement`, `content`, `exception`, `save`, `view`. ArchUnit enforces it; persistence goes through `engine/port/`.
+3. **JdbcClient + hand-written SQL.** No JPA, Hibernate or other ORM. Never edit a merged migration; add a new one.
+4. **Multi-row writes run in one transaction** (`@Transactional`), including every account change with its `email_outbox` row.
+5. **Content and balance are data:** schema-validated JSON (and Tiled `.tmj`) in `content/`. Never hardcode content or balance in Java or TypeScript.
+6. **Production-quality code.** Clear names, small units, no dead code. Complexity notes only on non-obvious algorithms.
+7. **Tests cover behaviour.** A bug fix starts with a failing test. Never weaken or delete a test to make it pass.
+8. **Security:** OWASP ASVS 5.0 Level 1. No secrets in git; configuration comes from environment variables (`.env.example` lists them); gitleaks runs in CI.
+9. **Conventional Commits**, one branch and one PR per phase, green CI before merge, semver releases with a CHANGELOG.
+10. **Libraries are chosen on merit.** Name every new runtime dependency with its reason and get my OK before adding it.
+11. **Mobile-first UI:** touch controls, landscape responsive layout, touch targets ≥ 48 px, the V2_SPEC §4.13 performance budget.
+12. **Report every phase:** files changed and why, how to run it, what was verified, and known gaps.
 
 ## Environment
 - Windows, PowerShell
-- Java 21 language level (JDK 25 installed), Maven wrapper (`mvnw.cmd`), Node 20+, PostgreSQL 16 running locally; Docker Desktop from V2a
-- Branches: `main` holds v1 (tag `v1-semester`); all v2 work happens on `v2`
+- JDK 25, Maven wrapper (`mvnw.cmd`), Node 24, Docker Desktop (needed for `npm run dev` and `mvnw verify`)
+- Branches: `main` is the trunk; v1 is tag `v1-archive`; each phase gets one branch and one PR into `main`
 
 ## Common commands
 ```powershell
-# Database: v1 scripts until Flyway lands in V1, then migrations run automatically
-psql -U postgres -c "CREATE DATABASE shardbound;"
-psql -U postgres -d shardbound -f database/01_schema.sql
-psql -U postgres -d shardbound -f database/02_functions_triggers.sql
-psql -U postgres -d shardbound -f database/03_views_indexes.sql
+# Everything for local dev (repo root): PostgreSQL + Mailpit via compose, API on :8080, Vite on :5173
+npm install; npm run dev
 
-# Backend (exec:java does not compile by itself: keep `compile` in front)
-cd backend; .\mvnw.cmd test
-cd backend; .\mvnw.cmd verify
-cd backend; .\mvnw.cmd compile exec:java "-Dexec.mainClass=com.shardbound.tools.ContentImporter"
-cd backend; .\mvnw.cmd compile exec:java "-Dexec.mainClass=com.shardbound.tools.ConsoleRunner"
-cd backend; .\mvnw.cmd compile exec:java "-Dexec.mainClass=com.shardbound.App"
+# Backend
+cd backend; .\mvnw.cmd test               # unit tests, ArchUnit, content schemas, OpenAPI export (no Docker)
+cd backend; .\mvnw.cmd verify             # + Testcontainers integration tests (needs Docker)
+cd backend; .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"   # API only; starts compose itself
 
-# Frontend
-cd frontend; npm install; npm run dev
-cd frontend; npm test; npm run build
+# Frontend (types are generated from api/openapi.json first)
+cd frontend; npm run typecheck; npm test; npm run build
 
-# Full stack (from V2a)
-docker compose -f infra/docker-compose.yml up --build
+# Dev services only
+docker compose up -d
 ```
 
 ## Workflow
-- Start each phase in plan mode: list the files you'll create or change, then wait for my OK.
-- Commit after each working step with a clear message (e.g. `feat(world): validate grid steps over WebSocket`).
-- Run tests before saying something is done.
+- **Phase gates:** finish one phase at a time (V2_SPEC §12). A phase is done when its acceptance criteria pass, all tests are green and the game is playable. Do not start the next phase until I say so.
+- Start each phase in plan mode: list the files you will create or change, then wait for my OK.
+- Don't add features outside the spec. Put ideas under a "Suggestions" heading instead.
+- Commit after each working step with a Conventional Commit message (e.g. `feat(world): validate exit events with a speed check`).
+- Run the tests before saying something is done.
+- End each phase with the rule 12 report.
 
 ## Current phase
-**v2 design** (update this line as we progress)
+**P0 — Platform reset** (acceptance passed locally; PR into `main` waits for the GitHub repo) (update this line as we progress)

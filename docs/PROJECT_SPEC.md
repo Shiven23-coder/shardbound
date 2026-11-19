@@ -1,3 +1,5 @@
+> **Historical v1 specification.** `docs/V2_SPEC.md` is the source of truth. This file's engine rules (conditions, ConditionGroup, effects, quest state machine, combat, endings) still apply. Its database, importer, API and frontend sections are superseded by V2_SPEC (DECISIONS P-03, P-04, P-05, P-07). The rest of this file is kept as written.
+
 # Shardbound — Project Specification
 
 > **v1 specification.** For v2 work, `docs/V2_SPEC.md` is the source of truth and overrides this document wherever they differ; everything not overridden (e.g. JDBC conventions, ConditionGroup, quest state machine, D1–D32) still applies.

@@ -1,55 +1,65 @@
 # Shardbound
 
-A turn-based, choice-driven story RPG — college project for Java-2, Data Structures and DBMS.
-Java 21 (Javalin + plain JDBC) · PostgreSQL 16 · React + Vite.
+A 2D top-down dark-fantasy RPG for phone and desktop browsers. Carry the Heartshard across six regions of Valdren, fight turn-based battles against foes you can see coming, rest at Lanterns, and spend Shards on attributes and weapon upgrades, knowing you drop them all when you die. The server decides every outcome; the browser renders it.
 
-- Design and rules: [docs/PROJECT_SPEC.md](docs/PROJECT_SPEC.md) (source of truth) · why: [docs/DECISIONS.md](docs/DECISIONS.md)
-- Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · algorithms: [docs/ALGORITHMS.md](docs/ALGORITHMS.md) · syllabus map: [docs/SYLLABUS_MAPPING.md](docs/SYLLABUS_MAPPING.md)
+Spring Boot 4.1 · Java 25 · PostgreSQL 17 · React + TypeScript (Phaser for the world and battles)
 
 ## Prerequisites
-JDK 21+ (`JAVA_HOME` set), Node 20+, PostgreSQL 16 (`psql` on PATH). Maven is downloaded by the wrapper.
+- JDK 25 (`JAVA_HOME` set). Maven is downloaded by the wrapper.
+- Node 24 and npm.
+- Docker Desktop, running. It provides PostgreSQL and Mailpit for development and the Testcontainers database for integration tests.
 
-## 1. Database (from the repo root)
+## Quick start
+From the repo root:
 ```powershell
-psql -U postgres -c "CREATE DATABASE shardbound;"
-psql -U postgres -d shardbound -f database/01_schema.sql
-psql -U postgres -d shardbound -f database/02_functions_triggers.sql
-psql -U postgres -d shardbound -f database/03_views_indexes.sql
+npm install
+npm run dev
 ```
-For the integration test also create `shardbound_test` (the test rebuilds its schema itself):
-```powershell
-psql -U postgres -c "CREATE DATABASE shardbound_test;"
-```
-Start over at any time with `database/99_reset.sql`, then run 01–03 again.
+This starts PostgreSQL 17 and Mailpit with Docker Compose, the API on http://localhost:8080 (Spring `dev` profile; Flyway migrates the schema on startup) and Vite on http://localhost:5173, which proxies `/api` to the API. Open http://localhost:5173. Mailpit's inbox is at http://localhost:8025.
 
-## 2. Configuration
-```powershell
-copy backend\src\main\resources\db.properties.example backend\src\main\resources\db.properties
-```
-Fill in your PostgreSQL password. `db.properties` is gitignored.
+Only need the database and mail server? Run `docker compose up -d`.
 
-## 3. Backend
+## Backend
 ```powershell
 cd backend
-.\mvnw.cmd test                                   # unit tests (no database needed)
-.\mvnw.cmd verify                                 # + SaveRepositoryIT on shardbound_test
-.\mvnw.cmd compile exec:java "-Dexec.mainClass=com.shardbound.tools.ContentImporter" "-Dexec.args=--dry-run"   # validate content only
-.\mvnw.cmd compile exec:java "-Dexec.mainClass=com.shardbound.tools.ContentImporter"                           # import content/*.json
-.\mvnw.cmd compile exec:java "-Dexec.mainClass=com.shardbound.tools.ConsoleRunner"                             # play in the terminal (DB)
-.\mvnw.cmd compile exec:java "-Dexec.mainClass=com.shardbound.tools.ConsoleRunner" "-Dexec.args=--json"        # play offline (no DB)
-.\mvnw.cmd compile exec:java "-Dexec.mainClass=com.shardbound.tools.ConsoleRunner" "-Dexec.args=--json --auto-quick"   # quick-route check
-.\mvnw.cmd compile exec:java "-Dexec.mainClass=com.shardbound.tools.GraphExporter"                             # docs/story-graph.dot
-.\mvnw.cmd compile exec:java                                                                                    # API on :7070
+.\mvnw.cmd test               # unit tests, ArchUnit, content schemas, OpenAPI export (no Docker needed)
+.\mvnw.cmd verify             # + Testcontainers integration tests (needs Docker)
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"    # API only, on :8080; starts the compose services
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.main-class=com.shardbound.tools.GraphExporter"   # story graph as DOT
 ```
-`exec:java` does not compile by itself, so keep `compile` in front.
+`test` also exports the OpenAPI contract to `api/openapi.json`. Commit it when it changes; CI fails on drift.
 
-## 4. Frontend
+## Frontend
 ```powershell
 cd frontend
-npm install
-npm run dev          # http://localhost:5173, proxies /api to :7070
+npm run gen:api      # regenerate TypeScript types from api/openapi.json (runs automatically before dev, build, typecheck and test)
+npm run typecheck
+npm test             # Vitest
+npm run build
 ```
 
-## Student-implemented parts
-`ds/Graph.bfs`, `dfs`, `shortestPath` · `quest/QuestManager.topoOrder` · `persistence/SaveRepository.save`.
-They throw `UnsupportedOperationException("TODO(student)…")` until written; `GraphTest`, `QuestManagerTest`, `StoryValidatorTest`, `GameEngineTest` and `SaveRepositoryIT` go green once they are done.
+## Configuration
+Settings come from environment variables bound to Spring properties. [.env.example](.env.example) lists them. The dev profile needs none: the compose file's localhost-only credentials are wired in automatically and are not secret. Never commit real secrets.
+
+## Tools
+```powershell
+node tools/balance/progression.mjs     # progression model (V2_SPEC §10.2)
+```
+
+## CI
+GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) on every push and PR:
+- backend `mvnw verify` on Java 25 with Testcontainers, then the OpenAPI drift check;
+- frontend typecheck, Vitest and build on Node 24;
+- gitleaks secret scanning and a Conventional Commits PR-title check.
+
+Dependabot keeps dependencies current. release-please tags semver releases and writes `CHANGELOG.md`.
+
+## Branches
+`main` is the trunk. Each phase is one branch and one squash-merged PR. v1 is preserved at tag `v1-archive`.
+
+## Docs
+- [docs/V2_SPEC.md](docs/V2_SPEC.md): the specification (source of truth)
+- [docs/DECISIONS.md](docs/DECISIONS.md): why each decision was made
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/TECH_STACK.md](docs/TECH_STACK.md) · [docs/PRD.md](docs/PRD.md) · [docs/ALGORITHMS.md](docs/ALGORITHMS.md)
+- Diagrams: [ER](docs/diagrams/er-diagram-v2.md) · [classes](docs/diagrams/class-diagram-v2.md)
+- [docs/PROJECT_SPEC.md](docs/PROJECT_SPEC.md): the historical v1 spec; its engine rules still apply

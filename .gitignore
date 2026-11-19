@@ -1,8 +1,9 @@
-# ===== Secrets (CLAUDE.md rule 11) =====
+# ===== Secrets (CLAUDE.md rule 8) =====
 backend/src/main/resources/db.properties
 *.local.properties
 .env
 .env.*
+!.env.example
 
 # ===== Java / Maven =====
 backend/target/
@@ -11,7 +12,9 @@ backend/target/
 hs_err_pid*
 
 # ===== Node / Vite =====
+node_modules/
 frontend/node_modules/
+frontend/src/api/schema.gen.ts
 frontend/dist/
 frontend/.vite/
 npm-debug.log*

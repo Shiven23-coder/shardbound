@@ -1,24 +1,26 @@
 # Shardbound v2 — Specification
 
-> **Source of truth for all v2 work.** `docs/PROJECT_SPEC.md` (v1) still applies wherever this document does not override it (e.g. JDBC conventions, ConditionGroup, quest state machine).
-> Reasons for every v2 decision: `docs/DECISIONS.md` § V-01 onward. Diagrams: `docs/diagrams/er-diagram-v2.md`, `docs/diagrams/class-diagram-v2.md`.
+> **Source of truth for all v2 work.** `docs/PROJECT_SPEC.md` (v1) is historical. Its engine rules (conditions, ConditionGroup, effects, quest state machine, combat, endings) still apply wherever this document does not override them; its database, importer, API and frontend sections do not (P-03, P-04, P-05, P-07).
+> Reasons for every decision: `docs/DECISIONS.md` (V-01 onward, then the platform reset P-01 … P-28, which win over older entries). Diagrams: `docs/diagrams/er-diagram-v2.md`, `docs/diagrams/class-diagram-v2.md`.
 > All numbers in §4 and §10 are **starting values**; they live in `content/balance.json` and are retuned by the balance simulator (§4.14).
 
 ---
 
 ## 1. Vision and scope
 
-A 2D top-down, walkable dark-fantasy RPG. You carry the Heartshard across six regions of Valdren, fight turn-based battles against visible foes, rest at **Lanterns**, grow by spending **Shards**, and risk them on every death. Java decides everything; the browser only shows it.
+A 2D top-down, walkable dark-fantasy RPG for desktop and mobile browsers. You carry the Heartshard across six regions of Valdren, fight turn-based battles against visible foes, rest at **Lanterns**, grow by spending **Shards**, and risk them on every death. The server decides every outcome; the browser renders it and moves the player.
 
 | | |
 |---|---|
+| Audience | Players on phones and desktops (mobile-first, §4.16), plus reviewers reading a public repository. |
 | Look | 32×32 pixel art, one CC0 pack family (Kenney or 0x72, not mixed), dark palette, original UI. Fonts **Cinzel** (headings) and **Cormorant Garamond** (text), self-hosted (OFL). Inspired by the *mood* of Souls-like games; no borrowed names, assets, fonts or UI. |
 | Battles | Turn-based, classic monster-battler layout: enemy info top-left / sprite top-right, player sprite bottom-left / info bottom-right, text box with **ATTACK · SKILLS · BAG · FLEE**. |
 | HUD | Top-left: HP bar, FP bar below it, level below that. Bottom-right: Shards counter. Bottom-left: 4 quick slots. Bottom-centre during boss fights: boss name + long bar. |
 | Length | Critical path **1–2 h** (budget 105 min, §10); side content **+2–3 h**. 6 regions, 28 areas, 85 creep fights, 8 bosses. |
 | Endings | Six (v1 §6.9). **The Merchant's Bargain** stays as an early secret bad ending in Eldmere. |
 | Names used | Lanterns (rest points) · Shards (XP and currency) · Lost Shards (death drop) · "FOE VANQUISHED" (boss banner) · Lantern Draught (refillable heal). |
-| Presentations | Dev-only chapter select (§4.13), excluded from production builds and rejected by the server outside dev mode. |
+| Release | Public alpha after the Eldmere vertical slice (phase ALPHA, §12), then 1.0 at V12. Semver releases with a CHANGELOG. |
+| Presentations | Dev-only chapter select (§4.13), available only in the Spring `dev` profile. |
 
 ---
 
@@ -26,75 +28,97 @@ A 2D top-down, walkable dark-fantasy RPG. You carry the Heartshard across six re
 
 ```mermaid
 flowchart LR
-    subgraph Browser["Browser (TypeScript)"]
+    subgraph Browser["Browser or installed PWA (TypeScript)"]
         R["React: HUD, menus, dialogue, auth pages"] <--> S["Typed event store"]
         P["Phaser 3: World + Battle scenes (lazy-loaded)"] <--> S
-        S --> C["api client: REST + WebSocket"]
+        S --> C["openapi-fetch client (types generated from api/openapi.json)"]
+        SW["Service worker: precached shell, region atlases"]
     end
-    C -- "HTTPS /api" --> N["nginx"]
-    C -- "WSS /ws/world" --> N
-    N --> J["Javalin 6 (REST + WS)"]
-    J --> E["GameEngine · WorldEngine · BattleEngine · DialogueEngine · ProgressionService · AuthService"]
-    E --> M["Immutable content in memory (maps, creeps, bosses, dialogue, curves)"]
-    E --> RP["Repositories (JDBC, hand-written SQL)"]
-    RP --> DB[("PostgreSQL 16 (Flyway migrations)")]
-    W1["EmailOutboxWorker"] --> DB
+    C -- "HTTPS /api (same origin)" --> CDN["CDN: static frontend, proxies /api"]
+    CDN --> J["Spring Boot 4.1 on Java 25: web/ controllers, Spring Security"]
+    J --> E["Engine (framework-free): GameEngine · WorldEngine · BattleEngine · DialogueEngine · ProgressionService"]
+    E --> M["Immutable content in memory (JSON + .tmj, validated at startup)"]
+    E --> PT["Ports: SaveStore · MetaStore · RunStore"]
+    PT --> RP["persistence/: JdbcClient repositories, hand-written SQL"]
+    RP --> DB[("PostgreSQL 17 (Flyway via Spring)")]
+    W1["EmailOutboxWorker (V2b)"] --> DB
     W1 --> MAIL["SMTP / Mailpit"]
-    W2["TelemetryRecorder (queue → batch insert)"] --> DB
+    W2["TelemetryRecorder (V10)"] --> DB
+    J -.-> SEN["Sentry (V2c)"]
+    C -.-> SEN
 ```
 
-| Layer | Choice (new in **bold**) |
+| Layer | Choice |
 |---|---|
-| Backend | Java 21, Javalin 6 (REST **+ WebSocket**), plain JDBC, Jackson, JUnit 5, **Flyway** (runs hand-written SQL migrations), **Bouncy Castle** (Argon2id), **Eclipse Angus Mail** (SMTP, V-24) |
-| Database | PostgreSQL 16, roles `shardbound_owner` / `shardbound_app` / `shardbound_telemetry_ro` |
-| Frontend | **TypeScript**, React 19 (HUD/menus), **Phaser 3.90** (world/battle), Vite, **Vitest**, **Playwright** (budgets, e2e) |
-| Ops | **Docker Compose** (postgres, migrate, backend, nginx, mailpit[dev]), **GitHub Actions** CI, **Cloudflare Turnstile** |
+| Backend | Java 25, **Spring Boot 4.1** (web, JDBC, Flyway, Actuator, validation; Security from V2a; mail from V2b), **JdbcClient** with hand-written SQL, Jackson, springdoc-openapi, networknt json-schema-validator, Caffeine, Bouncy Castle (Argon2 through Spring Security's encoder), JUnit 5, **Testcontainers**, ArchUnit |
+| Database | **PostgreSQL 17**, player data only; roles `shardbound_owner` / `shardbound_app` / `shardbound_telemetry_ro` |
+| Frontend | TypeScript, React 19 (HUD/menus), Phaser 3.90 (world/battle), Vite, openapi-typescript + openapi-fetch, Vitest, Playwright (budgets, e2e), installable PWA (V2c) |
+| Ops | Docker Compose for dev (postgres + mailpit), GitHub Actions CI (Testcontainers, OpenAPI drift, gitleaks, PR-title lint), Dependabot, release-please, Cloudflare Turnstile, Sentry |
 
-**Rules carried over and tightened**
-- Java is authoritative. React and Phaser render server views; the client may **predict movement only**, and the server corrects it (§4.11).
-- One lock per game: REST handlers **and** WebSocket messages run game logic inside `synchronized (state)` (D16 extended, V-08).
-- Content is data (`content/**`), imported into PostgreSQL, loaded once at startup.
-- Secrets come from environment variables; `db.properties` is a dev fallback only.
-- Branching: v1 is tagged `v1-semester` on `main`; **all v2 work happens on branch `v2`**.
+**Rules**
+- The server is authoritative. React and Phaser render server views and send intents. The client moves the player freely; the server validates every world event (§4.11).
+- The engine packages are framework-free (no Spring, `jakarta.*` or `java.sql`), enforced by ArchUnit. Persistence is reached through ports in `engine/port/`.
+- One lock per game: every handler runs game logic inside `synchronized (state)` (D16).
+- Content is schema-validated JSON (`content/**`), loaded and validated once at startup. Any content error stops startup. There are no content tables.
+- Every state-changing action is written through to `active_run` (§4.12), so a restart or deploy loses nothing.
+- Secrets and settings come from environment variables bound to Spring properties; nothing secret is committed.
+- No WebSocket. All traffic is REST over HTTPS on one origin.
+- Branching: `main` is the trunk; v1 is tag `v1-archive`; each phase is one branch and one PR into `main`.
 
 ---
 
-## 3. File structure (v2 additions)
+## 3. File structure
 
 ```
+api/openapi.json                 generated contract (committed; CI fails on drift)
+docker-compose.yml               dev services: postgres:17 + mailpit
+package.json                     npm run dev → compose + API + Vite (concurrently)
+scripts/dev-backend.mjs          starts the API with mvnw.cmd or mvnw
 backend/src/main/java/com/shardbound/
-  auth/        AuthService, PasswordHasher (Argon2id), SessionService, TokenService, SlidingWindowRateLimiter ✍,
-               LoginGuard, TurnstileVerifier, SecurityHeaders, OriginCheck, AccountCleanupJob
-  email/       EmailSender (interface), SmtpEmailSender, MailpitEmailSender, EmailOutboxWorker, EmailTemplates
-  world/       WorldEngine, AreaGraph, MapData, CollisionGrid (BitSet), MovementValidator, EncounterService,
-               CreepSpawner, SpatialHash, WorldSocket (WS handler)
+  web/         @RestControllers (Game, Combat, Save, Profile, Meta, World, Lantern, …),
+               SessionArgumentResolver (X-Session until V2a), ProblemDetailAdvice,
+               dev/ (dev profile only: Inspector, ChapterSelect)
+  config/      ShardboundProperties (@ConfigurationProperties "shardbound"), SecurityConfig (V2a)
+  engine/      GameEngine, GameState, Mode, EndingResolver, live-run cache (Caffeine)
+  engine/port/ SaveStore, MetaStore, RunStore
+  view/        view records sent to the client (SessionView, BattleView, …)
+  save/        SaveSnapshot, CombatSnapshot, SaveUpgrader (SortedMap<Integer, SaveUpgrade>), upgrades/*
+  content/     ContentLoader (schema validation → JsonContentReader → ContentAssembler → prepareForPlay),
+               MapLoader + MapValidator (.tmj)
+  persistence/ PlayerRepository, SaveRepository, MetaRepository, ActiveRunRepository (JdbcClient)
+  auth/        AccountService, GoogleLoginHandler, SessionService, SlidingWindowRateLimiter, LoginGuard,
+               TurnstileVerifier, AccountCleanupJob (V2a); PasswordService, TokenService (V2b)
+  privacy/     DataExportService, AccountDeletionService (V2a)
+  email/       EmailSender (interface), SmtpEmailSender, EmailOutboxWorker, EmailTemplates (V2b)
+  world/       WorldEngine, AreaGraph, MapData, CollisionGrid (BitSet), WorldEventValidator,
+               EncounterService, CreepSpawner, SpatialHash
   battle/      BattleEngine (evolves combat.CombatEngine), BattleState, ElementChart, StatusTracker, Skill,
                DamageCalculator (v2 formula), BossScript, BossAI, TelegraphQueue
-  progression/ Attributes (EnumMap<Attribute,Integer>), Curve ✍(valueAt), LevelCost, ShardWallet, LostShards, LanternService
+  progression/ Attributes (EnumMap<Attribute,Integer>), Curve, LevelCost, ShardWallet, LostShards, LanternService
   gear/        WeaponInstance (tier + upgrade), ScalingGrade, UpgradeService, MaterialCost
   dialogue/    DialogueGraph, DialogueEngine (reuses rules.ConditionGroup / Effect)
   cutscene/    Cutscene, CutsceneStep (sealed), CutscenePlayer
   telemetry/   TelemetryRecorder, TelemetryEvent
-  save/        SaveV2Repository, SaveMigrator (TreeMap<Integer, Migration>), migrations/*
-  tools/       + BalanceSimulator, PlaytestBot, MapImporter
-  dev/         ChapterSelect (registered only when APP_ENV=dev and DEV_TOOLS=true)
+  tools/       GraphExporter, BalanceSimulator, PlaytestBot
+  (kept from v1: combat, quest, rules, story, item, model, ds, event, achievement, exception)
 backend/src/main/resources/
-  db/migration/V1__baseline.sql … (Flyway; hand-written SQL)
-  email/       verify.html|txt, reset.html|txt, email_changed.html|txt, account_exists.html|txt
+  application.yml (profiles dev, test, prod)
+  db/migration/V1__baseline.sql …   (Flyway; hand-written SQL)
+  email/       verify.html|txt, reset.html|txt, email_changed.html|txt, account_exists.html|txt (V2b)
+backend/src/test/resources/saves/v1/   golden save fixtures for SaveUpgrader
+backend/Dockerfile                     container image (V2c)
 content/
+  schema/*.schema.json (JSON Schema 2020-12; every content file names its "$schema")
   balance.json  regions.json  items.json  creeps.json  bosses.json  skills.json  elements.json  statuses.json
   world.json (factions, npcs, endings, achievements)  quests.json  maps/*.tmj  dialogue/*.json  cutscenes/*.json
-  migration/v1_nodes.json (v1 story node → v2 area/spawn)
 frontend/src/
-  api/ (rest.ts, socket.ts)  store/ (eventStore.ts, mappers.ts)  types/ (views.ts)
+  api/ (client.ts, types.ts, schema.gen.ts — generated, gitignored)  store/ (eventStore.ts, mappers.ts)
   react/ (hud/, menus/, dialogue/, auth/, pages/privacy|terms)  phaser/ (BootScene, WorldScene, BattleScene)
-  assets/ (atlases per region, audio)  settings/
-infra/  docker-compose.yml  nginx.conf  backend.Dockerfile  frontend.Dockerfile
-config/ security.properties (rate-limit defaults, V-33)
+  assets/ (atlases per region, audio)  settings/  pwa/ (service worker, V2c)
+frontend/public/manifest.webmanifest (V2c)
 tools/balance/progression.mjs (progression model, §10.2)
-.github/workflows/ci.yml   CREDITS.md
+.github/workflows/ci.yml  .github/dependabot.yml  release-please config  CHANGELOG.md  CREDITS.md
 ```
-✍ = student-implemented (CLAUDE.md rule 8).
 
 ---
 
@@ -103,22 +127,22 @@ tools/balance/progression.mjs (progression model, §10.2)
 ### 4.1 Lanterns (rest points)
 Resting at a Lantern, in one transaction:
 1. HP and FP are set to max, and Lantern Draught charges are refilled.
-2. Defeated creeps respawn: the save's `save_defeated_creep` rows are deleted, and each spawn rerolls its level from the save's seeded RNG.
+2. Defeated creeps respawn: the run's defeated-creep set is cleared, and each spawn rerolls its level from the run's seeded RNG.
 3. The Lantern becomes `last_lantern`, the respawn point.
-4. An autosave is written to slot 0 (the D24 path: reseed the live state → deep copy → background write).
+4. An autosave is written to slot 0 (the D24 path: reseed the live state → snapshot → write).
 5. The Lantern menu opens: **Level up** (§4.3), **Fast travel**, **Skills** (4-slot loadout), **Leave**. Weapon upgrades happen at Smith NPCs (§4.6).
 
-**Fast travel.** Lanterns are vertices of the **area graph**: `area_edge(from, to, weight)`, where the weight is the walking time in seconds between connected areas (from the maps). Edges whose `gate_flag` the player hasn't set are excluded. `Graph.dijkstra(source, weight)` ✍ returns each area's distance and the parent map. Travel is allowed to any **discovered** Lantern whose area is reachable.
+**Fast travel.** Lanterns are vertices of the **area graph**: the edges in `regions.json` (`from`, `to`, `weight`), where the weight is the walking time in seconds between connected areas (from the maps). Edges whose `gateFlag` the player hasn't set are excluded. `Graph.dijkstra(source, weight)` returns each area's distance and the parent map. Travel is allowed to any **discovered** Lantern whose area is reachable.
 - The route is drawn on the map screen, and the ETA sets the length of the travel transition: `min(3 s, ETA / 30)`.
 - The same Dijkstra gives the **quest-marker next hop**: the first edge toward the objective area.
 - The playtest bot uses it to route between areas.
 
 ### 4.2 Creeps and encounters
 - Creeps are placed as `creep_spawn` objects in Tiled: `template`, `levelMin`, `levelMax`, `aggroRadius` (1–3 tiles), optional `patrol` (cosmetic idle only).
-- Level on (re)spawn = `levelMin + rng.nextInt(levelMax − levelMin + 1)`, using the save's seeded RNG.
-- **Encounter rule:** after every accepted step, the server looks up creeps in nearby `SpatialHash` cells (cell = 8×8 tiles). A battle starts with the first living creep whose Chebyshev distance to the player is ≤ `aggroRadius`. Ties go to the lowest object id.
+- Level on (re)spawn = `levelMin + rng.nextInt(levelMax − levelMin + 1)`, using the run's seeded RNG.
+- **Encounter rule:** when the player comes within a creep's aggro radius, the client sends `POST /api/world/encounter {creepId, x, y}`. The server validates the event (§4.11), looks up creeps in nearby `SpatialHash` cells (cell = 8×8 tiles), and starts a battle with the first living creep whose Chebyshev distance to the validated position is ≤ `aggroRadius`. Ties go to the lowest object id.
 - Creep stats from its template (`base*`) and level: `hp = round(baseHp·(1 + 0.12(lvl−1)))`, `atk = round(baseAtk·(1 + 0.10(lvl−1)))`, `def = round(baseDef·(1 + 0.08(lvl−1)))`, `spd = baseSpd`.
-- A defeated creep stays down (`save_defeated_creep`) until the player rests or dies.
+- A defeated creep stays down (run state) until the player rests or dies.
 - Running away (FLEE) keeps the creep alive; it ignores the player until they have moved 3 tiles out of its aggro radius.
 
 ### 4.3 Shards, levels and attributes
@@ -134,7 +158,7 @@ Shards are both XP and currency. They are earned from creeps, bosses and chests;
 
 These curves were fitted to the progression table in §10.2: the model hits every boss-level target exactly.
 
-**Attribute effects** are piecewise-linear `Curve`s (soft caps where the slope drops). Points are `(attribute, value)`; `Curve.valueAt(x)` ✍ interpolates between `floorEntry` and `ceilingEntry` of a `TreeMap<Integer, Double>` in O(log n).
+**Attribute effects** are piecewise-linear `Curve`s (soft caps where the slope drops). Points are `(attribute, value)`; `Curve.valueAt(x)` interpolates between `floorEntry` and `ceilingEntry` of a `TreeMap<Integer, Double>` in O(log n).
 
 | Attribute | Effect | Curve points |
 |---|---|---|
@@ -154,7 +178,7 @@ Level-up happens only at a Lantern. The menu shows a server-computed **preview**
 On death (HP reaches 0 in battle):
 1. All held Shards become **Lost Shards** at the tile where the battle started. This replaces any previous Lost Shards (those are destroyed).
 2. Held Shards are set to 0. The player respawns at `last_lantern` with full HP/FP and refilled draughts. Creeps respawn, and the boss resets (its intro cutscene does not replay, §4.7).
-3. Recovering them: an accepted step within Chebyshev distance 1 of the Lost Shards tile adds them back, deletes the marker, and shows the toast "Shards recovered".
+3. Recovering them: a validated interact event on the Lost Shards marker (within Chebyshev distance 1, §4.11) adds them back, deletes the marker, and shows the toast "Shards recovered".
 4. Dying again before recovering destroys them.
 5. Telemetry records `DEATH` and `SHARDS_LOST` / `SHARDS_RECOVERED`.
 
@@ -246,11 +270,11 @@ Defence is now a **ratio** (100 / (100 + DEF)) instead of v1's subtraction, so i
 
 **Bosses** (`content/bosses.json`):
 - 2 phases. Phase 2 starts at `hpPct ≤ phase2At` (default 50 %). It plays a transition line, can switch move table, family/element and speed, and is Stun-immune for 1 turn.
-- Moves are weighted (`weight`), chosen with the save's seeded RNG. A **telegraphed** move announces itself one boss turn earlier ("The Hollow King raises the bone crown…"), shown in the text box, and is executed on the boss's next turn. Guard reduces it to ×0.25.
-- **Intro cutscene** plays on first entry. Skippable. Recorded in `save_cutscene_seen`, so it is never replayed after a death.
+- Moves are weighted (`weight`), chosen with the run's seeded RNG. A **telegraphed** move announces itself one boss turn earlier ("The Hollow King raises the bone crown…"), shown in the text box, and is executed on the boss's next turn. Guard reduces it to ×0.25.
+- **Intro cutscene** plays on first entry. Skippable. Recorded in the run's seen-cutscenes set, so it is never replayed after a death.
 - **Boss bar** at the bottom-centre: name + long HP bar with a phase-2 tick mark.
 - **"FOE VANQUISHED"** banner on victory, then the Shards reward and loot.
-- Boss defeat is recorded in `save_defeated_boss` and is permanent.
+- Boss defeat is recorded in the run's defeated-bosses set and is permanent.
 
 Bosses on the critical path: Ashen Herald (Eldmere) · Thornmother (Whispering Wood) · Bone Warden, The Hollow King (Hollow Deep) · Ser Calder the Gilded (Valdren City) · Cinder Matriarch, Ashborn Wyrm (Ashen Wastes) · The Shard Sovereign (Crystal Spire). The optional elite **Dragonbone Revenant** (side content) is not counted among the 8.
 
@@ -258,7 +282,7 @@ Bosses on the critical path: Ashen Herald (Eldmere) · Thornmother (Whispering W
 - **Dialogue** graphs (`content/dialogue/<npc>.json`) reuse v1 choices: every option has `conditions` (ConditionGroup with `grp`, D4) and `effects`.
   - Nodes carry `speaker`, `portrait`, and `mood` (neutral/happy/angry/sad/afraid), so dialogue reacts via conditions on flags, reputation, affinity and quest steps.
   - The v1 prologue becomes Eldmere dialogue. The merchant route ends in **END_QUICK**.
-- **Quests** gain ordered **steps**, each with an objective text and a marker target (`area` + optional object id). The quest state machine and Kahn order stay as in v1 (D14, `topoOrder` ✍).
+- **Quests** gain ordered **steps**, each with an objective text and a marker target (`area` + optional object id). The quest state machine and Kahn order stay as in v1 (D14, `topoOrder`).
 - **Quest markers:** the active quest's current step shows a marker on the map. In the world, an edge arrow points along the Dijkstra next hop.
 - **Journal:** quests (in topo order) with completed steps, and dialogue memory (last 30 entries).
 - **Map screen:** discovered areas, the edges between them, Lanterns, markers and the fast-travel route.
@@ -274,144 +298,190 @@ Bosses on the critical path: Ashen Herald (Eldmere) · Thornmother (Whispering W
 | Volume | master, music, sfx (0–100) |
 | Reduce motion | no screen shake, no flashes, no typewriter |
 | Colour-blind-safe icons | every element/status icon has a shape + letter, never colour alone |
-| Input | keyboard and gamepad (Gamepad API), remappable bindings |
+| Input | keyboard, gamepad (Gamepad API) and touch (§4.16); remappable keyboard/gamepad bindings |
 | Font size | 90–150 % |
 | Telemetry | opt-out |
 
 ### 4.10 Accounts and security
-Email-based accounts for a public game.
+Accounts for a public game, in two steps:
+- **V2a (before the public alpha):** guest accounts and **Google sign-in (OIDC)**, guest → Google upgrade, sessions, CSRF, rate limits, Turnstile, data export and account deletion.
+- **V2b:** email + password accounts with verification, forgot/reset and change email.
 
-**Sign-up** (`POST /api/auth/signup`, Turnstile-protected)
+There are no public email accounts until reset and verification exist.
+
+**Framework.** Spring Security handles authentication, sessions, CSRF and security headers. Google sign-in uses Spring Security's OAuth2 client (authorization code flow with PKCE, OIDC ID token).
+
+**Guest mode (V2a)**
+- `POST /api/auth/guest` creates an account with `is_guest = true`, no email, and display name `Guest-xxxx`, and starts a session. Turnstile-protected, plus a loose **30 per IP per hour** (configurable).
+- Guests are hidden from the leaderboard.
+- Upgrade keeps the same `account_id` and therefore all progress: to Google in V2a, to email + password in V2b (`POST /api/account/upgrade`).
+- Guests inactive for **30 days** are deleted.
+
+**Google sign-in (V2a)**
+- Identities live in `account_identity(provider, subject, account_id, email, created_at)`, unique on `(provider, subject)`. The account is found by the ID token's `sub`, never by email alone.
+- A new `sub` creates a new account, or upgrades the current guest when the sign-in starts from a guest session.
+- **Linking to an existing email account (V2b onward)** happens only when Google reports `email_verified = true` **and** the account's own email is verified. Otherwise the sign-in creates a separate account. This prevents account pre-hijacking (someone registering a victim's email first and waiting for the victim to link Google).
+
+**Sessions**
+- 32 random bytes (`SecureRandom`), base64url, in cookie `sb_session`: `HttpOnly; Secure; SameSite=Lax; Path=/`.
+- **Why Lax, not Strict:** the Google callback is a cross-site top-level navigation back to the game; with `Strict` the browser would not send the session cookie on it, and the sign-in would lose the guest session it should upgrade.
+- `auth_session` stores only `SHA-256(token)`, plus `created_at`, `last_seen_at`, `expires_at` (30-day idle, sliding) and `absolute_expires_at` (90 days). Spring Security reads it through a custom `SecurityContextRepository`.
+- Logout revokes the current session. Until V2a the API uses the `X-Session` header (declared as an API-key scheme in the OpenAPI contract).
+
+**CSRF and cross-site protection**
+- Spring Security's CSRF protection with a token: the `XSRF-TOKEN` cookie is read by the client and sent back as the `X-XSRF-TOKEN` header on every non-GET request.
+- Every non-GET request must also have an `Origin` equal to `shardbound.app-origin` and a JSON content type.
+- Bodies are limited to 64 KB. Input is validated per field (Bean Validation); failures return 400 `ProblemDetail` with `code = VALIDATION_FAILED` and the field errors.
+
+**Email + password accounts (V2b)**
+
+*Sign-up* (`POST /api/auth/signup`, Turnstile-protected)
 - `email`: trimmed, stored **lowercase** (`CHECK (email = lower(email))`), unique, ≤ 254 chars.
 - `password`: 10–128 chars, not equal to the email or display name.
 - `displayName`: 3–20 chars `[A-Za-z0-9 _-]`, unique case-insensitively. It is shown on the leaderboard.
 - Terms acceptance (checkbox) is stored as `terms_version` + `terms_accepted_at`.
 - The response is **always** `202 "Check your inbox"`. If the email already exists, an *account exists* email is sent instead of a new account being created (no enumeration, V-21).
 
-**Passwords.** Argon2id (Bouncy Castle), memory 19 MiB, iterations 2, parallelism 1, 16-byte salt, 32-byte hash, stored as a PHC string `$argon2id$v=19$m=19456,t=2,p=1$…`. Rehashed on login if the parameters change.
+*Passwords.* Argon2id through Spring Security's `Argon2PasswordEncoder` (Bouncy Castle underneath): memory 19 MiB, iterations 2, parallelism 1, 16-byte salt, 32-byte hash, stored as a PHC string `$argon2id$v=19$m=19456,t=2,p=1$…`. Rehashed on login if the parameters change.
 
-**Sessions**
-- 32 random bytes (`SecureRandom`), base64url, sent in cookie `sb_session`: `HttpOnly; Secure; SameSite=Strict; Path=/`.
-- `auth_session` stores only `SHA-256(token)`, plus `created_at`, `last_seen_at`, `expires_at` (30-day idle, sliding) and `absolute_expires_at` (90 days).
-- Logout revokes the current session.
-
-**Email verification**
+*Email verification*
 - Single-use token, **24 h**, stored hashed in `auth_token(purpose = VERIFY)`. The link is `/verify?token=…`; the page POSTs `/api/auth/verify`.
 - Unverified accounts can play but are **hidden from the leaderboard**, see a banner, and are **deleted after 7 days** if never verified.
 - Resend: cooldown 60 s, max 5 per day.
 
-**Login** (`POST /api/auth/login`, email + password)
-- Rate limits via `SlidingWindowRateLimiter` ✍: per IP **100 attempts / 15 min**, per email **5 failures / 15 min**.
-  - The per-IP limit is deliberately loose: whole college or mobile networks can share one IP (V-33). The per-email limit protects each account.
+*Login* (`POST /api/auth/login`, email + password)
+- Rate limits via `SlidingWindowRateLimiter`: per IP **100 attempts / 15 min**, per email **5 failures / 15 min**.
+  - The per-IP limit is deliberately loose: campus and mobile networks share one public IP (V-33). The per-email limit protects each account.
 - After 5 failures the account is locked for 15 min (`locked_until`), doubling up to 4 h on repeats.
 - Every failure gets the same message, "Invalid email or password". Limits respond "Too many attempts, try again later", even for unknown emails.
 
-**Configurable limits (V-33).** Every limit, window and lockout duration in this section is a config value, never a literal in code. Defaults:
-
-| Key | Default |
-|---|---|
-| `security.login.perIp` | 100 / 15 min |
-| `security.login.perEmailFailures` | 5 / 15 min |
-| `security.lockout.base` | 15 min (doubling, max 4 h) |
-| `security.guest.perIp` | 30 / hour |
-| `security.verify.resendCooldown` | 60 s (max 5/day) |
-| `security.ws.stepsPerSecond` | 8 |
-
-They are read by `AppConfig` from env vars, falling back to `config/security.properties`. Game balance stays in `content/balance.json`.
-
-**Forgot password** (`POST /api/auth/forgot`, Turnstile-protected)
+*Forgot password* (`POST /api/auth/forgot`, Turnstile-protected)
 - Always the same `202` response.
 - If the account exists, a RESET token is created: single-use, **30 min**, and older RESET tokens are invalidated.
 - `POST /api/auth/reset {token, newPassword}` sets the password, marks the token used, **revokes all sessions**, and sends a *password changed* notice.
 
-**Account settings**
+*Account settings*
 - Change password (needs the current password; revokes the other sessions).
 - Change email (needs the password): creates a CHANGE_EMAIL token holding `new_email`; the link goes to the new address. On confirm the email is updated (re-verified) and an *email changed* notice goes to the old address.
-- **Delete account** (needs the password), in one transaction:
-  - PII removed (email, password hash, settings, sessions, tokens, pending outbox rows, saves);
-  - the account row is kept as a tombstone (`deleted_at`) with `display_name = 'Wanderer-' + 6 random chars`, so leaderboard rows are **anonymised**, not lost.
 
-**Guest mode**
-- `POST /api/auth/guest` creates `is_guest = true` with no email and display name `Guest-xxxx`, and starts a session. Turnstile-protected, plus a loose **30 per IP per hour** (configurable, V-33).
-- Guests are hidden from the leaderboard.
-- Upgrade (`POST /api/account/upgrade {email, password, displayName}`) keeps the same `account_id` and therefore all progress, then runs verification.
-- Guests inactive for **30 days** are deleted.
+*Tokens.* `auth_token(token_hash, account_id, purpose ENUM('VERIFY','RESET','CHANGE_EMAIL'), new_email, expires_at, used_at, created_at)`. Only `SHA-256(token)` is stored. Verification is a single UPDATE `… SET used_at = now() WHERE token_hash = ? AND used_at IS NULL AND expires_at > now() RETURNING …`, which is atomic and single-use.
 
-**Tokens.** `auth_token(token_hash, account_id, purpose ENUM('VERIFY','RESET','CHANGE_EMAIL'), new_email, expires_at, used_at, created_at)`. Only `SHA-256(token)` is stored. Verification is a single UPDATE `… SET used_at = now() WHERE token_hash = ? AND used_at IS NULL AND expires_at > now() RETURNING …`, which is atomic and single-use.
-
-**Email: transactional outbox**
+*Email: transactional outbox*
 - Every account or token change that needs an email inserts an `email_outbox` row **in the same transaction**.
 - `EmailOutboxWorker` (one background thread) polls every 5 s with `SELECT … FOR UPDATE SKIP LOCKED LIMIT 10`, renders the template (HTML + text) and sends it via `EmailSender`.
 - On failure it increments `attempts` and sets `next_attempt_at = now() + 30 s · 2^attempts` (max 1 h). After 8 attempts the row is `FAILED`.
-- Implementations: `SmtpEmailSender` (production, STARTTLS + auth) and `MailpitEmailSender` (development, Mailpit on :1025, viewed at :8025). The provider is chosen at deploy time (V12).
+- Implementations: `SmtpEmailSender` (production, STARTTLS + auth, through Spring's mail support / Angus Mail, V-24) and Mailpit in development (SMTP on :1025, viewed at :8025). The provider is chosen at deploy time.
 - Templates: verify, reset, email_changed, account_exists (HTML + text, `{{placeholders}}` HTML-escaped).
+- **Real email delivery needs a domain** (bought before V2b) with **SPF, DKIM and DMARC** records.
+
+**Account deletion and export (V2a).** See §4.18. Deletion needs re-authentication (a fresh Google sign-in, or the password for email accounts from V2b) and runs in one transaction:
+- PII removed (email, password hash, identities, settings, sessions, tokens, pending outbox rows, saves, active runs);
+- the account row is kept as a tombstone (`deleted_at`) with `display_name = 'Wanderer-' + 6 random chars`, so leaderboard rows are **anonymised**, not lost.
+
+**Configurable limits (V-33).** Every limit, window and lockout duration in this section is a Spring property under `shardbound.security.*`, never a literal in code. Defaults:
+
+| Property | Default |
+|---|---|
+| `shardbound.security.login.per-ip` | 100 / 15 min |
+| `shardbound.security.login.per-email-failures` | 5 / 15 min |
+| `shardbound.security.lockout.base` | 15 min (doubling, max 4 h) |
+| `shardbound.security.guest.per-ip` | 30 / hour |
+| `shardbound.security.verify.resend-cooldown` | 60 s (max 5/day) |
+
+They are bound by `@ConfigurationProperties` from `application.yml` and can be overridden by environment variables (`SHARDBOUND_SECURITY_LOGIN_PER_IP`, …). Game balance stays in `content/balance.json`.
 
 **Bot protection.** Cloudflare Turnstile is the **main defence**; rate limits are a backstop.
-- It protects sign-up, forgot-password and guest creation. The server verifies each token against `siteverify` with `TURNSTILE_SECRET`, and fails closed in production.
+- It protects guest creation (V2a), sign-up and forgot-password (V2b). The server verifies each token against `siteverify` with the Turnstile secret, and fails closed in production.
 - **Dev and CI use Cloudflare's official Turnstile test keys** (the always-pass site key and secret), so the real verification code path runs everywhere (V-34).
-- **There is no Turnstile or rate-limit bypass in production builds.** No flag, header or account type skips them. The playtest bot runs only against dev mode, where the test keys make Turnstile pass normally.
+- **There is no Turnstile or rate-limit bypass in production builds.** No flag, header or account type skips them. The playtest bot runs only against the `dev` profile, where the test keys make Turnstile pass normally.
 
-**Cross-site protection.** Cookies are `SameSite=Strict`. Every non-GET request must have an `Origin` equal to `APP_ORIGIN` and a JSON content type. Bodies are limited to 64 KB. Input is validated per field, with 400 + `{error, message, field}` on failure.
-
-**Security headers** (Javalin before-handler, mirrored in nginx):
-- `Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self' wss://<host>; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; frame-ancestors 'none'`
+**Security headers** (Spring Security headers config; the CDN passes them through):
+- `Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://<sentry-ingest-host>; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; worker-src 'self'; manifest-src 'self'; form-action 'self' https://accounts.google.com; frame-ancestors 'none'`
+  - Sentry ingest is the only third-party `connect-src` (V2c). `worker-src 'self'` allows the PWA service worker. `accounts.google.com` is needed only where the sign-in leaves the page (form action / redirect); the Google flow is a top-level redirect, not a frame or script.
 - `X-Content-Type-Options: nosniff`
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - `Permissions-Policy: gamepad=(self)`
 - `Strict-Transport-Security` (production only)
 
 **Database roles**
-- `shardbound_owner` runs migrations only.
+- `shardbound_owner` runs migrations only (`spring.flyway.user`).
 - `shardbound_app`: SELECT/INSERT/UPDATE/DELETE on application tables and USAGE on sequences; no DDL.
 - `shardbound_telemetry_ro`: SELECT on telemetry views.
 
-**Secrets** (env vars): `DB_URL`, `DB_APP_USER`, `DB_APP_PASSWORD`, `DB_OWNER_USER`, `DB_OWNER_PASSWORD`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM`, `TURNSTILE_SECRET`, `TURNSTILE_SITE_KEY` (public), `APP_ORIGIN`, `APP_ENV` (dev|prod), `DEV_TOOLS`.
+**Secrets and settings** (environment variables bound to Spring properties; `.env.example` lists them):
+`SPRING_PROFILES_ACTIVE`, `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `SPRING_FLYWAY_USER`, `SPRING_FLYWAY_PASSWORD`, `SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID`, `SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET`, `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, `SHARDBOUND_MAIL_FROM`, `SHARDBOUND_TURNSTILE_SECRET`, `SHARDBOUND_TURNSTILE_SITE_KEY` (public), `SHARDBOUND_APP_ORIGIN`, `SENTRY_DSN`. In the `dev` profile, Spring Boot's Docker Compose support supplies the datasource; the localhost-only compose credentials are documented as not secret.
 
-**Cleanup.** `AccountCleanupJob` (a `ScheduledExecutorService`, hourly) deletes:
-- unverified accounts older than 7 days;
+**Cleanup.** `AccountCleanupJob` (`@Scheduled`, hourly) deletes:
 - guests inactive for 30 days;
-- expired sessions and tokens;
-- SENT outbox rows older than 30 days.
+- expired sessions;
+- unverified email accounts older than 7 days, expired tokens and SENT outbox rows older than 30 days (V2b).
 
-**Privacy and terms.** Static pages `/privacy` and `/terms`, versioned in the frontend. The privacy page lists exactly what is stored: email, display name, hashed password, saves, anonymous telemetry, and server logs kept 14 days.
+**Privacy and terms:** §4.18.
 
-**Real email delivery needs a domain** (bought before V2b) with **SPF, DKIM and DMARC** records (V12 deploy checklist).
+### 4.11 Server-validated world events
+- **The client moves freely.** Movement is smooth (not grid-locked), with keyboard, gamepad or the touch D-pad (§4.16). Phaser handles walking and collision locally for responsiveness. The client does not report every step.
+- **The server validates events, not steps.** Three REST endpoints carry the client's current position (pixels within the area map; the server uses tile `floor(x/32), floor(y/32)`):
 
-### 4.11 Server-authoritative world
-- **Movement is grid-locked**, 4 directions, one 32 px tile per step. The client predicts and animates each step immediately and sends `{"t":"move","seq":n,"dir":"N|E|S|W"}` over **WebSocket `/ws/world`**.
-- The server accepts a step only if:
-  - the game is in WORLD mode;
-  - the target tile is in bounds and not blocked: `CollisionGrid` is a `BitSet` (index `y·width + x`), plus NPC/object tiles;
-  - the rate is within **≤ 8 steps per 1 000 ms**, checked by a per-session `SlidingWindowRateLimiter` ✍ (the same class used for login).
-- Accepted → `{"t":"ack","seq":n,"x":..,"y":..}`. Rejected → `{"t":"correct","seq":n,"x":..,"y":..}`; the client snaps back and drops its later predicted steps.
-- After each accepted step the server checks triggers in order: area exit → Lost Shards pickup → cutscene trigger → creep aggro.
-  - An encounter pushes `{"t":"mode","mode":"BATTLE"}`; the client then fetches the BattleView over REST.
-- **Handshake** (`wsBeforeUpgrade`): the `sb_session` cookie must be a valid session, and `Origin` must equal `APP_ORIGIN`. Otherwise 403, no upgrade.
-- **Message limits:** text frames only, ≤ 1 KB (larger frames close with code 1009); ≤ 20 messages per second per socket, otherwise close 1008. One socket per game; a new socket replaces the old one.
-- **Locking:** every WS message calls `WorldEngine` methods that run inside `synchronized (state)`, the same lock as the REST handlers (V-08).
-- **Reconnect:** the client reconnects with backoff (0.5 s → 8 s). It sends `{"t":"hello"}`, and the server answers with a full `{"t":"snapshot", ...WorldView}` built from authoritative state. Predicted, unacknowledged steps are discarded.
-- Interactions (`{"t":"interact"}`) act on the faced tile: NPC → dialogue; chest; Lantern; Smith.
+| Endpoint | Body | Effect when accepted |
+|---|---|---|
+| `POST /api/world/exit` | `{exitId, x, y}` | area change to the exit's `toArea` / `toSpawn` |
+| `POST /api/world/interact` | `{targetId, x, y}` | NPC → dialogue; chest; Lantern; Smith; Lost Shards; `trigger` objects (sent automatically when the player walks into one) |
+| `POST /api/world/encounter` | `{creepId, x, y}` | battle starts (§4.2) |
 
-### 4.12 Saves v2
-- Slots 1–3 (manual, only at a Lantern) plus slot 0 (autosave on rest, area change, boss defeat).
-- `save_slot.save_version INT NOT NULL`, current = 2.
-- **Migration:** `SaveMigrator` holds a `TreeMap<Integer, Migration>` and applies every migration above the saved version, in order, when loading. The migrated save is written back in the same transaction.
-  - v1 → v2 maps `current_node` to an area + spawn point using `content/migration/v1_nodes.json`, converts v1 level/xp into attributes and Shards (`migration.v1LevelToShards`), and keeps flags, reputation, affinity and quests.
+- **Checks**, in order; all must pass:
+  1. the game is in WORLD mode;
+  2. the position tile is in bounds and walkable on the area's `CollisionGrid` (a `BitSet`, index `y·width + x`, plus NPC/object tiles);
+  3. the tile is **reachable** by BFS on the `CollisionGrid` from the **last validated position**;
+  4. **speed check** (P-19): the BFS path length in tiles ≤ `speed × elapsed × 1.25 + slack`, where `speed` is the walk speed in tiles per second, `elapsed` is the server time since the last validated event, and `slack` absorbs latency (both in `balance.json`);
+  5. the target object or creep exists, is active (not opened, not defeated), and is **within range**: Chebyshev distance ≤ 1 tile for interactions, on the exit's rectangle for exits, ≤ `aggroRadius` for encounters.
+- **Accepted:** the position becomes the new last validated position, the event's effect runs, and the response is the updated `SessionView`.
+- **Rejected:** `409` `ProblemDetail` with `code = WORLD_EVENT_REJECTED` and the last validated position; the client moves the player back to it.
+- **The last validated position is what saves store.** It changes only on accepted events, area changes and respawns.
+- **Locking:** every world event runs inside `synchronized (state)`, the same per-game lock as every other handler (D16). Each accepted event is written through to `active_run` (§4.12).
+- There is no WebSocket and no reconnect protocol. After a reload the client fetches `GET /api/game` and continues from the last validated position.
+
+### 4.12 Saves and active runs
+**Save slots.** Slots 1–3 (manual, only at a Lantern) plus slot 0 (autosave on rest, area change, boss defeat).
+- One row per slot in `save_slot`: `data JSONB` holds a `SaveSnapshot` (everything `GameState` persists), plus `save_version` and summary columns `level`, `area_id` and `playtime_seconds` for the slot list. The summary columns are written in the same UPSERT as `data`.
+- `slot_no` has `CHECK (slot_no BETWEEN 0 AND 3)` and `UNIQUE (player_id, slot_no)`; `data` has `CHECK (jsonb_typeof(data) = 'object')`.
 - Saving is refused during battle, dialogue or cutscene (409, D27).
+
+**Versioned upgrades.** `SaveUpgrader` holds a `SortedMap<Integer, SaveUpgrade>` of JSON-tree transforms, each taking a document from version N to N+1. On load, every upgrade above the saved version is applied in order, and the upgraded document is written back in the same transaction. Golden fixtures in `backend/src/test/resources/saves/v1/` pin each version. A save that names content ids the current content does not know is refused with 409 `SAVE_INCOMPATIBLE`.
+
+**Content id guard (P-28, from V2c).** CI compares every content id (nodes, items, quests, factions, encounters, endings, achievements, and later areas and creeps) with the last release's content and fails if an id is removed or renamed without a `SaveUpgrade` that maps it. The 409 on load stays as the last line of defence.
+
+There is no v1 → v2 conversion: v1 never ran in production, so no v1 saves exist (P-05).
+
+**Active runs (durable sessions, P-22).**
+- The in-memory `GameState` is only a cache (Caffeine, bounded, expires after inactivity).
+- The source of truth is `active_run(run_id UUID PK, player_id FK, session_token_hash UNIQUE, version BIGINT, data JSONB, updated_at)`. Until V2a it is keyed by `SHA-256(X-Session)`.
+- **Write-through:** after every state-changing action, inside the per-game lock: `UPDATE active_run SET data = ?, version = version + 1, updated_at = now() WHERE run_id = ? AND version = ?`. Zero rows updated → `409 RUN_CONFLICT`, and the client refetches `GET /api/game`.
+- **Reload:** on a cache miss the run is rebuilt from `active_run`.
+- The snapshot includes an optional `CombatSnapshot` (enemies, round, log). The RNG is reseeded on each write (D7), so a reloaded run continues deterministically.
+- A backend restart or deploy mid-run loses nothing (`ActiveRunIT`).
 
 ### 4.13 Performance budgets and dev tools
 | Budget | Target | How it is measured |
 |---|---|---|
 | Title screen interactive | < 2.0 s | Playwright, cold cache, `performance.mark('title-interactive')` |
-| Region load | < 1.5 s | mark from `area-change` to the first World frame |
-| Battle start | < 300 ms | mark from the `mode: BATTLE` message to the first Battle frame |
+| Region load | < 1.5 s | mark from the `/api/world/exit` response to the first World frame |
+| Battle start | < 300 ms | mark from the `/api/world/encounter` response to the first Battle frame |
 | Initial JS (title) | ≤ 200 KB gzip | CI bundle check from **V3** |
 | Phaser chunk (lazy) | ≤ 450 KB gzip | CI bundle check from **V3** |
 | Region asset pack | ≤ 1.5 MB | CI asset check |
 
+**Mobile performance budget (P-24, from V3).** Target device class: mid-range Android, about 4 GB RAM, Snapdragon 6-series class.
+
+| Budget | Target | How it is measured |
+|---|---|---|
+| Frame rate | 60 fps target, 30 fps floor: **p95 frame time ≤ 33 ms** | Playwright + Chrome DevTools Protocol with 4× CPU throttling in CI, walking and fighting in each region |
+| JS heap | ≤ 100 MB per region | CDP heap metrics in the same run |
+| Texture memory | ≤ 64 MB per region | atlas sizes summed per region (CI asset check) |
+| Real device | one check per region | manual run on a device of the target class, recorded in the phase report |
+
 - Phaser is `import()`ed after the title screen.
 - Each region has one texture atlas, and the next region's pack is preloaded in the background when the player is one area away (Dijkstra distance on the area graph).
-- **Chapter select (dev only):** `/api/dev/chapter-select` is registered only when `APP_ENV=dev` and `DEV_TOOLS=true`; otherwise the route does not exist (404) and the server also rejects the request. The frontend button is behind `import.meta.env.DEV` (dead-code-eliminated). CI greps the production bundle and fails if `chapter-select` appears.
+- **Chapter select (dev only):** the `/api/dev/chapter-select` controller exists only in the Spring `dev` profile (`@Profile("dev")`); in any other profile the route does not exist (404). The frontend button is behind `import.meta.env.DEV` (dead-code-eliminated). CI greps the production bundle and fails if `chapter-select` appears.
 
 ### 4.14 Telemetry, balance simulator, playtest bot
 - **Events:** `RUN_START`, `AREA_ENTER`, `BATTLE_START`, `BATTLE_END` (outcome, turns), `DEATH`, `SHARDS_LOST/RECOVERED`, `LEVEL_UP`, `BOSS_DEFEATED`, `RUN_END`.
@@ -428,41 +498,79 @@ They are read by `AppConfig` from env vars, falling back to `config/security.pro
   - `mv_balance_summary`, a **materialized view** per area (death rate, median fights, `percentile_cont(0.5)` entry level), `REFRESH MATERIALIZED VIEW CONCURRENTLY` with a unique index.
 - **Balance simulator** (`tools.BalanceSimulator`): runs thousands of seeded headless battles with the real `BattleEngine` for each creep/boss × player level × build (Str/Dex/Mind/Arcane presets).
   - It reports win rate, mean turns and HP lost, and checks them against `balance.json` targets: creeps at their region's expected level ≥ 95 % win, average ≤ 4 turns; bosses on the first try 40–70 %.
-- **Playtest bot** (`tools.PlaytestBot`): logs in as a bot guest over the **real** REST + WebSocket API and plays the critical path. It runs **only against dev mode**: Turnstile test keys, normal rate limits, no bypass (V-34).
-  - Within a map: BFS on the collision grid. Between areas: Dijkstra. Dialogue: a per-region route script. Battle policy: weakness skill > Strike; draught when HP < 40 %.
+- **Playtest bot** (`tools.PlaytestBot`): starts a guest run over the **real REST API** (the generated contract) and plays the critical path. It runs **only against the `dev` profile**: Turnstile test keys, normal rate limits, no bypass (V-34).
+  - Within a map: BFS on the collision grid. It sends world events (§4.11) along the path, paced so the speed check passes; there is no speed-check bypass. Between areas: Dijkstra. Dialogue: a per-region route script. Battle policy: weakness skill > Strike; draught when HP < 40 %.
   - It estimates human time as `steps × 0.125 s + battle turns × 2.5 s + dialogue words ÷ 200 wpm`, and fails if any region exceeds its §10 budget by more than 15 %.
 
-### 4.15 Ops: Docker, CI, deploy
-- **Docker Compose:**
-  - `postgres:16`;
-  - `migrate` (Flyway, one-shot, as `shardbound_owner`);
-  - `backend` (multi-stage Maven → `eclipse-temurin:21-jre`, runs as `shardbound_app`);
-  - `nginx` (serves the frontend build, proxies `/api` and `/ws` with upgrade headers, TLS in production);
-  - `mailpit` (`dev` profile only).
-- **GitHub Actions** (`ci.yml`), on every push and PR:
-  - backend `mvn verify` with a Postgres service (Flyway migrate + ITs), using the Turnstile test keys;
-  - frontend `npm ci`, `tsc --noEmit`, `vitest run`, `vite build`;
-  - bundle-size check (from V3);
-  - Playwright e2e + budgets against Compose (from V3);
-  - Docker image build;
-  - prod-bundle grep for dev tools.
-- **Deploy (V12):** the host is chosen at V12 and must support WebSockets. Checklist: domain + TLS, SPF/DKIM/DMARC, env secrets, DB backups, log retention 14 days, Turnstile production keys.
+### 4.15 Ops: local dev, CI, release, deploy
+**Local development**
+- Root `docker-compose.yml`: `postgres:17` (healthcheck `pg_isready`, named volume, bound to `127.0.0.1:5432`) and `mailpit` (pinned, `127.0.0.1:1025` SMTP / `127.0.0.1:8025` UI). Its default credentials are localhost-only and not secret.
+- One command at the repo root: `npm run dev` starts the compose services, the API on :8080 (`dev` profile; Spring Boot's Docker Compose support wires the datasource) and Vite on :5173 (proxying `/api`).
+
+**CI (GitHub Actions, `ci.yml`, on every push and PR)**
+- Backend: Temurin 25, `./mvnw -B verify`: unit tests, ArchUnit, content schema tests and **Testcontainers** integration tests (`postgres:17-alpine`), with the Turnstile test keys.
+- **OpenAPI drift check:** `OpenApiExportIT` writes `api/openapi.json`; CI fails if `git diff --exit-code api/openapi.json` shows a change.
+- **Breaking-change check** (from V2c): `oasdiff` compares the contract with the previous release (§4.19).
+- Frontend: Node 24, `npm ci`, typecheck, Vitest, build.
+- Bundle-size and asset checks, Playwright e2e (desktop + mobile) and the mobile performance budget (from V3).
+- Prod-bundle grep for dev tools.
+- **gitleaks** secret scanning; **PR-title lint** (Conventional Commits; PRs are squash-merged).
+- **Dependabot:** maven, npm (frontend and root), github-actions, docker; weekly, grouped.
+- **release-please:** semver tags and `CHANGELOG.md`, starting at `0.1.0`, with backend and frontend versions kept in step.
+
+**Deploy (V2c)**
+- The backend ships as a container image (multi-stage Maven build on a Java 25 JRE base, runs as a non-root user and connects as `shardbound_app`).
+- Backend region Mumbai or Singapore, close to the audience; the provider is chosen at deploy time.
+- The frontend is served from a CDN that **proxies `/api`** to the backend, so the browser sees one origin and the session cookie stays first-party.
+- Managed PostgreSQL with **point-in-time recovery or daily backups**, plus a **tested restore** (a restore drill is part of the ALPHA checklist).
+- **Preview deployments** per PR.
+- Checklist: domain + TLS, env secrets, log retention 14 days, Turnstile production keys, Google OAuth production client, Sentry alerts; SPF/DKIM/DMARC before email goes live (V2b).
+
+### 4.16 Mobile and PWA
+- **Mobile-first controls:** an on-screen touch D-pad (or drag-to-move stick) for movement; **tap to interact** with the faced or tapped object; keyboard and gamepad stay available.
+- **Layout:** landscape-first, responsive HUD that scales from phone to desktop; safe-area insets respected.
+- **Battle:** every touch target (menu buttons, skills, bag items) is at least **48 × 48 px**.
+- **Installable PWA (V2c):** web app manifest and a service worker.
+  - The app shell (HTML, JS, CSS, fonts) is precached.
+  - Region atlases and audio are versioned by content hash and served **cache-first**.
+  - **`/api` is never cached** by the service worker.
+
+### 4.17 Observability (V2c)
+- **Sentry** in the frontend and backend for errors and releases. No PII: no emails, no display names, no IP addresses; user context is an opaque account id at most, and request bodies are not sent.
+- **Structured JSON logs** in production (one line per event, with a request id).
+- **Actuator:** `health` (liveness/readiness, including the database) from P0, and metrics from V2c. Actuator endpoints are not exposed publicly beyond health.
+
+### 4.18 Privacy (V2a)
+- **Privacy policy** (`/privacy`) and **terms** (`/terms`), versioned in the frontend. The policy lists exactly what is stored: account identifiers (Google subject, email when given), display name, hashed password (V2b), saves and active runs, settings, anonymous telemetry, error reports without PII, and server logs kept 14 days.
+- **Data export:** `GET /api/account/export` returns the player's data as one JSON document (account, settings, saves, achievements, endings).
+- **Account deletion:** `POST /api/account/delete` after re-authentication; anonymises leaderboard rows (§4.10).
+- India's DPDP Act and the GDPR are the reference for these rights.
+
+### 4.19 Version skew (V2c)
+PWA caches mean old clients meet new servers.
+- Every API response carries `X-API-Version`; every request carries `X-Client-Version`.
+- When the client sees a newer incompatible API version, it shows **"Update available — reload"**.
+- The backend stays compatible with the previous frontend release for one release.
+- CI runs `oasdiff` against the previous release's `api/openapi.json` and fails on breaking changes that are not announced in the release notes.
 
 ---
 
-## 5. Data structures (v2 additions to spec §5)
+## 5. Design notes: data structures
+
+The structures below were chosen for the jobs they do. They are design notes, not constraints.
 
 | Where | Structure | Why | Complexity |
 |---|---|---|---|
-| Fast travel, quest next hop, bot routing | `Graph.dijkstra` ✍ with `PriorityQueue` (lazy deletion) + `HashMap` dist/parent | non-negative weighted shortest paths | O((V+E) log V) |
-| Attribute curves, soft caps | `Curve` ✍ = `TreeMap<Integer,Double>`, `floorEntry`/`ceilingEntry` + linear interpolation | sorted breakpoints, O(log n) lookup | O(log n) |
-| Login and movement rate limits | `SlidingWindowRateLimiter` ✍ = `ConcurrentHashMap<String, ArrayDeque<Long>>` (timestamps) | exact sliding window, drop expired from the head | O(1) amortised |
+| Fast travel, quest next hop, bot routing | `Graph.dijkstra` with `PriorityQueue` (lazy deletion) + `HashMap` dist/parent | non-negative weighted shortest paths | O((V+E) log V) |
+| Attribute curves, soft caps | `Curve` = `TreeMap<Integer,Double>`, `floorEntry`/`ceilingEntry` + linear interpolation | sorted breakpoints | O(log n) |
+| Login rate limits | `SlidingWindowRateLimiter` = `ConcurrentHashMap<String, ArrayDeque<Long>>` (timestamps) | exact sliding window, drop expired from the head | O(1) amortised |
 | Collision | `CollisionGrid` = `BitSet` (index `y·w + x`) | 1 bit per tile, O(1) test | O(1) |
-| Creep aggro lookup | `SpatialHash` = `HashMap<Long, List<CreepSpawn>>` keyed by packed cell (`cx << 32 \| cy`) | only nearby creeps checked per step | O(k) |
-| In-map BFS (bot, map validator) | `Graph.bfs` ✍ over grid neighbours | reuses the student BFS | O(W·H) |
+| World-event reachability + speed check, map validator, bot | `Graph.bfs` / grid BFS over walkable neighbours | fewest-tile path from the last validated position | O(W·H) worst case |
+| Creep aggro lookup | `SpatialHash` = `HashMap<Long, List<CreepSpawn>>` keyed by packed cell (`cx << 32 \| cy`) | only nearby creeps checked per event | O(k) |
+| Live runs | Caffeine cache (bounded, expire after access) | evicts idle runs without a hand-written map and cleanup thread | O(1) |
 | Statuses | `EnumMap<Status,Integer>` turns left | fixed keys, array-backed | O(1) |
 | Attributes | `EnumMap<Attribute,Integer>` | 6 fixed keys | O(1) |
-| Save migrations | `TreeMap<Integer, Migration>` + `tailMap(saved, false)` | apply in version order | O(m) |
+| Save upgrades | `SortedMap<Integer, SaveUpgrade>` (`TreeMap`) + `tailMap(saved, false)` | apply in version order | O(m) |
 | Telemetry buffer | `LinkedBlockingQueue<TelemetryEvent>` | producer/consumer across threads | O(1) |
 | Email outbox polling | SQL `FOR UPDATE SKIP LOCKED` | safe concurrent work queue in the DB | — |
 | Bestiary / seen creeps / cutscenes seen | `HashSet<String>` | O(1) contains | O(1) |
@@ -471,37 +579,39 @@ They are read by `AppConfig` from env vars, falling back to `config/security.pro
 
 ---
 
-## 6. Schema changes (Flyway, hand-written SQL)
+## 6. Schema (Flyway, hand-written SQL, player data only)
 
-| Migration | Tables / objects |
-|---|---|
-| `V1__baseline.sql` | all v1 tables, triggers, function, view, indexes (= today's 01–03) |
-| `V2__accounts.sql` (V2a) | **account** (replaces `player`; `player_id` kept as `account_id`), **auth_session**, **login_attempt** (audit), **account_setting**, roles + grants |
-| `V3__email_tokens.sql` (V2b) | ENUM **auth_purpose**, **auth_token**, ENUM **outbox_status**, **email_outbox** |
-| `V4__world.sql` (V3) | **region**, **area** (map key, music, region), **area_edge** (from, to, weight, gate_flag), **map_object** (type, x, y, props JSONB), **area_collision** (width, height, bits BYTEA), **lantern**, **dialogue**, **dialogue_node**, **dialogue_choice** (+ `dialogue_choice_condition` / `_effect`, same shape as v1) |
-| `V5__battle.sql` (V4) | ENUM **element**, **creature_family**, **family_element** (multiplier ENUM W/N/R/I), ENUM **status**, **family_status_immunity**, **creep_template**, **creep_skill**, **skill** |
-| `V6__progression.sql` (V5) | **curve_point** (curve, x, y), ALTER **save_slot** (+ shards, attributes via **save_attribute**, last_lantern, area_id, x, y, facing, fp, draught_charges), **save_lost_shards**, **save_defeated_creep**, **save_discovered_lantern** |
-| `V7__gear.sql` (V6) | ALTER **weapon** (+ base_attack), **weapon_scaling** (item, attribute, grade ENUM), **upgrade_cost**, **save_weapon** (item, upgrade), **save_skill_loadout**, **save_quick_slot** |
-| `V8__bosses_cutscenes.sql` (V7) | **boss**, **boss_phase**, **boss_move** (weight, telegraph text, power, element, status), **cutscene**, **cutscene_step**, **save_defeated_boss**, **save_cutscene_seen** |
-| `V9__journal.sql` (V8) | **quest_step** (objective, marker area/object), **save_quest_step**, **save_bestiary** (template, seen_at, revealed), **save_dialogue_memory** |
-| `V10__saves_v2.sql` (V9) | ALTER **save_slot** (+ save_version NOT NULL DEFAULT 2, run_id UUID); drops `current_node` after migration |
-| `V11__telemetry.sql` (V10) | **telemetry_event** + BRIN(at) + B-tree(run_id, at), views `v_deaths_by_area`, `v_time_per_area`, `v_fights_per_level`, materialized view **mv_balance_summary** + unique index, role `shardbound_telemetry_ro` |
+| Migration | Phase | Tables / objects |
+|---|---|---|
+| `V1__baseline.sql` | P0 | **player** (`player_id`, `username` UNIQUE, `created_at`), **save_slot** (`save_id`, `player_id` FK CASCADE, `slot_no` CHECK 0–3, `save_version`, `level`, `area_id`, `playtime_seconds`, `data` JSONB CHECK object, `created_at`, `updated_at`, UNIQUE (`player_id`, `slot_no`)), **player_achievement**, **player_ending**, view **v_leaderboard**, **active_run** (`run_id` UUID PK, `player_id` FK, `session_token_hash` UNIQUE, `version` BIGINT, `data` JSONB, `updated_at`) |
+| `V2__accounts.sql` | V2a | **account** (replaces `player`; `player_id` kept as `account_id`), **account_identity** (provider, subject, UNIQUE), **auth_session**, **login_attempt** (audit), **account_setting**, roles + grants |
+| `V3__email_tokens.sql` | V2b | ENUM **auth_purpose**, **auth_token**, ENUM **outbox_status**, **email_outbox** |
+| `V4__feedback.sql` | ALPHA | **feedback** (in-game feedback button) |
+| `V5__telemetry.sql` | V10 | **telemetry_event** + BRIN(at) + B-tree(run_id, at), views `v_deaths_by_area`, `v_time_per_area`, `v_fights_per_level`, materialized view **mv_balance_summary** + unique index, role `shardbound_telemetry_ro` |
 
-All player → content FKs stay `ON DELETE RESTRICT` (D1). Every new `save_*` table cascades from `save_slot`. 3NF is kept: derived stats are never stored (D28 extends to attributes: max HP/FP/def come from curves).
+Merged migrations are never edited; every change is a new migration. Indexes on `level`, `area_id` or `playtime_seconds` are added when a query needs them.
+
+**Why JSONB documents for saves and runs.** A save is read and written as a whole and never queried field by field, so it is a document. One JSONB column replaces a dozen child tables, a save is one UPSERT instead of a multi-table delete-and-insert, and the format evolves through versioned upgrades (§4.12) instead of schema migrations. The few fields the slot list and leaderboard need are real columns written in the same statement. Content no longer lives in the database (P-04), so there are no player → content foreign keys; unknown content ids are caught when a save is loaded (`SAVE_INCOMPATIBLE`).
 
 ---
 
-## 7. API changes
+## 7. API
+
+The contract is `api/openapi.json`, generated by springdoc from the controllers and committed. TypeScript types are generated from it (§8).
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | /api/auth/signup · /login · /logout · /guest · /verify · /verify/resend · /forgot · /reset | §4.10. The session cookie replaces `X-Session` |
-| GET | /api/auth/me | account, verified flag, guest flag, settings |
-| POST | /api/account/password · /email · /upgrade · /delete | password re-check |
+| POST | /api/auth/guest · /logout | V2a. The session cookie replaces `X-Session` |
+| GET | /oauth2/authorization/google · /login/oauth2/code/google | V2a, Google OIDC (Spring Security) |
+| POST | /api/auth/signup · /login · /verify · /verify/resend · /forgot · /reset | V2b |
+| GET | /api/auth/me | account, verified flag, guest flag, linked identities, settings |
+| POST | /api/account/upgrade · /delete | upgrade a guest; delete after re-authentication (V2a) |
+| POST | /api/account/password · /email | V2b, password re-check |
+| GET | /api/account/export | JSON data export (V2a, §4.18) |
 | GET/PUT | /api/account/settings | §4.9 |
 | GET | /api/game | SessionView (§8) |
 | POST | /api/game/new · /api/game/continue | new run (new `run_id`) / resume autosave |
-| WS | /ws/world | §4.11 messages: move, interact, hello → ack, correct, snapshot, mode, event |
+| POST | /api/world/exit · /interact · /encounter | §4.11; body carries the client position → SessionView |
 | POST | /api/battle/action | `{kind: STRIKE \| GUARD \| SKILL \| ITEM \| FLEE, slot?, itemId?, target?}` → BattleView |
 | POST | /api/dialogue/choose | `{choiceId}` → DialogueView or WorldView |
 | POST | /api/cutscene/skip | |
@@ -509,17 +619,29 @@ All player → content FKs stay `ON DELETE RESTRICT` (D1). Every new `save_*` ta
 | POST | /api/smith/upgrade | `{itemId}` |
 | POST | /api/bag/use · /quickslot | |
 | GET | /api/map · /api/journal · /api/bestiary | |
-| GET/POST/DELETE | /api/saves… | v1 routes, slots 1–3 only at a Lantern |
+| GET/POST/DELETE | /api/saves… | slots 1–3 only at a Lantern |
 | GET | /api/leaderboard | verified, non-guest accounts only |
-| GET/POST | /api/dev/chapter-select | **dev only** (§4.13) |
+| POST | /api/feedback | in-game feedback (ALPHA) |
+| GET/POST | /api/dev/chapter-select | **`dev` profile only** (§4.13) |
+| GET | /actuator/health | liveness/readiness |
 
-Errors keep `{error, message}` (+ `field` for validation). New codes: 401 `NOT_AUTHENTICATED`, 403 `ORIGIN_REJECTED`, 429 `RATE_LIMITED`, 423 `ACCOUNT_LOCKED` (shown generically).
+**Errors** are RFC 9457 `ProblemDetail` (`application/problem+json`) with a stable `code` property, mapped in one `@RestControllerAdvice`:
+
+| HTTP | `code` |
+|---|---|
+| 400 | `VALIDATION_FAILED` (with field errors), `INVALID_CHOICE` |
+| 401 | `NOT_AUTHENTICATED` |
+| 403 | `LOCKED_CHOICE`, `ORIGIN_REJECTED`, `CSRF_REJECTED` |
+| 404 | `SAVE_NOT_FOUND` |
+| 409 | `ACTION_NOT_ALLOWED`, `RUN_CONFLICT`, `SAVE_INCOMPATIBLE`, `WORLD_EVENT_REJECTED` |
+| 423 | `ACCOUNT_LOCKED` (shown generically) |
+| 429 | `RATE_LIMITED` |
 
 ---
 
 ## 8. GameView v2
 
-The REST `GET /api/game` returns a `SessionView`; the WebSocket pushes `WorldView` snapshots and deltas.
+`GET /api/game` and every action return a `SessionView`. The Java view records in `view/` are the source; the TypeScript below shows the shape of the types **generated** from `api/openapi.json` by openapi-typescript (`frontend/src/api/schema.gen.ts`, gitignored, regenerated by `npm run gen:api` before dev, build, typecheck and test). Components import aliases from `src/api/types.ts`; there are no hand-written view types.
 
 ```ts
 type Mode = "WORLD" | "BATTLE" | "DIALOGUE" | "CUTSCENE" | "LANTERN" | "ENDED";
@@ -528,7 +650,8 @@ interface SessionView { runId: string; mode: Mode; hud: HudView; toasts: ToastVi
   lantern?: LanternView; ending?: EndingView; }
 interface HudView { hp: number; maxHp: number; fp: number; maxFp: number; level: number; shards: number;
   quickSlots: (QuickSlot | null)[]; bossBar?: { name: string; hp: number; maxHp: number; phase: 1 | 2 } }
-interface WorldView { areaId: string; regionId: string; mapKey: string; player: { x: number; y: number; facing: Dir };
+interface WorldView { areaId: string; regionId: string; mapKey: string;
+  player: { x: number; y: number; facing: Dir };            // last validated position, pixels
   creeps: { id: string; template: string; sprite: string; level: number; x: number; y: number; aggro: number }[];
   npcs: { id: string; sprite: string; x: number; y: number; marker?: "QUEST" | "SMITH" }[];
   lanterns: { id: string; x: number; y: number; lit: boolean }[]; lostShards?: { x: number; y: number; amount: number };
@@ -541,23 +664,26 @@ interface Fighter { name: string; level: number; hp: number; maxHp: number; hpPc
 interface DialogueView { speaker: string; portrait: string; mood: Mood; text: string;
   choices: { id: number; label: string; locked: boolean; lockReason?: string }[] }
 ```
-Menus (LevelUpView with server preview, UpgradeView, MapView with Dijkstra route, JournalView, BestiaryView) are separate GET responses. **Vitest** covers `store/mappers.ts` (view → store events) and the event store itself.
+Menus (LevelUpView with server preview, UpgradeView, MapView with Dijkstra route, JournalView, BestiaryView) are separate GET responses. A springdoc `ModelConverter` marks record properties required unless they are `@Nullable` (JSpecify), so optional fields above are exactly the nullable ones. **Vitest** covers `store/mappers.ts` (view → store events), the event store and the API client's error mapping.
 
 ---
 
 ## 9. Content formats
 
+All content is JSON (plus Tiled `.tmj` maps) under `content/`, packaged into the backend jar and loaded once at startup by `ContentLoader`. Any error stops startup. In the `dev` profile, `shardbound.content.dir` reads the files from disk instead.
+
+- **JSON Schemas** (draft 2020-12) live in `content/schema/`, one per file type: `balance`, `regions`, `items`, `creeps`, `bosses`, `skills`, `elements`, `statuses`, `world`, `quests`, `dialogue`, `cutscene`. Every content file names its schema in a `"$schema"` key. Validation errors point to the exact file and JSON location. `ContentSchemaTest` checks every real file passes and that broken fixtures fail with the right pointer.
 - **Maps** `content/maps/<area>.tmj` (Tiled JSON, 32×32, one tileset family):
   - layers `ground`, `decor` (client only), `collision` (any non-empty tile blocks);
   - an object layer `objects` with types `spawn_point{id}`, `exit{toArea,toSpawn}`, `creep_spawn{template,levelMin,levelMax,aggroRadius,patrol?}`, `npc{npcId,dialogue}`, `lantern{lanternId}`, `smith{npcId}`, `chest{item,qty,flag}`, `trigger{cutscene?,setFlag?,once}`.
-  - `MapImporter` stores the collision bits and objects in PostgreSQL. Map validation: every `spawn_point`, exit, Lantern and NPC must be reachable by BFS from the area's main spawn.
+  - Maps are loaded and validated at startup (no database). `MapValidator` checks the structure, that every referenced id exists, and that every `spawn_point`, exit, Lantern, NPC and trigger is reachable by BFS from the area's main spawn.
 - **regions.json:** `regions[{id,name,music}]`, `areas[{id,region,map,music?}]`, `edges[{from,to,weight,gateFlag?}]`.
 - **creeps.json:** `{id,name,family,sprite,baseHp,baseAtk,baseDef,baseSpd,skills[],statusChance?,status?,drops[{item,pct}]}`.
 - **bosses.json:** `{id,name,family,level,arena,introCutscene,phases[{phase2At?,line,family?,spdDelta?,moves[{skill,weight,telegraph?}]}],rewards}`.
 - **skills.json:** `{id,name,element,power,fpCost,scaling,target,status?,statusChance?,unlock}`.
-- **dialogue/<npc>.json:** `{id,npc,start,nodes[{id,speaker,portrait,mood,text,choices[{label,to|end,conditions[],effects[],hiddenWhenLocked?}]}]}` (v1 condition/effect rows, `grp` OR-groups).
+- **dialogue/<npc>.json:** `{id,npc,start,nodes[{id,speaker,portrait,mood,text,choices[{label,to|end,conditions[],effects[],hiddenWhenLocked?}]}]}` (v1 condition/effect shape, `grp` OR-groups).
 - **cutscenes/<id>.json:** `{id,skippable:true,steps[{say|move|camera|music|wait|fade}]}`.
-- **balance.json:** every constant from §4 (curves as point lists, formulas' coefficients, flee, status values, budget targets).
+- **balance.json:** every constant from §4 (curves as point lists, formulas' coefficients, flee, status values, walk speed and speed-check slack, budget targets).
 
 ---
 
@@ -625,60 +751,67 @@ The harsher case (dying mid-region with a full purse, or under-levelled) is cove
 4. Fonts: Cinzel and Cormorant Garamond (SIL OFL 1.1), self-hosted, licence files in `frontend/public/fonts/`.
 5. Every asset gets a row in CREDITS.md (file/folder, author, source URL, licence, changes made) **in the same commit** that adds it. CI fails if a file under `frontend/src/assets/` has no CREDITS row.
 6. No assets, names, fonts, UI layouts or text from Elden Ring or any other commercial game. The battle layout follows a common genre convention, drawn with original UI.
+7. Licences for the repository itself (code vs story and art) are decided before ALPHA (P-25).
 
 ---
 
-## 12. Phase plan (each phase: playable, tests green, committed on `v2`)
+## 12. Phase plan (each phase: playable, tests green, one PR into `main`)
 
-| # | Phase | Acceptance criteria |
+| # | Phase | Acceptance (summary) |
 |---|---|---|
-| **V1** | Foundation | Your 5 v1 methods pass (`GraphTest`, `QuestManagerTest`, `SaveRepositoryIT`) · PostgreSQL installed · quick route plays to END_QUICK on PostgreSQL (`--auto-quick` against DB) · tag **`v1-semester`** · branch **`v2`** created · Flyway `V1__baseline` migrates an empty DB · env-var config · frontend ported to TypeScript (prologue still playable) · Vitest + CI (backend `mvn verify` with Postgres service, frontend typecheck/test/build) green |
-| **V2a** | Accounts I | sign-up/login/logout, Argon2id, cookie sessions (hash stored), guest mode + upgrade, configurable rate limits + lockout (`SlidingWindowRateLimiter` ✍ tests; no limit hardcoded), Turnstile with official test keys in dev/CI, Origin check, security headers, DB roles (app cannot DDL), Docker Compose (postgres, migrate, backend, nginx) runs the prologue behind login |
-| **V2b** | Accounts II | email verification (24 h), resend cooldown, forgot/reset (30 min, no enumeration, sessions revoked), change email, delete account (anonymised leaderboard), transactional outbox + worker with backoff, Mailpit in Compose, templates HTML+text, Turnstile on sign-up/forgot/guest, privacy + terms pages, cleanup job; ITs cover token single use and outbox atomicity |
-| **V3** | World | Phaser lazy-loaded, Tiled import + map validator, WS movement (handshake cookie + Origin, size/rate limits, shared lock, reconnect snapshot), Eldmere's 4 areas walkable, NPC dialogue (prologue converted), merchant secret ending reachable; **CI bundle-size budget + Playwright e2e start here** |
-| **V4** | Battles v2 | battle scene layout, ATTACK/SKILLS/BAG/FLEE, elements + chart, statuses, 4-slot skills, visible creeps with aggro, Eldmere creeps fightable; `DamageCalculatorTest` v2 (fixed + seeded RNG) |
-| **V5** | Progression | Shards, Lanterns (rest/respawn/autosave), attributes + `Curve` ✍ tests, level-up with preview, Lost Shards; first level-up after fight 3 verified by a test |
-| **V6** | Gear | upgrades +0..+10 at Smiths, scaling grades, materials, bag + quick slots, AR shown in menus |
-| **V7** | Bosses | phases, telegraphs, Guard, intro cutscenes (skippable, not replayed), "FOE VANQUISHED", boss bar; Eldmere + Whispering Wood complete with both bosses |
-| **V8** | Navigation | map screen, `Graph.dijkstra` ✍ fast travel, quest steps + markers + next hop, journal, bestiary, NPC portrait questlines |
-| **V9** | Saves v2 | save_version + `SaveMigrator`, v1→v2 migration tested with v1 fixtures, 3 slots + autosave, dev-only chapter select (absent from prod bundle, 404 outside dev) |
-| **V10** | Telemetry & tools | recorder + opt-out, BRIN + B-tree indexes, views with window functions, materialized view, balance simulator report, **simulator shows every boss is beatable (≥ 40 % win rate) at target level − 2 with the weapon one upgrade lower**, `progression.mjs` reads `balance.json` and its scenarios A and B still meet §10.2, playtest bot (dev mode) plays Eldmere + Wood within budget |
-| **V11a** | Hollow Deep | 5 areas, 18 fights, 2 bosses, Sealed Vault side chain; **bot budget check ≤ 22 min (+15 %)**, simulator targets met |
-| **V11b** | Valdren City | 5 areas, 14 fights, Ser Calder, tournament; **bot ≤ 18 min** |
-| **V11c** | Ashen Wastes | 5 areas, 18 fights, 2 bosses; **bot ≤ 22 min** |
-| **V11d** | Crystal Spire | 4 areas, 12 fights, Shard Sovereign, 6 endings via resolver; **bot ≤ 13 min and full critical path ≤ 120 min** |
-| **V12** | Polish & ship | audio, settings/accessibility (§4.9), load budgets met in CI, host chosen (WebSockets), domain + TLS, **SPF/DKIM/DMARC**, prod Turnstile keys, backups, CREDITS complete, portfolio README with GIFs |
+| **P0** | Platform reset | Tag `v1-archive` on `main`. From a fresh clone with Docker running, `npm run dev` starts postgres, mailpit, API and Vite, and the prologue plays to the quick ending with save/load. Restarting the backend mid-run loses nothing (`ActiveRunIT` + manual restart). `mvnw verify` green (unit tests, ArchUnit, content schema tests, Testcontainers ITs, OpenAPI export). `npm run typecheck`, `npm test`, `npm run build` green with no hand-written view types. No content tables, no `ContentImporter`, no Javalin, no `db.properties`. CI config complete |
+| **V3** | World | Phaser lazy-loaded; Tiled maps loaded and validated at startup (BFS reachability). Free client movement; REST events (exit, interact, encounter) validated with BFS reachability **+ speed check** (path ≤ speed × elapsed × 1.25 + slack). Eldmere's 4 areas walkable, NPC dialogue, merchant ending reachable. **Touch D-pad + tap to interact, landscape responsive HUD.** **Mobile performance budget** met (mid-range Android, 60 fps target / 30 fps floor, per-region memory budget). Playwright e2e (desktop + mobile) and bundle budgets in CI |
+| **V4** | Battles | Battle layout, ATTACK/SKILLS/BAG/FLEE with touch targets ≥ 48 px, elements, statuses, 4 skill slots, visible creeps with aggro; Eldmere creeps fightable |
+| **V5** | Progression | Shards, Lanterns (rest, respawn, autosave), attributes and curves, level-up with preview, Lost Shards; first level-up after fight 3 |
+| **V7** | Bosses (Eldmere only) | Ashen Herald: phases, telegraphs, Guard, skippable intro, FOE VANQUISHED, boss bar; tuned for an unupgraded weapon |
+| **V2a** | Accounts + privacy | Guest + Google sign-in (OIDC), guest → Google upgrade, Spring Security sessions, CSRF, configurable rate limits, Turnstile, data export, account deletion, privacy policy + terms |
+| **V2c** | Observability, deploy, PWA, version skew | Sentry (frontend + backend), JSON logs, Actuator metrics + health. Container image; hosting (backend Mumbai/Singapore, frontend CDN proxying `/api`, managed Postgres with PITR or daily backups plus a tested restore). Preview deployments per PR. Installable PWA with asset caching. Version skew: `X-API-Version`, "Update available — reload", backend compatible with the previous frontend for one release (`oasdiff` check). Content id guard in CI: no id removed or renamed without a `SaveUpgrade` (P-28) |
+| **ALPHA** | Public alpha (Eldmere) | Deployed; Eldmere start → Ashen Herald on phone and desktop. In-game feedback button. Release `v0.x`. Launch checklist: ASVS L1 review, backup restore drill, Sentry alert, privacy page live, **licences chosen (code vs story/art)**, repo public |
+| **V6** | Gear | Smith upgrades +0..+10, scaling, materials, bag + quick slots |
+| **WW** | Whispering Wood (Alpha 2) | 5 areas, 15 fights, Thornmother with both phases; released as Alpha 2. Verified by manual playtests and the §10.2 progression table (expected level 9 at Thornmother); V10's bot re-checks the 18-minute budget later (P-27) |
+| **V8** | Navigation | Map, Dijkstra fast travel, quest markers + next hop, journal, bestiary |
+| **V2b** | Accounts II | Email + password sign-up, verification, forgot/reset, change email, transactional outbox + worker, cleanup job |
+| **V9** | Saves & slots | 3 slots + autosave UI, first real save upgrade, dev-only chapter select |
+| **V10** | Telemetry & tools | Anonymous telemetry + opt-out, SQL views, balance simulator (every boss ≥ 40 % at target − 2, §10.2), playtest bot over REST |
+| **V11a** | Hollow Deep | 5 areas, 18 fights, 2 bosses, Sealed Vault side chain; bot budget ≤ 22 min (+15 %), simulator targets met |
+| **V11b** | Valdren City | 5 areas, 14 fights, Ser Calder, tournament; bot ≤ 18 min |
+| **V11c** | Ashen Wastes | 5 areas, 18 fights, 2 bosses; bot ≤ 22 min |
+| **V11d** | Crystal Spire | 4 areas, 12 fights, Shard Sovereign, 6 endings via resolver; bot ≤ 13 min and full critical path ≤ 120 min |
+| **V12** | Polish & 1.0 | Audio, settings/accessibility (§4.9), load budgets, domain email (SPF/DKIM/DMARC), CREDITS, 1.0 |
+
+The earlier V1 (Foundation) phase is closed: its useful parts (Flyway baseline, env config, Dijkstra, TypeScript port, Vitest, CI) are carried into P0.
+
+Order after ALPHA (P-27): V6 → **WW** (Alpha 2) → V8 → V2b → V9 → V10 → V11a → V11b → V11c → V11d → V12.
 
 ---
 
-## 13. Decisions recorded, open question, risks
+## 13. Decisions recorded, risks
 
-**Your answers (recorded, no longer open):**
+**Recorded (no longer open):**
 1. Names: Lanterns / FOE VANQUISHED / Lost Shards.
-2. v1 work committed before v2 (done).
-3. Your v1 methods and the new ✍ methods are written during V1 (and the phase that needs them).
-4. Art: CC0 Kenney or 0x72, one pack family and one tile size, no AI art.
-5. Audio: CC0/CC-BY, listed in CREDITS.md.
-6. Host chosen at V12 (must support WebSockets); a domain is bought earlier (needed for real email delivery: SPF/DKIM/DMARC).
-7. Grid-locked movement.
-8. Flyway and Bouncy Castle allowed.
-9. Email-based accounts as in §4.10.
-10. 6 endings; the merchant ending is the secret early one.
-11. Telemetry: anonymous run ids plus an opt-out setting.
-
-12. Eclipse Angus Mail approved for SMTP (V-24).
-13. Rate limits are loose per IP (shared networks) and configurable; Turnstile is the main defence; official test keys in dev/CI; no production bypass (V-33, V-34).
-
-**Still open:** your **deadline / viva date** (it decides which phases must land before submission).
+2. v1 is archived as tag `v1-archive` on `main`, without a PostgreSQL run (P-26).
+3. Art: CC0 Kenney or 0x72, one pack family and one tile size, no AI art.
+4. Audio: CC0/CC-BY, listed in CREDITS.md.
+5. Hosting: backend in Mumbai/Singapore, CDN frontend proxying `/api`, managed Postgres; the provider is chosen at deploy time (P-16). A domain is bought before V2b (SPF/DKIM/DMARC).
+6. Free client movement with server-validated REST events; no WebSocket (P-06, P-19).
+7. Spring Boot 4.1 on Java 25, JdbcClient + hand-written SQL, Flyway via Spring (P-02, P-03).
+8. Accounts: guest + Google at alpha, email + password in V2b (P-11).
+9. 6 endings; the merchant ending is the secret early one.
+10. Telemetry: anonymous run ids plus an opt-out setting.
+11. Eclipse Angus Mail (through Spring's mail support) for SMTP (V-24).
+12. Rate limits are loose per IP (shared networks) and configurable; Turnstile is the main defence; official test keys in dev/CI; no production bypass (V-33, V-34).
+13. The deadline question is closed: there is no external deadline; phases ship in the §12 order (P-01, P-17).
 
 **Risks**
 | Risk | Mitigation |
 |---|---|
-| Scope is months of solo work | playable after every phase; cut V11/V12 side content first |
-| Viva: explaining code you didn't write | 8 student-implemented methods, ALGORITHMS/SYLLABUS updated each phase, viva questions after each phase |
+| Scope is months of solo work | playable after every phase; public alpha after the Eldmere slice; cut V11/V12 side content first |
+| Migration churn in the early phases | merged migrations are never edited; saves are JSONB documents, so most format changes are save upgrades, not schema changes; Testcontainers ITs run every migration from empty |
+| Cheating under free movement | the server owns every outcome; world events pass reachability, speed and range checks (§4.11); rewards and encounters are decided server-side |
+| Mobile performance | mobile budget enforced in CI with CPU throttling from V3, plus a real-device check per region; one atlas per region; lazy Phaser chunk |
+| Managed-stack cost (hosting, managed Postgres, CDN, Sentry) | small instance sizes and free tiers for the alpha; costs reviewed at V2c and before 1.0 |
 | Art pipeline (one CC0 family must cover 6 regions, portraits, bosses) | choose the pack in V3 after checking coverage; recolour within the licence |
-| WebSocket latency on a remote host | client-side prediction + acks; the bot measures it |
 | Email deliverability | domain + SPF/DKIM/DMARC; outbox retries |
-| Public deploy security | §4.10 controls, dependency updates in CI, least-privilege DB role |
+| Public deploy security | §4.10 controls, OWASP ASVS L1 review before ALPHA, Dependabot, gitleaks, least-privilege DB role |
 | Load budgets vs Phaser size | lazy chunk, atlases, CI budgets from V3 |
 | Trade-dress similarity to Souls games | original names/UI/assets only (§11) |

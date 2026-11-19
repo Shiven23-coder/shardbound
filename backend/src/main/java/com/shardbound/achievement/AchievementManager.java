@@ -8,7 +8,7 @@ import com.shardbound.event.GameListener;
 import com.shardbound.exception.ContentValidationException;
 import com.shardbound.item.Weapon;
 import com.shardbound.model.Tier;
-import com.shardbound.persistence.MetaRepository;
+import com.shardbound.engine.port.MetaStore;
 import com.shardbound.story.StoryGraph;
 
 import java.util.ArrayList;
@@ -28,11 +28,9 @@ import java.util.Set;
  * shared by every manager: on each event only the rules for that event type
  * are checked, O(rules for that type) instead of O(all rules).
  *
- * <p>{@code ALL_ENDINGS} has no Java rule: a database trigger grants it.
  */
 public class AchievementManager implements GameListener {
 
-    public static final String DB_OWNED = "ALL_ENDINGS";
     public static final int SPEEDRUN_SECONDS = 360;
 
     private static final EnumMap<EventType, List<AchievementRule>> RULES = buildRules();
@@ -40,10 +38,10 @@ public class AchievementManager implements GameListener {
     private final int playerId;
     private final Set<String> unlocked;
     private final Map<String, Achievement> catalog;
-    private final MetaRepository meta;        // null in offline (JSON-only) console mode
+    private final MetaStore meta;             // null when nothing is persisted (tests, tools)
 
     public AchievementManager(int playerId, Set<String> alreadyUnlocked, Map<String, Achievement> catalog,
-                              MetaRepository meta) {
+                              MetaStore meta) {
         this.playerId = playerId;
         this.unlocked = new HashSet<>(alreadyUnlocked);
         this.catalog = catalog;
@@ -101,7 +99,9 @@ public class AchievementManager implements GameListener {
                 AchievementRule.of("CRYSTAL_EDGE", EventType.ITEM_GAINED,
                         (e, s) -> "aetherion".equals(e.text("itemId"))),
                 AchievementRule.of("SPEEDRUNNER", EventType.ENDING_REACHED,
-                        (e, s) -> e.number("seconds", Integer.MAX_VALUE) < SPEEDRUN_SECONDS));
+                        (e, s) -> e.number("seconds", Integer.MAX_VALUE) < SPEEDRUN_SECONDS),
+                AchievementRule.of("ALL_ENDINGS", EventType.ENDING_REACHED,
+                        (e, s) -> e.number("endingsFound", 0) >= e.number("endingsTotal", Integer.MAX_VALUE)));
 
         EnumMap<EventType, List<AchievementRule>> byType = new EnumMap<>(EventType.class);
         for (AchievementRule rule : all) {
@@ -126,12 +126,11 @@ public class AchievementManager implements GameListener {
     }
 
     /**
-     * Every achievement in content except ALL_ENDINGS must have a Java rule,
-     * and every rule must have content (spec §6.8). O(a).
+     * Every achievement in content must have a Java rule, and every rule must
+     * have content (spec §6.8). O(a).
      */
     public static void checkRulesMatch(Set<String> contentIds) {
         Set<String> expected = new HashSet<>(contentIds);
-        expected.remove(DB_OWNED);
         Set<String> rules = ruleIds();
         if (!expected.equals(rules)) {
             throw new ContentValidationException("Achievements in content " + expected

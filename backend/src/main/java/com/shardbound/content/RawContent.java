@@ -3,14 +3,10 @@ package com.shardbound.content;
 import java.util.List;
 
 /**
- * Story content as plain rows, exactly as stored in the database or written
- * in content/*.json, before any Java objects are built from it.
- *
- * <p>Both loading paths produce this shape: {@link JsonContentReader} (files)
- * and {@code persistence.ContentRepository} (database). {@link ContentAssembler}
- * then builds the immutable {@link GameContent}, and {@code StoryValidator}
- * checks it. Keeping one shape means the validator and the importer never
- * care where the content came from.
+ * Story content as plain rows, exactly as written in content/*.json, before
+ * any Java objects are built from it. {@link JsonContentReader} produces it,
+ * {@code StoryValidator} checks it and {@link ContentAssembler} builds the
+ * immutable {@link GameContent} from it.
  */
 public record RawContent(
         List<FactionDef> factions,

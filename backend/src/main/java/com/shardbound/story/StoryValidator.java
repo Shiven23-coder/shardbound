@@ -22,7 +22,7 @@ import java.util.TreeSet;
  *
  * <p>Reachability checks run on the STRUCTURAL graph (D10): choice edges plus
  * COMBAT → win/lose/flee and RESOLVER → resolver endings. Conditions are
- * ignored here; ConsoleRunner --auto-quick tests the quick route with real
+ * ignored here; QuickRouteApiIT plays the quick route with real
  * conditions.
  *
  * <p>Errors block the import; warnings are printed only.

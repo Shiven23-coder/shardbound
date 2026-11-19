@@ -1,0 +1,35 @@
+# Local development services (P-09). `npm run dev` at the repo root starts
+# them through Spring Boot's Docker Compose support; `docker compose up -d`
+# starts them on their own.
+#
+# Ports are bound to 127.0.0.1 only. The default password below is a local
+# development value for a throwaway container, not a secret; override it with
+# POSTGRES_PASSWORD in a gitignored .env if you like.
+name: shardbound
+
+services:
+  postgres:
+    image: postgres:17.12-alpine
+    environment:
+      POSTGRES_DB: shardbound
+      POSTGRES_USER: shardbound
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shardbound-dev}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shardbound -d shardbound"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  # Catches every email the app sends in development; web UI on http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.34.0
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+
+volumes:
+  postgres-data:
