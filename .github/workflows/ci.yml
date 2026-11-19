@@ -54,6 +54,12 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  e2e:
+    name: E2E
+    uses: ./.github/workflows/e2e.yml
+    with:
+      resume-cycles: '5'
+
   secrets:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest

@@ -7,7 +7,7 @@ Why the specs say what they say. `docs/V2_SPEC.md` is the source of truth for **
 - **D20–D32** came from the review of the v1 ER and class diagrams.
 - **I1–I12** are implementation choices made while building v1.
 - **V-01 … V-35** are the v2 design decisions.
-- **P-01 … P-28** are the platform reset (Phase P0) and its follow-ups: the project became a public game, and these entries win over anything older.
+- **P-01 … P-36** are the platform reset (Phase P0) and its follow-ups: the project became a public game, and these entries win over anything older.
 - Old entries are never deleted. Where a later decision changes an earlier one, the earlier entry says so ("Revised by" or "Superseded by").
 
 Format for each entry: **Problem** → **Decision** → **Why** → **Where in spec**.
@@ -497,7 +497,7 @@ Recorded with the v2 design (2026-11-18). The specification is `docs/V2_SPEC.md`
 
 ---
 
-## Platform reset decisions (P-01 … P-28)
+## Platform reset decisions (P-01 … P-36)
 
 Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfolio piece instead of a course project. These entries win over every older entry; superseded entries above say so. The specification is `docs/V2_SPEC.md`.
 
@@ -858,3 +858,27 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 **Why.** It moves the failure from a player's load screen to the pull request that caused it, the same way `oasdiff` guards the API.
 
 **Spec.** §4.12, §12 (V2c).
+
+---
+
+## P-30 — A session is dropped only when the server says the run is gone
+
+**Problem.** In the P0 browser test a reload once landed on the title screen although the run was intact. On a page load the client tried `GET /api/game` once and treated *any* failure as "stale session", so a reload while the API was restarting (a 500 from the dev proxy, a network error) silently threw the player out.
+
+**Decision.** The client discards its session only on a definite `404` with code `RUN_NOT_FOUND` (renamed from `SESSION_NOT_FOUND`). Network errors, 5xx and `RUN_CONFLICT` show **"Reconnecting…"** and retry `GET /api/game` with backoff 0.5 → 1 → 2 → 4 → 8 s (capped, ±20 % jitter) until the run resumes. The player can go back to the title without losing the session. A failed action shows the same overlay and refetches the game; retrying the action itself waits for idempotency keys (P-31, V4).
+
+**Why.** Deploys and restarts are normal for a hosted game, and P-22 already guarantees nothing is lost on the server. The client has to be as patient as the server is durable.
+
+**Spec.** §4.12, §7.
+
+---
+
+## P-36 — Predictable checks gate PRs; performance runs nightly
+
+**Problem.** CPU-throttled frame-time and heap measurements vary with runner load. As PR gates they would fail at random and teach everyone to re-run CI until it is green.
+
+**Decision.** PR gates are the predictable checks: unit, integration and e2e functional tests, bundle and asset budgets, the production-bundle grep, the CREDITS check. The mobile performance budget (P-24) runs **nightly and before releases**. The restart-and-reload test (`resume.spec`) runs **5 cycles on PRs** and **20 nightly**.
+
+**Why.** A gate must fail only when the code is wrong. Nightly runs still catch performance regressions within a day, and the release checklist blocks a release on them.
+
+**Spec.** §4.13, §4.15, §12.

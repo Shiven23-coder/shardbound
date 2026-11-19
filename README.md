@@ -38,6 +38,13 @@ npm test             # Vitest
 npm run build
 ```
 
+## End-to-end tests (Playwright)
+```powershell
+cd backend; .\mvnw.cmd -DskipTests package; cd ..
+npm run e2e                     # starts PostgreSQL (compose) and its own backend on :18080
+```
+`resume.spec` kills and restarts the backend while reloading the page; `RESUME_CYCLES` sets how many times (5 by default, 20 in the nightly run).
+
 ## Configuration
 Settings come from environment variables bound to Spring properties. [.env.example](.env.example) lists them. The dev profile needs none: the compose file's localhost-only credentials are wired in automatically and are not secret. Never commit real secrets.
 

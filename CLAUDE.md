@@ -7,7 +7,7 @@ Souls-like progression: rest at Lanterns, spend Shards on six attributes and wea
 It is a public, mobile-first web game and a flagship portfolio piece: guest and Google accounts, anonymous telemetry, a balance simulator and a playtest bot.
 
 **Specs:** `docs/V2_SPEC.md` is the source of truth. `docs/PROJECT_SPEC.md` is the historical v1 spec; its engine rules (conditions, ConditionGroup, effects, quest state machine, combat, endings) still apply where V2_SPEC does not override them. Read the sections for the current phase before writing code. If a spec and a request conflict, ask before acting.
-Decision history: `docs/DECISIONS.md` (P-01 … P-28 win over older entries).
+Decision history: `docs/DECISIONS.md` (P-01 … P-36 win over older entries).
 
 ## Tech
 - Backend: **Spring Boot 4.1** on **Java 25**; **JdbcClient** with hand-written SQL; **Flyway via Spring**; springdoc-openapi; JUnit 5, **Testcontainers**, ArchUnit.
@@ -49,6 +49,9 @@ cd backend; .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"   # API 
 
 # Frontend (types are generated from api/openapi.json first)
 cd frontend; npm run typecheck; npm test; npm run build
+
+# End-to-end (build the jar first: cd backend; .\mvnw.cmd -DskipTests package)
+npm run e2e                               # Playwright; own backend on :18080; RESUME_CYCLES=20 for the nightly depth
 
 # Dev services only
 docker compose up -d

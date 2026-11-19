@@ -1,0 +1,18 @@
+name: Nightly
+
+# Checks that are too slow or too noisy to gate every PR (P-36): the 20-cycle
+# restart-and-reload test now, the mobile performance budget from V3.
+# Also run by hand before each release.
+on:
+  schedule:
+    - cron: '30 21 * * *'   # 03:00 IST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  resume-20:
+    uses: ./.github/workflows/e2e.yml
+    with:
+      resume-cycles: '20'

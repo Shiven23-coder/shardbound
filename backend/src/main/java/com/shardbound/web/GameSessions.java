@@ -5,7 +5,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.shardbound.config.ShardboundProperties;
 import com.shardbound.engine.GameEngine;
 import com.shardbound.engine.GameState;
-import com.shardbound.exception.SessionNotFoundException;
+import com.shardbound.exception.RunNotFoundException;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
@@ -33,9 +33,9 @@ public class GameSessions {
                 .build();
     }
 
-    /** The game for this token, or {@link SessionNotFoundException} (404). */
+    /** The game for this token, or {@link RunNotFoundException} (404). */
     public GameState require(@Nullable String sessionId) {
-        return find(sessionId).orElseThrow(SessionNotFoundException::new);
+        return find(sessionId).orElseThrow(RunNotFoundException::new);
     }
 
     /** The game for this token if there is one. Unknown tokens are not cached. */

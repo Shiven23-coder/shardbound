@@ -6,9 +6,11 @@
   "type": "module",
   "scripts": {
     "postinstall": "npm --prefix frontend install",
-    "dev": "concurrently --kill-others-on-fail --names api,web --prefix-colors blue,magenta \"node scripts/dev-backend.mjs\" \"npm --prefix frontend run dev\""
+    "dev": "concurrently --kill-others-on-fail --names api,web --prefix-colors blue,magenta \"node scripts/dev-backend.mjs\" \"npm --prefix frontend run dev\"",
+    "e2e": "playwright test -c e2e"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "concurrently": "^10.0.7"
   },
   "engines": {

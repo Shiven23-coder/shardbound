@@ -65,7 +65,7 @@ class QuickRouteApiIT extends IntegrationTest {
     void errorsAreProblemDetailsWithAStableCode() {
         Response unknown = api.get("/api/game", "no-such-session");
         assertEquals(404, unknown.status());
-        assertEquals("SESSION_NOT_FOUND", unknown.code());
+        assertEquals("RUN_NOT_FOUND", unknown.code());
         assertEquals(404, unknown.body().get("status").asInt());
 
         Response invalid = api.post("/api/profiles", null, Map.of("username", ""));

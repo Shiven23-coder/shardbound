@@ -10,7 +10,7 @@ import com.shardbound.exception.PlayerNotFoundException;
 import com.shardbound.exception.RunConflictException;
 import com.shardbound.exception.SaveIncompatibleException;
 import com.shardbound.exception.SaveNotFoundException;
-import com.shardbound.exception.SessionNotFoundException;
+import com.shardbound.exception.RunNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.jspecify.annotations.Nullable;
@@ -105,7 +105,7 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
             case InvalidChoiceException ignored -> HttpStatus.BAD_REQUEST;
             case LockedChoiceException ignored -> HttpStatus.FORBIDDEN;
             case SaveNotFoundException ignored -> HttpStatus.NOT_FOUND;
-            case SessionNotFoundException ignored -> HttpStatus.NOT_FOUND;
+            case RunNotFoundException ignored -> HttpStatus.NOT_FOUND;
             case PlayerNotFoundException ignored -> HttpStatus.NOT_FOUND;
             case ActionNotAllowedException ignored -> HttpStatus.CONFLICT;
             case InventoryFullException ignored -> HttpStatus.CONFLICT;

@@ -36,6 +36,7 @@ export interface State {
   inspectorOpen: boolean;
   demoMode: boolean;
   modal: ModalTab | null;    // null = closed
+  reconnecting: boolean;     // the server is unreachable and the run is being waited for (P-30)
 }
 
 export type Action =
@@ -49,7 +50,8 @@ export type Action =
   | { type: 'TOGGLE_INSPECTOR' }
   | { type: 'SET_DEMO'; demoMode: boolean }
   | { type: 'OPEN_MODAL'; tab: ModalTab }
-  | { type: 'CLOSE_MODAL' };
+  | { type: 'CLOSE_MODAL' }
+  | { type: 'SET_RECONNECTING'; reconnecting: boolean };
 
 // True when a value read from storage looks like a Player.
 function isPlayer(value: unknown): value is Player {
@@ -91,6 +93,7 @@ export const initialState: State = {
   inspectorOpen: false,
   demoMode: false,
   modal: null,
+  reconnecting: false,
 };
 
 // Pure function: returns the next state for one action. Time O(1).
@@ -118,6 +121,8 @@ export function reducer(state: State, action: Action): State {
       return { ...state, modal: action.tab };
     case 'CLOSE_MODAL':
       return { ...state, modal: null };
+    case 'SET_RECONNECTING':
+      return { ...state, reconnecting: action.reconnecting };
     default:
       return state;
   }

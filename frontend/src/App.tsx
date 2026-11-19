@@ -11,6 +11,7 @@ import EndingScreen from './screens/EndingScreen';
 import AchievementsScreen from './screens/AchievementsScreen';
 import LeaderboardScreen from './screens/LeaderboardScreen';
 import ToastLayer from './components/ToastLayer';
+import ReconnectingOverlay from './components/ReconnectingOverlay';
 import SaveLoadModal from './components/SaveLoadModal';
 import InspectorPanel from './components/InspectorPanel';
 
@@ -92,6 +93,7 @@ function AppShell() {
 
       {state.modal && <SaveLoadModal />}
       {import.meta.env.DEV && state.inspectorOpen && <InspectorPanel />}
+      {state.reconnecting && <ReconnectingOverlay />}
       <ToastLayer />
     </div>
   );

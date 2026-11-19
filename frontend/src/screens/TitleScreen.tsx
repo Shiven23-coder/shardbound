@@ -1,10 +1,14 @@
 import { motion } from 'framer-motion';
+import { getSessionId } from '../api/client';
 import { useGame } from '../state/GameContext';
 
 // Main menu. "New game" and "Continue/Load" first ask for a profile.
+// "Resume game" appears while this tab still holds a run (e.g. after the
+// player left the "Reconnecting…" screen).
 export default function TitleScreen() {
-  const { state, dispatch } = useGame();
+  const { state, dispatch, resume } = useGame();
   const { player, demoMode } = state;
+  const canResume = Boolean(player && getSessionId());
 
   function openAchievements() {
     if (player) dispatch({ type: 'GO', screen: 'achievements' });
@@ -24,7 +28,16 @@ export default function TitleScreen() {
       <p className="tagline">A story of choices, shards and consequences.</p>
 
       <nav className="title-menu panel" aria-label="Main menu">
-        <button type="button" className="btn btn-primary btn-block" onClick={() => dispatch({ type: 'GO_PROFILE', next: 'new' })}>
+        {canResume && (
+          <button type="button" className="btn btn-primary btn-block" onClick={resume}>
+            Resume game
+          </button>
+        )}
+        <button
+          type="button"
+          className={canResume ? 'btn btn-block' : 'btn btn-primary btn-block'}
+          onClick={() => dispatch({ type: 'GO_PROFILE', next: 'new' })}
+        >
           New game
         </button>
         <button type="button" className="btn btn-block" onClick={() => dispatch({ type: 'GO_PROFILE', next: 'load' })}>

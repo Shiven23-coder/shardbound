@@ -1,6 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 import type { Dispatch, ReactNode } from 'react';
 import { ApiError, api, errorMessage, getSessionId, setSessionId } from '../api/client';
+import { isRunGone, resumeRun } from '../api/resume';
 import type { GameView } from '../api/types';
 import { initialState, reducer, storePlayer } from './gameReducer';
 import type { Action, State } from './gameReducer';
@@ -13,10 +14,22 @@ export interface GameContextValue {
   dispatch: Dispatch<Action>;
   /** Runs an API call that returns a GameView; resolves to true on success. */
   run: (apiCall: () => Promise<GameView>) => Promise<boolean>;
+  /** Gets back into the current run, waiting out outages (P-30). */
+  resume: () => void;
+  /** Stops waiting for the server and shows the title; the session is kept. */
+  leaveToTitle: () => void;
   quit: () => void;
 }
 
 const GameContext = createContext<GameContextValue | null>(null);
+
+const RUN_ENDED_MESSAGE = 'That game is no longer available. Start a new one or load a save.';
+
+// Failures that say nothing about the run itself: the API is restarting or unreachable.
+function isTransient(err: unknown): boolean {
+  if (!(err instanceof ApiError)) return true;
+  return err.status === 0 || err.status >= 500 || err.code === 'RUN_CONFLICT';
+}
 
 interface GameProviderProps {
   children: ReactNode;
@@ -24,14 +37,46 @@ interface GameProviderProps {
 
 export function GameProvider({ children }: GameProviderProps) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const reconnecting = useRef<AbortController | null>(null);
 
   // Remember the chosen profile for this browser tab.
   useEffect(() => {
     storePlayer(state.player);
   }, [state.player]);
 
-  // Runs an API call that returns a GameView, stores the result, and turns
-  // failures into an error toast. Returns true on success.
+  // The server said the run does not exist: only now is the session dropped.
+  const runGone = useCallback(() => {
+    setSessionId(null);
+    dispatch({ type: 'QUIT' });
+    dispatch({ type: 'SET_ERROR', message: RUN_ENDED_MESSAGE });
+  }, []);
+
+  const resume = useCallback(() => {
+    if (!getSessionId() || reconnecting.current) return;
+    const controller = new AbortController();
+    reconnecting.current = controller;
+    resumeRun(api.getGame, {
+      signal: controller.signal,
+      onRetry: () => dispatch({ type: 'SET_RECONNECTING', reconnecting: true }),
+    }).then((outcome) => {
+      if (controller.signal.aborted) return; // the player left, or React remounted
+      if (outcome.kind === 'resumed') dispatch({ type: 'SET_VIEW', view: outcome.view });
+      if (outcome.kind === 'gone') runGone();
+    }).finally(() => {
+      if (reconnecting.current === controller) reconnecting.current = null;
+      dispatch({ type: 'SET_RECONNECTING', reconnecting: false });
+    });
+  }, [runGone]);
+
+  const leaveToTitle = useCallback(() => {
+    reconnecting.current?.abort();
+    reconnecting.current = null;
+    dispatch({ type: 'SET_RECONNECTING', reconnecting: false });
+    dispatch({ type: 'GO', screen: 'title' });
+  }, []);
+
+  // Runs an API call that returns a GameView and stores the result. A rule
+  // the server refused becomes an error toast; an outage starts reconnecting.
   const run = useCallback(async (apiCall: () => Promise<GameView>) => {
     dispatch({ type: 'SET_BUSY', busy: true });
     try {
@@ -39,32 +84,40 @@ export function GameProvider({ children }: GameProviderProps) {
       dispatch({ type: 'SET_VIEW', view });
       return true;
     } catch (err) {
-      dispatch({ type: 'SET_ERROR', message: errorMessage(err) });
-      // The game moved on elsewhere (another tab or server): show the latest state.
-      if (err instanceof ApiError && err.code === 'RUN_CONFLICT') {
-        await api.getGame().then((view) => dispatch({ type: 'SET_VIEW', view })).catch(() => {});
+      if (isRunGone(err)) {
+        runGone();
+      } else if (isTransient(err)) {
+        resume(); // the action may or may not have happened: the server's view decides (idempotency keys in V4)
+      } else {
+        dispatch({ type: 'SET_ERROR', message: errorMessage(err) });
       }
       return false;
     } finally {
       dispatch({ type: 'SET_BUSY', busy: false });
     }
-  }, []);
+  }, [resume, runGone]);
 
   // Leaves the current game: forget the session and go back to the title.
   const quit = useCallback(() => {
+    reconnecting.current?.abort();
     setSessionId(null);
     dispatch({ type: 'QUIT' });
   }, []);
 
-  // After a page refresh, resume the game this tab was playing (if any).
+  // After a page load, get back into the game this tab was playing (if any).
   useEffect(() => {
-    if (!getSessionId() || !initialState.player) return;
-    api.getGame()
-      .then((view) => dispatch({ type: 'SET_VIEW', view }))
-      .catch(() => {}); // stale session: just stay on the title screen
-  }, []);
+    if (initialState.player) resume();
+    return () => {
+      // React StrictMode mounts twice in development: stop this loop so the next mount starts its own.
+      reconnecting.current?.abort();
+      reconnecting.current = null;
+    };
+  }, [resume]);
 
-  const value = useMemo(() => ({ state, dispatch, run, quit }), [state, run, quit]);
+  const value = useMemo(
+    () => ({ state, dispatch, run, resume, leaveToTitle, quit }),
+    [state, run, resume, leaveToTitle, quit],
+  );
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
 }
 
