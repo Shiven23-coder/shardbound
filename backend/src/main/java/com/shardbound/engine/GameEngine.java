@@ -7,6 +7,10 @@ import com.shardbound.combat.CombatEngine;
 import com.shardbound.combat.CombatOutcome;
 import com.shardbound.combat.CombatState;
 import com.shardbound.content.GameContent;
+import com.shardbound.dialogue.Choice;
+import com.shardbound.dialogue.Dialogue;
+import com.shardbound.dialogue.DialogueGraph;
+import com.shardbound.dialogue.DialogueNode;
 import com.shardbound.engine.port.MetaStore;
 import com.shardbound.engine.port.RunStore;
 import com.shardbound.engine.port.SaveStore;
@@ -17,6 +21,7 @@ import com.shardbound.exception.ActionNotAllowedException;
 import com.shardbound.exception.InvalidChoiceException;
 import com.shardbound.exception.LockedChoiceException;
 import com.shardbound.exception.SaveNotFoundException;
+import com.shardbound.exception.WorldEventRejectedException;
 import com.shardbound.item.Consumable;
 import com.shardbound.item.Inventory;
 import com.shardbound.item.Item;
@@ -26,16 +31,21 @@ import com.shardbound.model.Stats;
 import com.shardbound.rules.Rewards;
 import com.shardbound.save.SaveSnapshot;
 import com.shardbound.save.SlotSummary;
-import com.shardbound.story.Choice;
-import com.shardbound.story.StoryGraph;
-import com.shardbound.story.StoryNode;
-import com.shardbound.view.GameView;
+import com.shardbound.view.SessionView;
 import com.shardbound.view.MetaViews.InspectorView;
 import com.shardbound.view.MetaViews.QuestStatusView;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
+import com.shardbound.world.AreaMap;
+import com.shardbound.world.Facing;
+import com.shardbound.world.MapObject;
+import com.shardbound.world.ObjectType;
+import com.shardbound.world.World;
+import com.shardbound.world.WorldEventValidator;
+import com.shardbound.world.WorldPosition;
 import org.slf4j.LoggerFactory;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -49,8 +59,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * The game's rules in motion: choices, combat routing, equipment, saving and
- * loading. The web layer calls ONLY this class for gameplay (D21, D22).
+ * The game's rules in motion: world events, dialogue choices, combat routing,
+ * equipment, saving and loading. The web layer calls ONLY this class for
+ * gameplay (D21, D22).
  *
  * <p>Thread safety: one GameEngine serves every session. It holds only
  * immutable content and thread-safe collaborators; every public method that
@@ -74,7 +85,10 @@ public class GameEngine {
     public static final int LAST_MANUAL_SLOT = 3;
 
     private final GameContent content;
-    private final StoryGraph graph;
+    private final DialogueGraph graph;
+    private final World world;
+    private final WorldEventValidator worldEvents;
+    private final Clock clock;
     private final CombatEngine combatEngine;
     private final EndingResolver endingResolver;
     private final ViewBuilder views;
@@ -86,8 +100,17 @@ public class GameEngine {
 
     public GameEngine(GameContent content, @Nullable SaveStore saves, @Nullable MetaStore meta,
                       @Nullable RunStore runs) {
+        this(content, saves, meta, runs, Clock.systemUTC());
+    }
+
+    /** @param clock server time for the world-event speed check (tests pass a fixed clock) */
+    public GameEngine(GameContent content, @Nullable SaveStore saves, @Nullable MetaStore meta,
+                      @Nullable RunStore runs, Clock clock) {
         this.content = content;
         this.graph = content.graph();
+        this.world = content.world();
+        this.worldEvents = new WorldEventValidator(content.worldRules());
+        this.clock = clock;
         this.combatEngine = new CombatEngine(content.enemies(), content.encounters());
         this.endingResolver = new EndingResolver(content.endings());
         this.views = new ViewBuilder(content);
@@ -120,7 +143,11 @@ public class GameEngine {
     // New game, resume and views
     // =====================================================================
 
-    /** Creates a game at p01 with the starting kit (spec §6.1) and stores it as a new run. */
+    /**
+     * Creates a game at the start of regions.json: the start area and spawn,
+     * the start flags, the starting kit (spec §6.1) and the opening dialogue.
+     * Stores it as a new run.
+     */
     public GameState newGame(int playerId, boolean demoMode) {
         return newGame(playerId, demoMode, new Random().nextLong());
     }
@@ -130,11 +157,16 @@ public class GameEngine {
         Inventory inventory = new Inventory();
         inventory.add(content.items().get(STARTING_WEAPON), 1);
         inventory.equip(STARTING_WEAPON);
-        GameState s = new GameState(newSessionId(), playerId, StoryGraph.START_NODE,
-                Stats.starting(), inventory, seed, demoMode, 0);
+        World.Start start = world.start();
+        AreaMap map = world.mapOf(start.area());
+        WorldPosition position = WorldPosition.at(start.area(), map, map.spawn(start.spawn()).orElseThrow());
+        GameState s = new GameState(newSessionId(), playerId, null, position, Stats.starting(), inventory, seed,
+                demoMode, 0);
+        s.moveTo(position, clock.millis());
         content.questManager().initialStates(s);
+        start.flags().forEach(s::setFlag);
         wireSession(s);
-        s.bus().publish(new GameEvent(EventType.NODE_ENTERED, Map.of("node", StoryGraph.START_NODE)));
+        openDialogue(s, start.dialogue());
         storeAsNewRun(s);
         return s;
     }
@@ -150,29 +182,100 @@ public class GameEngine {
         return runs.find(sessionId).map(stored -> {
             GameState s = snapshots.restoreRun(stored.snapshot(), sessionId, stored.playerId());
             s.setRunVersion(stored.version());
+            s.moveTo(s.position(), clock.millis());
             wireSession(s);
             return s;
         });
     }
 
     /** The current screen. */
-    public GameView view(GameState s) {
+    public SessionView view(GameState s) {
         synchronized (s) {
             return views.build(s);
         }
     }
 
     // =====================================================================
-    // Story (spec §6.3)
+    // World events (§4.11)
     // =====================================================================
 
     /**
-     * Takes a choice: re-checks it exists and is unlocked (the client is never
-     * trusted), applies its effects, records the step and enters the target.
+     * The player walked onto an exit: after checks 1–5 the player arrives at
+     * the exit's spawn point in the next area, and the game autosaves.
      */
-    public GameView choose(GameState s, int choiceId) {
+    public SessionView exit(GameState s, String exitId, int x, int y, Facing facing) {
         synchronized (s) {
-            requireMode(s, Mode.STORY, "Choices are not available right now.");
+            WorldPosition last = s.position();
+            AreaMap map = requireWorld(s);
+            int[] tile = worldEvents.checkPosition(map, WorldObjects.collision(s, last.areaId(), map), last,
+                    clock.millis() - s.lastWorldEventMillis(), x, y);
+            MapObject exit = map.object(exitId).filter(o -> o.type() == ObjectType.EXIT)
+                    .orElseThrow(() -> new WorldEventRejectedException("There is no way out there.", last));
+            worldEvents.checkOnExit(exit, tile, last);
+            String toArea = exit.property("toArea");
+            World.Edge edge = world.edgeBetween(last.areaId(), toArea).orElseThrow();
+            AreaMap target = world.maps().get(toArea);
+            if ((edge.gateFlag() != null && s.flag(edge.gateFlag()) == 0) || target == null) {
+                throw new WorldEventRejectedException("The way is closed.", last);
+            }
+            MapObject spawn = target.spawn(exit.property("toSpawn")).orElseThrow();
+            WorldPosition arrival = WorldPosition.at(toArea, target, spawn);
+            s.moveTo(new WorldPosition(toArea, arrival.x(), arrival.y(), facing), clock.millis());
+            autosave(s);
+            return persistAndView(s);
+        }
+    }
+
+    /**
+     * The player acted on an NPC or object, or walked into a trigger: after
+     * checks 1–5 its dialogue opens. A once-only trigger never fires again.
+     */
+    public SessionView interact(GameState s, String targetId, int x, int y, Facing facing) {
+        synchronized (s) {
+            WorldPosition last = s.position();
+            AreaMap map = requireWorld(s);
+            int[] tile = worldEvents.checkPosition(map, WorldObjects.collision(s, last.areaId(), map), last,
+                    clock.millis() - s.lastWorldEventMillis(), x, y);
+            MapObject target = map.object(targetId)
+                    .filter(o -> o.type().interactive() && WorldObjects.active(s, last.areaId(), o))
+                    .orElseThrow(() -> new WorldEventRejectedException("There is nothing to do there.", last));
+            worldEvents.checkInRange(target, tile, last);
+            s.moveTo(new WorldPosition(last.areaId(), x, y, facing), clock.millis());
+            if (target.type() == ObjectType.TRIGGER && target.flag("once")) {
+                s.setFlag(WorldObjects.onceFlag(last.areaId(), target), 1);
+            }
+            openDialogue(s, target.property("dialogue"));
+            return persistAndView(s);
+        }
+    }
+
+    /** Check 1: world events only in WORLD mode. Returns the current area's map. */
+    private AreaMap requireWorld(GameState s) {
+        if (s.mode() != Mode.WORLD) {
+            throw new WorldEventRejectedException("You cannot walk around right now.", s.position());
+        }
+        return world.mapOf(s.position().areaId());
+    }
+
+    // =====================================================================
+    // Dialogue (spec §6.3)
+    // =====================================================================
+
+    /** Opens a dialogue on its first node for this game. Called with the lock held. */
+    private void openDialogue(GameState s, String dialogueId) {
+        Dialogue dialogue = graph.dialogue(dialogueId);
+        s.setMode(Mode.DIALOGUE);
+        enterNode(s, dialogue.firstNode(s));
+    }
+
+    /**
+     * Takes a choice: re-checks it exists and is unlocked (the client is never
+     * trusted), applies its effects, records the step, then enters the target
+     * or, for a choice that ends the dialogue, returns to the world.
+     */
+    public SessionView choose(GameState s, int choiceId) {
+        synchronized (s) {
+            requireMode(s, Mode.DIALOGUE, "Choices are not available right now.");
             EventBus bus = s.bus();
             Choice c = graph.choice(s.currentNode(), choiceId)
                     .orElseThrow(() -> new InvalidChoiceException(choiceId));
@@ -188,26 +291,27 @@ public class GameEngine {
                 effect.apply(s, bus);
             }
             s.historyStack().push(new Step(s.currentNode(), choiceId));
-            enterNode(s, c.to());
+            if (c.endsDialogue()) {
+                s.setCurrentNode(null);
+                s.setMode(Mode.WORLD);
+                s.moveTo(s.position(), clock.millis());     // walking time counts from here
+            } else {
+                enterNode(s, c.to());
+            }
             return persistAndView(s);
         }
     }
 
     /**
      * Moves to a node and handles its type. Called with the lock held.
-     * Autosave runs BEFORE the type switch, so the snapshot is always taken
-     * in STORY mode (D17). Recursion depth ≤ 2 (RESOLVER → ENDING).
+     * Recursion depth ≤ 2 (RESOLVER → ENDING).
      */
     private void enterNode(GameState s, String nodeId) {
-        StoryNode previous = graph.node(s.currentNode());
-        StoryNode n = graph.node(nodeId);
+        DialogueNode n = graph.node(nodeId);
         s.setCurrentNode(nodeId);
         s.bus().publish(new GameEvent(EventType.NODE_ENTERED, Map.of("node", nodeId)));
-        if (previous != null && n.chapter() != previous.chapter()) {
-            autosave(s);
-        }
         switch (n.type()) {
-            case STORY -> { }
+            case TEXT -> { }
             case COMBAT -> {
                 s.setCombat(combatEngine.start(s, n.encounterId()));
                 s.setMode(Mode.COMBAT);
@@ -221,7 +325,7 @@ public class GameEngine {
      * Ending reached (spec §6.9): record it (keeping the best time), publish
      * ENDING_REACHED for SHORT_TALE, SPEEDRUNNER and ALL_ENDINGS, switch to ENDED.
      */
-    private void finish(GameState s, StoryNode node) {
+    private void finish(GameState s, DialogueNode node) {
         Ending ending = content.endingAtNode(node.id());
         String endingId = ending == null ? node.id() : ending.id();
         int seconds = s.playSeconds();
@@ -248,11 +352,11 @@ public class GameEngine {
      * One combat round, then routing on the outcome: WON → win_node,
      * LOST → lose_node, FLED → flee_node or lose_node.
      */
-    public GameView combatAction(GameState s, Action action) {
+    public SessionView combatAction(GameState s, Action action) {
         synchronized (s) {
             requireMode(s, Mode.COMBAT, "You are not in a fight.");
             checkCombatAction(s, action);
-            StoryNode node = graph.node(s.currentNode());
+            DialogueNode node = graph.node(s.currentNode());
             boolean boss = s.combat().hasBoss();
             CombatOutcome outcome = combatEngine.act(s, action);
             switch (outcome) {
@@ -281,7 +385,7 @@ public class GameEngine {
 
     private void leaveCombat(GameState s, String nextNode, boolean bossLoss) {
         s.setCombat(null);
-        s.setMode(Mode.STORY);
+        s.setMode(Mode.DIALOGUE);
         s.setOfferReload(bossLoss);
         enterNode(s, nextNode);
     }
@@ -290,9 +394,9 @@ public class GameEngine {
     // Inventory outside combat
     // =====================================================================
 
-    public GameView equip(GameState s, String itemId) {
+    public SessionView equip(GameState s, String itemId) {
         synchronized (s) {
-            requireMode(s, Mode.STORY, "You can only change weapons outside combat.");
+            requireOutsideCombat(s, "You can only change weapons outside combat.");
             Weapon weapon = s.inventory().equip(itemId);
             if (weapon == null) {
                 throw new ActionNotAllowedException("You can only equip a weapon you own.");
@@ -303,9 +407,9 @@ public class GameEngine {
         }
     }
 
-    public GameView use(GameState s, String itemId) {
+    public SessionView use(GameState s, String itemId) {
         synchronized (s) {
-            requireMode(s, Mode.STORY, "Use items from the combat menu during a fight.");
+            requireOutsideCombat(s, "Use items from the combat menu during a fight.");
             Item item = s.inventory().get(itemId);
             if (!(item instanceof Consumable consumable)) {
                 throw new ActionNotAllowedException("That item cannot be used.");
@@ -320,7 +424,7 @@ public class GameEngine {
     // =====================================================================
 
     /**
-     * Manual save to slot 1–3: STORY mode only. The live run is reseeded and
+     * Manual save to slot 1–3: WORLD mode only. The live run is reseeded and
      * written first, and the slot gets the same snapshot, so continuing and
      * loading this slot later roll the same dice (D7).
      */
@@ -332,8 +436,8 @@ public class GameEngine {
             if (slot < FIRST_MANUAL_SLOT || slot > LAST_MANUAL_SLOT) {
                 throw new ActionNotAllowedException("Choose slot 1, 2 or 3 (slot 0 is the autosave).");
             }
-            if (s.mode() != Mode.STORY) {
-                throw new ActionNotAllowedException("You cannot save during combat or after the ending.");
+            if (s.mode() != Mode.WORLD) {
+                throw new ActionNotAllowedException("You can only save while walking the world.");
             }
             reseedAndPersist(s);
             saves.save(s.playerId(), slot, snapshots.save(s), snapshots.areaOf(s));
@@ -422,7 +526,7 @@ public class GameEngine {
     // =====================================================================
 
     /** Writes the run through (P-22), then builds the response. Called with the lock held. */
-    private GameView persistAndView(GameState s) {
+    private SessionView persistAndView(GameState s) {
         reseedAndPersist(s);
         return views.build(s);
     }
@@ -460,6 +564,12 @@ public class GameEngine {
 
     private static void requireMode(GameState s, Mode mode, String message) {
         if (s.mode() != mode) {
+            throw new ActionNotAllowedException(message);
+        }
+    }
+
+    private static void requireOutsideCombat(GameState s, String message) {
+        if (s.mode() != Mode.WORLD && s.mode() != Mode.DIALOGUE) {
             throw new ActionNotAllowedException(message);
         }
     }

@@ -57,7 +57,7 @@ class ContentSchemaTest {
     }
 
     @Test
-    void theRealContentLoadsAndPassesTheStoryChecks() {
+    void theRealContentLoadsAndPassesTheDialogueAndMapChecks() {
         GameContent content = new ContentLoader().load(REAL);
         assertTrue(content.graph().nodes().size() > 10);
     }
@@ -71,24 +71,38 @@ class ContentSchemaTest {
 
     @Test
     void aMissingRequiredFieldIsReported() {
-        ContentFiles broken = withEdit("ch0_prologue.json",
-                chapter -> ((ObjectNode) chapter.get("nodes").get(2)).remove("title"));
-        assertTrue(anyContains(problems(broken), "ch0_prologue.json", "/nodes/2", "title"),
+        ContentFiles broken = withEdit("dialogue/maren.json",
+                dialogue -> ((ObjectNode) dialogue.get("nodes").get(2)).remove("title"));
+        assertTrue(anyContains(problems(broken), "dialogue/maren.json", "/nodes/2", "title"),
                 problems(broken).toString());
     }
 
     @Test
     void aCombatNodeNeedsItsEncounterAndExits() {
-        ContentFiles broken = withEdit("ch0_prologue.json", chapter -> {
-            ArrayNode nodes = (ArrayNode) chapter.get("nodes");
+        ContentFiles broken = withEdit("dialogue/alley_mouth.json", dialogue -> {
+            ArrayNode nodes = (ArrayNode) dialogue.get("nodes");
             for (int i = 0; i < nodes.size(); i++) {
                 ObjectNode node = (ObjectNode) nodes.get(i);
-                if ("COMBAT".equals(node.get("type").asString())) {
-                    node.putNull("win");
+                if ("COMBAT".equals(node.path("type").asString())) {
+                    node.remove("win");
                 }
             }
         });
-        assertTrue(anyContains(problems(broken), "ch0_prologue.json", "win"), problems(broken).toString());
+        assertTrue(anyContains(problems(broken), "dialogue/alley_mouth.json", "win"), problems(broken).toString());
+    }
+
+    @Test
+    void aChoiceEitherLeadsSomewhereOrEndsTheDialogue() {
+        ContentFiles broken = withEdit("dialogue/brann.json",
+                dialogue -> ((ObjectNode) dialogue.get("nodes").get(0).get("choices").get(0)).remove("end"));
+        assertTrue(anyContains(problems(broken), "dialogue/brann.json", "/nodes/0/choices/0"),
+                problems(broken).toString());
+    }
+
+    @Test
+    void everyFileMustNameItsSchema() {
+        ContentFiles broken = withEdit("balance.json", balance -> balance.remove("$schema"));
+        assertTrue(anyContains(problems(broken), "balance.json", "\"$schema\""), problems(broken).toString());
     }
 
     @Test
@@ -119,7 +133,7 @@ class ContentSchemaTest {
     @Test
     void invalidJsonIsReportedPerFile() {
         Map<String, String> texts = new HashMap<>(REAL.all());
-        texts.put("ch5_finale.json", "{ not json");
-        assertTrue(anyContains(problems(ContentFiles.of(texts)), "ch5_finale.json", "not valid JSON"));
+        texts.put("dialogue/finale.json", "{ not json");
+        assertTrue(anyContains(problems(ContentFiles.of(texts)), "dialogue/finale.json", "not valid JSON"));
     }
 }

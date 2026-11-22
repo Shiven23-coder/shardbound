@@ -1,0 +1,117 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "corvin_offer",
+  "npc": "corvin",
+  "start": "corvin_wares",
+  "entries": [
+    {
+      "node": "p04m",
+      "conditions": [
+        {
+          "type": "ITEM",
+          "key": "heartshard",
+          "op": ">=",
+          "value": 1
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "corvin_wares",
+      "title": "Corvin the Merchant",
+      "speaker": "corvin",
+      "text": "Corvin is packing more than he is selling. \"Nothing for you today, friend,\" he says, without looking up.",
+      "choices": [
+        {
+          "label": "Leave him to it",
+          "end": true
+        }
+      ]
+    },
+    {
+      "id": "p04m",
+      "title": "Corvin's Offer",
+      "speaker": "corvin",
+      "text": "Corvin's smile does not change when he sees the crystal, but his hands do; they stop moving among his ribbons and brass buckles, and rest flat on the counter. \"Pretty thing,\" he says lightly. \"Glass, probably. Storm-melted sand. I'll give you three hundred gold for it, and that's charity.\" Three hundred gold is more than your cottage is worth. Behind him, his wagon is packed for leaving, though he arrived only yesterday. He watches your face the way a cat watches a hole in the wall. \"Well?\" he says. \"I'm a busy man.\"",
+      "choices": [
+        {
+          "label": "Accept the three hundred gold",
+          "to": "p05m",
+          "effects": [
+            {
+              "type": "GOLD",
+              "key": "gold",
+              "value": 300
+            },
+            {
+              "type": "TAKE_ITEM",
+              "key": "heartshard",
+              "value": 1
+            },
+            {
+              "type": "REP",
+              "key": "ASHEN",
+              "value": 10
+            }
+          ]
+        },
+        {
+          "label": "\"You owe me for last night. Five hundred.\"",
+          "to": "p05m",
+          "conditions": [
+            {
+              "type": "AFFINITY",
+              "key": "corvin",
+              "op": ">=",
+              "value": 10
+            }
+          ],
+          "effects": [
+            {
+              "type": "GOLD",
+              "key": "gold",
+              "value": 500
+            },
+            {
+              "type": "TAKE_ITEM",
+              "key": "heartshard",
+              "value": 1
+            },
+            {
+              "type": "REP",
+              "key": "ASHEN",
+              "value": 10
+            }
+          ]
+        },
+        {
+          "label": "Put it away and walk back to the square",
+          "end": true
+        }
+      ]
+    },
+    {
+      "id": "p05m",
+      "title": "The Tattoo",
+      "text": "The gold is heavy in your purse and heavier on your conscience. You tell yourself it was only glass. At dusk you pass Corvin's wagon on your way home and see him rolling up his sleeves to wash at the trough. On the inside of his forearm, where a merchant's guild mark should be, there is a circle of grey ash inked into the skin, with a thin green line through its centre. Every child in Eldmere knows that mark from the stories told to frighten them. Corvin dries his hands, glances once at the darkening sky, and slips into the alley behind the tannery with something wrapped under his arm.",
+      "choices": [
+        {
+          "label": "Follow him",
+          "end": true,
+          "effects": [
+            {
+              "type": "SET_FLAG",
+              "key": "following_corvin",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "label": "Go home and pretend you saw nothing",
+          "to": "p11"
+        }
+      ]
+    }
+  ]
+}

@@ -2,14 +2,21 @@ import { motion } from 'framer-motion';
 import type { ChoiceView } from '../api/types';
 
 // Renders the choices exactly as the server sent them. Whether a choice is
-// locked (and why) is decided in Java; here we only grey it out.
+// locked (and why) is decided in Java; here we only grey it out. One choice is
+// highlighted for the keyboard and gamepad (P-44); hovering moves the
+// highlight, and a click or tap takes a choice at once. The first four show
+// their number key.
 interface ChoiceListProps {
   choices?: ChoiceView[];
   onChoose: (choiceId: number) => void;
   disabled: boolean;
+  highlight: number;
+  onHighlight: (index: number) => void;
 }
 
-export default function ChoiceList({ choices = [], onChoose, disabled }: ChoiceListProps) {
+const NUMBERED = 4;
+
+export default function ChoiceList({ choices = [], onChoose, disabled, highlight, onHighlight }: ChoiceListProps) {
   if (choices.length === 0) return null;
 
   return (
@@ -21,7 +28,14 @@ export default function ChoiceList({ choices = [], onChoose, disabled }: ChoiceL
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 * i }}
         >
-          <ChoiceButton choice={choice} onChoose={onChoose} disabled={disabled} />
+          <ChoiceButton
+            choice={choice}
+            number={i < NUMBERED ? i + 1 : null}
+            highlighted={i === highlight}
+            onChoose={onChoose}
+            onHover={() => !choice.locked && onHighlight(i)}
+            disabled={disabled}
+          />
         </motion.li>
       ))}
     </ol>
@@ -30,11 +44,15 @@ export default function ChoiceList({ choices = [], onChoose, disabled }: ChoiceL
 
 interface ChoiceButtonProps {
   choice: ChoiceView;
+  number: number | null;
+  highlighted: boolean;
   onChoose: (choiceId: number) => void;
+  onHover: () => void;
   disabled: boolean;
 }
 
-function ChoiceButton({ choice, onChoose, disabled }: ChoiceButtonProps) {
+function ChoiceButton({ choice, number, highlighted, onChoose, onHover, disabled }: ChoiceButtonProps) {
+  const key = number !== null && <span className="choice-key" aria-hidden="true">{number}</span>;
   if (choice.locked) {
     const reasonId = `lock-reason-${choice.id}`;
     return (
@@ -47,6 +65,7 @@ function ChoiceButton({ choice, onChoose, disabled }: ChoiceButtonProps) {
         onClick={(e) => e.preventDefault()}
       >
         <span className="choice-label">
+          {key}
           <LockIcon /> {choice.label}
         </span>
         <small id={reasonId} className="choice-reason">
@@ -59,11 +78,16 @@ function ChoiceButton({ choice, onChoose, disabled }: ChoiceButtonProps) {
   return (
     <button
       type="button"
-      className="choice"
+      className={highlighted ? 'choice choice-highlighted' : 'choice'}
+      aria-current={highlighted ? 'true' : undefined}
       disabled={disabled}
       onClick={() => onChoose(choice.id)}
+      onPointerEnter={(e) => e.pointerType === 'mouse' && onHover()}
     >
-      <span className="choice-label">{choice.label}</span>
+      <span className="choice-label">
+        {key}
+        {choice.label}
+      </span>
     </button>
   );
 }

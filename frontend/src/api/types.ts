@@ -5,9 +5,13 @@ import type { components } from './schema.gen';
 
 type Schemas = components['schemas'];
 
-export type GameView = Schemas['GameView'];
-export type Mode = GameView['mode'];
-export type NodeInfo = Schemas['NodeInfo'];
+export type SessionView = Schemas['SessionView'];
+export type Mode = SessionView['mode'];
+export type WorldView = Schemas['WorldView'];
+export type PlayerView = Schemas['PlayerView'];
+export type Facing = PlayerView['facing'];
+export type NpcView = Schemas['NpcView'];
+export type DialogueView = Schemas['DialogueView'];
 export type ChoiceView = Schemas['ChoiceView'];
 export type HudView = Schemas['HudView'];
 export type WeaponInfo = Schemas['WeaponInfo'];
@@ -36,3 +40,11 @@ export type CombatActionType = CombatRequest['type'];
 
 /** An RFC 9457 error body; `code` is stable and safe to switch on. */
 export type Problem = Schemas['Problem'];
+
+/** Where the server last saw the player; sent with WORLD_EVENT_REJECTED (§4.11). */
+export interface LastPosition {
+  areaId: string;
+  x: number;
+  y: number;
+  facing: Facing;
+}

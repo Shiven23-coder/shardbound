@@ -3,7 +3,7 @@
 // anything else (the API restarting, a network drop, a 5xx, a conflict) is
 // waited out with growing pauses until the run comes back.
 import { ApiError } from './client';
-import type { GameView } from './types';
+import type { SessionView } from './types';
 
 export const RUN_NOT_FOUND = 'RUN_NOT_FOUND';
 
@@ -11,7 +11,7 @@ const FIRST_DELAY_MS = 500;
 const MAX_DELAY_MS = 8_000;
 const JITTER = 0.2;
 
-export type ResumeOutcome = { kind: 'resumed'; view: GameView } | { kind: 'gone' } | { kind: 'cancelled' };
+export type ResumeOutcome = { kind: 'resumed'; view: SessionView } | { kind: 'gone' } | { kind: 'cancelled' };
 
 export interface ResumeOptions {
   /** Called before each wait, with the 1-based attempt that just failed. */
@@ -36,7 +36,7 @@ export function backoffDelay(attempt: number, random: () => number = Math.random
 const realSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /** Fetches the run until it answers, the server says it is gone, or the caller cancels. */
-export async function resumeRun(fetchView: () => Promise<GameView>, options: ResumeOptions = {}): Promise<ResumeOutcome> {
+export async function resumeRun(fetchView: () => Promise<SessionView>, options: ResumeOptions = {}): Promise<ResumeOutcome> {
   const { onRetry, signal, sleep = realSleep, random = Math.random } = options;
   for (let attempt = 1; ; attempt++) {
     if (signal?.aborted) return { kind: 'cancelled' };

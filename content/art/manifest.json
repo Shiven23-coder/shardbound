@@ -1,0 +1,29 @@
+{
+  "$schema": "../schema/manifest.schema.json",
+  "description": "Logical sprite keys to art files (P-34). Content and code name keys only; swapping art changes this file. Paths are relative to content/art.",
+  "frameSize": 16,
+  "actors": {
+    "player": {
+      "sheet": "ninja-adventure/eldmere/actors/Hunter/SpriteSheet.png",
+      "faceset": "ninja-adventure/eldmere/actors/Hunter/Faceset.png"
+    },
+    "npc.corvin": {
+      "sheet": "ninja-adventure/eldmere/actors/Noble/SpriteSheet.png",
+      "faceset": "ninja-adventure/eldmere/actors/Noble/Faceset.png"
+    },
+    "npc.maren": {
+      "sheet": "ninja-adventure/eldmere/actors/OldWoman/SpriteSheet.png",
+      "faceset": "ninja-adventure/eldmere/actors/OldWoman/Faceset.png"
+    },
+    "npc.brann": {
+      "sheet": "ninja-adventure/eldmere/actors/Master/SpriteSheet.png",
+      "faceset": "ninja-adventure/eldmere/actors/Master/Faceset.png"
+    }
+  },
+  "actorShadow": "ninja-adventure/eldmere/actors/Shadow.png",
+  "sheetLayout": {
+    "description": "Ninja Adventure character sheets: one column per facing; the first four rows are the walk cycle.",
+    "columns": { "DOWN": 0, "UP": 1, "LEFT": 2, "RIGHT": 3 },
+    "walkRows": [0, 1, 2, 3]
+  }
+}

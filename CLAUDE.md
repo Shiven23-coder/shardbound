@@ -7,7 +7,7 @@ Souls-like progression: rest at Lanterns, spend Shards on six attributes and wea
 It is a public, mobile-first web game and a flagship portfolio piece: guest and Google accounts, anonymous telemetry, a balance simulator and a playtest bot.
 
 **Specs:** `docs/V2_SPEC.md` is the source of truth. `docs/PROJECT_SPEC.md` is the historical v1 spec; its engine rules (conditions, ConditionGroup, effects, quest state machine, combat, endings) still apply where V2_SPEC does not override them. Read the sections for the current phase before writing code. If a spec and a request conflict, ask before acting.
-Decision history: `docs/DECISIONS.md` (P-01 … P-36 win over older entries).
+Decision history: `docs/DECISIONS.md` (P-01 … P-53 win over older entries).
 
 ## Tech
 - Backend: **Spring Boot 4.1** on **Java 25**; **JdbcClient** with hand-written SQL; **Flyway via Spring**; springdoc-openapi; JUnit 5, **Testcontainers**, ArchUnit.
@@ -19,8 +19,8 @@ Decision history: `docs/DECISIONS.md` (P-01 … P-36 win over older entries).
 The project is judged as a product: players on phones, and reviewers reading a public repo. The rules keep it correct, secure, maintainable and pleasant to play.
 
 ## Rules
-1. **The server owns the game rules.** The client renders server views, sends intents and moves the player freely; the server validates every event (V2_SPEC §4.11). No damage math, encounter rolls, loot or quest logic in the frontend.
-2. **Engine packages are framework-free.** No Spring, `jakarta.*` or `java.sql` in `engine`, `combat`, `quest`, `rules`, `story`, `item`, `model`, `ds`, `event`, `achievement`, `content`, `exception`, `save`, `view`. ArchUnit enforces it; persistence goes through `engine/port/`.
+1. **The server owns the game rules.** The client renders server views, sends intents and moves the player tile by tile (P-51); the server validates every event (V2_SPEC §4.11). No damage math, encounter rolls, loot or quest logic in the frontend.
+2. **Engine packages are framework-free.** No Spring, `jakarta.*` or `java.sql` in `engine`, `combat`, `quest`, `rules`, `dialogue`, `world`, `item`, `model`, `ds`, `event`, `achievement`, `content`, `exception`, `save`, `view`. ArchUnit enforces it; persistence goes through `engine/port/`.
 3. **JdbcClient + hand-written SQL.** No JPA, Hibernate or other ORM. Never edit a merged migration; add a new one.
 4. **Multi-row writes run in one transaction** (`@Transactional`), including every account change with its `email_outbox` row.
 5. **Content and balance are data:** schema-validated JSON (and Tiled `.tmj`) in `content/`. Never hardcode content or balance in Java or TypeScript.
@@ -66,4 +66,4 @@ docker compose up -d
 - End each phase with the rule 12 report.
 
 ## Current phase
-**P0 — Platform reset** (acceptance passed locally; PR into `main` waits for the GitHub repo) (update this line as we progress)
+**V4 — Battles** (V3 World merged via PR #12; start V4 in plan mode when I say so) (update this line as we progress)

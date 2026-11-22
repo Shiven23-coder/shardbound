@@ -57,9 +57,11 @@ class OpenApiContractTest {
         JsonNode spec = response.body();
 
         assertTrue(spec.get("paths").has("/api/game/new"));
-        JsonNode gameView = spec.get("components").get("schemas").get("GameView");
-        assertTrue(contains(gameView.get("required"), "hud"), "non-null record fields are required");
-        assertFalse(contains(gameView.get("required"), "combat"), "@Nullable fields are optional");
+        JsonNode sessionView = spec.get("components").get("schemas").get("SessionView");
+        assertTrue(contains(sessionView.get("required"), "world"), "non-null record fields are required");
+        assertFalse(contains(sessionView.get("required"), "dialogue"), "@Nullable fields are optional");
+        assertTrue(spec.get("paths").has("/api/world/exit"));
+        assertTrue(spec.get("paths").has("/api/dialogue/choose"));
         assertEquals("apiKey", spec.get("components").get("securitySchemes").get("session").get("type").asString());
 
         JsonMapper pretty = JsonMapper.builder().enable(SerializationFeature.INDENT_OUTPUT).build();

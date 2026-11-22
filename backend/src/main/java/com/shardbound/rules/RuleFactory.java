@@ -1,5 +1,6 @@
 package com.shardbound.rules;
 
+import com.shardbound.content.RawContent;
 import com.shardbound.content.RawContent.RuleDef;
 import com.shardbound.exception.ContentValidationException;
 import com.shardbound.item.Item;
@@ -25,13 +26,15 @@ public class RuleFactory {
     private final Map<String, Npc> npcs;
     private final Map<String, Quest> quests;
     private final QuestManager questManager;
+    private final RawContent.AffinityCues cues;
 
     public RuleFactory(Map<String, Item> items, Map<String, Npc> npcs, Map<String, Quest> quests,
-                       QuestManager questManager) {
+                       QuestManager questManager, RawContent.AffinityCues cues) {
         this.items = items;
         this.npcs = npcs;
         this.quests = quests;
         this.questManager = questManager;
+        this.cues = cues;
     }
 
     /** Builds a ConditionGroup from condition rows, honouring grp (D4). Time O(c log g). */
@@ -74,7 +77,7 @@ public class RuleFactory {
         return switch (row.type()) {
             case "SET_FLAG" -> new SetFlagEffect(key, value);
             case "REP" -> new RepEffect(faction(key), value);
-            case "AFFINITY" -> new AffinityEffect(key, npc(key).name(), value);
+            case "AFFINITY" -> new AffinityEffect(key, cue(cues.warmer(), key), cue(cues.colder(), key), value);
             case "GIVE_ITEM" -> new GiveItemEffect(item(key), Math.max(1, value));
             case "TAKE_ITEM" -> new TakeItemEffect(item(key), Math.max(1, value));
             case "START_QUEST" -> new StartQuestEffect(questManager, quest(key).id());
@@ -95,6 +98,10 @@ public class RuleFactory {
         } catch (IllegalArgumentException e) {
             throw new ContentValidationException("Unknown faction: " + key);
         }
+    }
+
+    private String cue(String template, String npcKey) {
+        return template.replace("{name}", npc(npcKey).shortName());
     }
 
     private Npc npc(String key) {

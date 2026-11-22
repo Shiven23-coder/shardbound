@@ -1,0 +1,106 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "crater_crystal",
+  "start": "crater_empty",
+  "entries": [
+    {
+      "node": "p02",
+      "conditions": [
+        {
+          "type": "FLAG",
+          "key": "storm_night",
+          "op": "=",
+          "value": 1
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "p02",
+      "title": "The Ruins",
+      "text": "The old ruins were a watchtower once, before anyone in Eldmere can remember. Tonight the fallen stones are steaming. In the middle of a fresh crater lies a crystal the size of your fist, beating with a slow green glow like a heart that is only half awake. The rain does not touch it; the drops turn to mist an inch above its surface. When you crouch beside it, the pulse quickens, as if it has noticed you. Somewhere far behind you, a dog begins to howl and does not stop. You have the strong, foolish feeling that the crystal is waiting to see what you will do.",
+      "choices": [
+        {
+          "label": "Take the crystal in your bare hands",
+          "to": "toward_morning",
+          "effects": [
+            {
+              "type": "GIVE_ITEM",
+              "key": "heartshard",
+              "value": 1
+            },
+            {
+              "type": "START_QUEST",
+              "key": "q_strange_light",
+              "value": 0
+            },
+            {
+              "type": "SET_FLAG",
+              "key": "storm_night",
+              "value": 0
+            },
+            {
+              "type": "SET_FLAG",
+              "key": "dawn",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "label": "Wrap it in your cloak before you lift it",
+          "to": "toward_morning",
+          "effects": [
+            {
+              "type": "GIVE_ITEM",
+              "key": "heartshard",
+              "value": 1
+            },
+            {
+              "type": "START_QUEST",
+              "key": "q_strange_light",
+              "value": 0
+            },
+            {
+              "type": "HEAL",
+              "key": "hp",
+              "value": 5
+            },
+            {
+              "type": "SET_FLAG",
+              "key": "storm_night",
+              "value": 0
+            },
+            {
+              "type": "SET_FLAG",
+              "key": "dawn",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "toward_morning",
+      "title": "Toward Morning",
+      "text": "You carry it home under your coat while the last of the storm blows itself out. By the time you reach the lane the sky over Eldmere is turning grey, and the crystal's beat has slowed to match your own.",
+      "choices": [
+        {
+          "label": "Walk on",
+          "end": true
+        }
+      ]
+    },
+    {
+      "id": "crater_empty",
+      "title": "The Crater",
+      "text": "Only a scorched hollow remains where the crystal lay. The stones around it are still warm.",
+      "choices": [
+        {
+          "label": "Step back",
+          "end": true
+        }
+      ]
+    }
+  ]
+}

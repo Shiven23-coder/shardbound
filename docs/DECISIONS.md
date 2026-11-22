@@ -7,7 +7,7 @@ Why the specs say what they say. `docs/V2_SPEC.md` is the source of truth for **
 - **D20–D32** came from the review of the v1 ER and class diagrams.
 - **I1–I12** are implementation choices made while building v1.
 - **V-01 … V-35** are the v2 design decisions.
-- **P-01 … P-36** are the platform reset (Phase P0) and its follow-ups: the project became a public game, and these entries win over anything older.
+- **P-01 … P-53** are the platform reset (Phase P0) and its follow-ups: the project became a public game, and these entries win over anything older.
 - Old entries are never deleted. Where a later decision changes an earlier one, the earlier entry says so ("Revised by" or "Superseded by").
 
 Format for each entry: **Problem** → **Decision** → **Why** → **Where in spec**.
@@ -497,7 +497,7 @@ Recorded with the v2 design (2026-11-18). The specification is `docs/V2_SPEC.md`
 
 ---
 
-## Platform reset decisions (P-01 … P-36)
+## Platform reset decisions (P-01 … P-50)
 
 Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfolio piece instead of a course project. These entries win over every older entry; superseded entries above say so. The specification is `docs/V2_SPEC.md`.
 
@@ -581,6 +581,8 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 
 **Supersedes.** V-03, V-04, V-05, V-06, V-07, V-08.
 
+**Revised by** P-51 (tile-step movement replaces free movement; the REST events and checks stay).
+
 **Spec.** §2, §4.11, §7.
 
 ---
@@ -628,6 +630,8 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 **Problem.** The UI targeted desktop browsers with keyboard input.
 
 **Decision.** Touch D-pad, tap to interact, landscape responsive HUD, battle touch targets ≥ 48 px. Keyboard and gamepad stay supported.
+
+**Superseded by** P-40 (input-aware layouts; portrait is the main phone layout).
 
 **Why.** Most target players are on phones.
 
@@ -861,6 +865,20 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 
 ---
 
+## P-29 — 16×16 art at an integer scale; Ninja Adventure
+
+**Problem.** The spec fixed 32×32 tiles from Kenney or 0x72. Neither family offers animated characters, portraits or bosses at that size, and drawing them ourselves is ruled out (no AI art, no budget for an artist).
+
+**Decision.** Tiles are 16×16, drawn at an integer scale and pixel-perfect (Phaser `pixelArt`, `roundPixels`, integer camera zoom). The family is **Ninja Adventure** by pixel-boy (CC0), chosen after comparing it with the Kenney Roguelike and Kenney Tiny families from their actual files. It is graded dark with a palette remap and a per-region colour grade. The server's tile maths reads the map's `tilewidth` instead of assuming a size.
+
+**Why.** It is the only CC0 family with walking players and NPCs, animated monsters and bosses, and dialogue portraits: everything the world, battle and boss phases need. Its bright tone is fixable with a grade; missing animation is not.
+
+**Supersedes.** The 32×32 / Kenney-or-0x72 rule (§1, §9, §11).
+
+**Spec.** §1, §4.11, §9, §11.
+
+---
+
 ## P-30 — A session is dropped only when the server says the run is gone
 
 **Problem.** In the P0 browser test a reload once landed on the title screen although the run was intact. On a page load the client tried `GET /api/game` once and treated *any* failure as "stale session", so a reload while the API was restarting (a 500 from the dev proxy, a network error) silently threw the player out.
@@ -882,3 +900,351 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 **Why.** A gate must fail only when the code is wrong. Nightly runs still catch performance regressions within a day, and the release checklist blocks a release on them.
 
 **Spec.** §4.13, §4.15, §12.
+
+---
+
+## P-31 — Idempotency keys on every state-changing action (V4)
+
+**Problem.** After P-30 a failed action only refetches the game: the client cannot know whether the server applied it, so it cannot safely send it again.
+
+**Decision.** From V4 the client sends an `Idempotency-Key` header (a UUID per action). The server keeps the last N processed keys and their results inside `active_run`, written in the same update as the run, and replays the stored result for a duplicate key instead of applying the action twice.
+
+**Why.** Keeping the keys in the run row makes "applied" and "remembered" one atomic write, so a retry after any failure is safe.
+
+**Spec.** §4.12, §12 (V4).
+
+---
+
+## P-32 — No endpoint accepts a player id from the client (ALPHA)
+
+**Problem.** Until accounts exist, save and meta endpoints accept `?playerId=`, so anyone can read or delete another player's saves.
+
+**Decision.** The parameter disappears with V2a accounts (the player comes from the session). Before ALPHA, a contract test fails if any operation in `api/openapi.json` has a `playerId` parameter; it is an ALPHA launch-checklist item.
+
+**Why.** Broken object-level authorization is the most common API flaw; a test against the contract stops it from coming back.
+
+**Spec.** §7, §12 (ALPHA).
+
+---
+
+## P-33 — Phaser 4
+
+**Problem.** The spec named Phaser 3.90, written before Phaser 4 was the stable line.
+
+**Decision.** Use Phaser **4.2** for the world and battle scenes.
+
+**Why.** It is the maintained major with the newer renderer; starting a new project on 3.x would begin on a line that only receives fixes. Risk: fewer tutorials; mitigated by a thin scene layer.
+
+**Spec.** §2, §12 (V3).
+
+---
+
+## P-34 — Art manifest
+
+**Problem.** If content and code name atlas frames directly, any art change touches dialogue files, maps, Java and TypeScript.
+
+**Decision.** Content and code use logical sprite keys (`npc.maren`, `creep.<template>`, `portrait.<npc>.<mood>`, tile roles). One schema-validated manifest, `content/art/manifest.json`, maps keys to atlas frames, and startup validation checks every key used in content exists in it.
+
+**Why.** A future art swap, or a recolour per region, becomes a manifest change.
+
+**Spec.** §1, §9.
+
+---
+
+## P-35 — Maps ship in the frontend build
+
+**Problem.** The client needs the same maps the server validates against. A map endpoint would add a request on every area change and keep maps out of the CDN and PWA caches.
+
+**Decision.** `content/maps/*.tmj` is copied into the frontend build (content-hashed, CDN-cached, precached by the PWA) and loaded by the server from the same files. CI checks that the built copies match the content files. There is no map endpoint.
+
+**Why.** Maps are static content: they belong with the other static assets, and one source keeps client and server collision identical.
+
+**Spec.** §9.
+
+---
+
+## P-37 — How the prologue became a walkable world (V3)
+
+**Problem.** The V3 plan turned the v1 story graph into dialogues with new effects (`START_ENCOUNTER`, `GOTO`, `END_GAME`, `RESOLVE_ENDING`) and the alley bodyguard into a `creep_spawn` with `/api/world/encounter`. Building it showed simpler shapes that keep the same behaviour.
+
+**Decision.**
+- Dialogue nodes keep the v1 node types (`TEXT`, `COMBAT` with `encounter`/`win`/`lose`, `RESOLVER`, `ENDING`); a choice either goes `to` a node or `end`s the dialogue. A dialogue opens on its first matching `entries` node, else `start`.
+- The Hired Blade fight starts from the alley dialogue (a `COMBAT` node). `creep_spawn` objects and `/api/world/encounter` arrive with creeps in V4.
+- The structural quick-route length check leaves `DialogueValidator`, because the route now crosses the world; the merchant route is played end to end by `GameEngineTest` and `QuickRouteApiIT` through world events.
+- A new game opens with the start dialogue from `regions.json`; once-only triggers, `showIf`/`hideIf` and the light state are all driven by flags, and gates live only on `regions.json` edges.
+- Night lighting, light radii, the player light and rain are tuned in `content/art/grades.json` (presentation); walking constants stay in `balance.json`.
+- The v1 "Eldmere burning" red tint is dropped; the burning is told in the dialogue.
+
+**Why.** The existing node engine and combat routing were proven by tests; reusing them kept every v1 path and ending reachable while the world was added around them.
+
+**Spec.** §8, §9; V3 in §12.
+
+---
+
+## P-37 — How the prologue became a walkable world (V3)
+
+**Problem.** The V3 plan turned the v1 story graph into dialogues with new effects (`START_ENCOUNTER`, `GOTO`, `END_GAME`, `RESOLVE_ENDING`) and the alley bodyguard into a `creep_spawn` with `/api/world/encounter`. Building it showed simpler shapes that keep the same behaviour.
+
+**Decision.**
+- Dialogue nodes keep the v1 node types (`TEXT`, `COMBAT` with `encounter`/`win`/`lose`, `RESOLVER`, `ENDING`); a choice either goes `to` a node or `end`s the dialogue. A dialogue opens on its first matching `entries` node, else `start`.
+- The Hired Blade fight starts from the alley dialogue (a `COMBAT` node). `creep_spawn` objects and `/api/world/encounter` arrive with creeps in V4.
+- The structural quick-route length check leaves `DialogueValidator`, because the route now crosses the world; the merchant route is played end to end by `GameEngineTest` and `QuickRouteApiIT` through world events.
+- A new game opens with the start dialogue from `regions.json`. Once-only triggers, `showIf`/`hideIf` and the light state are all driven by flags, and gates live only on `regions.json` edges.
+- Night lighting, light radii, the player light and rain are tuned in `content/art/grades.json` (presentation); walking constants stay in `balance.json`.
+- The v1 "Eldmere burning" red tint is dropped; the burning is told in the dialogue.
+
+**Why.** The existing node engine and combat routing were proven by tests; reusing them kept every v1 path and ending reachable while the world was added around them.
+
+**Spec.** §8, §9; V3 in §12.
+
+---
+
+## P-38 — The nightly frame budget measures CPU time per frame
+
+**Problem.** §4.13 measured the p95 time between frames. CI browsers have no GPU, so Chrome draws WebGL in software and paces frames at about 33 ms even without CPU throttling (measured: p95 33.4 ms unthrottled, 50 ms at 4×). The check would fail every night whatever the game costs.
+
+**Decision.** The nightly budget is the 95th-percentile **main-thread CPU time per frame**: the sum of each frame's animation-frame callbacks (Phaser's update and render) in a DevTools trace, with 4× CPU throttling, at most 33 ms (`budgets.performance.p95FrameCpuMs` in `balance.json`). GPU cost is checked on the real device (P-24).
+
+**Why.** It measures what the game controls on the CPU, independent of how the test machine draws pixels; the real-device check covers rendering.
+
+**Addition.** The nightly run also fails when its p95 CPU time per frame is more than 25 % worse than the last good nightly run. Each run stores its numbers (`perf.json`) as a workflow artifact; the next run downloads the last successful run's file and compares.
+
+**Spec.** §4.13.
+
+---
+
+## P-39 — A compact HUD that never covers the player
+
+**Problem.** The v1 HUD was a full panel of numbers. In the world it covered a large part of a phone screen, often around the player.
+
+**Decision.** A compact cluster in the top-left corner with no background panel: a level badge, a thin HP bar and a thinner energy bar below it. On phones it takes at most about 10 % of the screen height and 35 % of the width; on desktop it has a fixed maximum width. Numbers always show on desktop; on phones only while a value changes or after a tap. After a few calm seconds at full HP it fades to about 35 % opacity, and returns to full on damage, energy use, level-up, low HP or a nearby enemy (V4). Shards show bottom-right, briefly, when they change. No HUD element may cover the player or the area around them.
+
+**Why.** The world is the game; the HUD should say what matters when it matters and otherwise get out of the way, most of all on a phone.
+
+**Spec.** §4.16, §8.
+
+---
+
+## P-40 — Input-aware layouts (replaces landscape-first)
+
+**Problem.** P-10 made the game landscape-first with a "rotate your phone" hint. Most people hold a phone upright, and a desktop player does not need touch controls.
+
+**Decision.**
+- **Keyboard and mouse:** no touch controls; the game view fills the screen.
+- **Phone portrait (the main phone layout):** the game view with the HUD cluster on top; a control deck below with the D-pad, interact (A), menu and bag. While a dialogue is open its text and choices render inside the deck. No rotate hint.
+- **Phone landscape:** the desktop layout plus translucent touch controls (about 40 % opacity idle, full while pressed, ≥ 48 px).
+- The mode comes from input capability and the last input used (coarse pointer, touch, key presses), not from screen width, and switches live. Layouts use `dvh` units and safe-area insets.
+- On touch, quick slots sit behind the bag button; the boss bar is bottom-centre (V7).
+
+**Why.** Portrait keeps one-handed play comfortable and the controls off the world; detection by input, not width, gives a tablet with a keyboard the desktop layout and a phone in either orientation its touch controls.
+
+**Supersedes.** P-10.
+
+**Spec.** §4.16.
+
+---
+
+## P-41 — Controls screen and contextual hints
+
+**Problem.** New players have to guess the controls, and the controls differ by device.
+
+**Decision.** A Controls screen on the title screen and in the pause menu lists keyboard (WASD or arrows to move, E or Space to interact, Esc for the menu), the gamepad mapping and the touch controls. Contextual hints show once per profile and can be skipped, with a setting to turn them off: a movement hint at the start and an interact hint at the first object in reach. Button labels match the device in use (E, gamepad A, the tap icon). In V5 the first Lantern gets a tutorial (rest, level up) and a new lore NPC beside it who explains what has become of the world and hints at the regions ahead; that dialogue is drafted for review when V5 starts.
+
+**Why.** Teaching in context, once, is enough; a screen to look things up covers the rest.
+
+**Spec.** §4.9, §4.16; V5 in §12.
+
+---
+
+## P-42 — Minimal audio now
+
+**Problem.** Audio was planned for V12. A silent world feels unfinished from the first minute, and the storm night depends on its rain.
+
+**Decision.** Pulled forward from V12: rain, footsteps, dialogue blips, UI clicks and one Eldmere music track from Ninja Adventure's CC0 audio, each with a CREDITS row. Sound effects are converted to mono 22 kHz WAV by `tools/audio/prepare.mjs`; the music ships as the pack's OGG. Audio starts only after the first user interaction. A small settings panel offers mute, music volume and effects volume. CI checks an audio size budget.
+
+**Why.** A few sounds carry most of the mood for very little size; the rest of the soundtrack still arrives in V12.
+
+**Spec.** §4.9, §11; V12 in §12.
+
+---
+
+## P-43 — Buildings block their footprint; actors collide at their feet
+
+**Problem.** Building stamps left their roof row walkable ("behind the roof"), and the cottage door was an open cell inside the wall row. The player could walk into the cottage wall and stand inside it.
+
+**Decision.**
+- A building blocks its **whole footprint**, roof included. Every building stamp also writes a `building` object (its footprint) to the map. The server's collision grid is the `collision` layer plus every building footprint, and `MapValidator` fails a map whose `collision` layer leaves a footprint tile open, so the client, which reads only the layer, and the server always agree.
+- A **door** is part of the footprint. Until interiors exist it is an `interact` object in front of the wall with flavour text (the cottage: "The door is barred against the storm."); with interiors it becomes an exit.
+- The player and NPCs collide with a small **feet-only box** (10 × 6 px) and are depth-sorted by their feet (lower on screen is drawn in front). Roof edges and canopies in the `above` layer still draw over them.
+
+**Why.** Walls that the player can walk into break the illusion at once, and a footprint rule is easy to check by machine.
+
+**Revised by** P-51 (actors stand on whole tiles; the feet box is gone).
+
+**Spec.** §9 (map objects, map rule 8).
+
+---
+
+## P-44 — Paged dialogue and keyboard choices
+
+**Problem.** Long dialogue text scrolled inside a fixed box, the choices waited below it, and choices could only be clicked, tapped or picked with a gamepad.
+
+**Decision.**
+- **Pages:** the client splits a node's text into pages by **rendered lines**: 2 lines on desktop and in landscape, 3 in the portrait deck. A `[page]` marker in dialogue text forces a page break. Each page types out; E, Space, Enter, gamepad A or a tap on the box completes it, and the same input again turns the page. A ▼ marker shows when a page is complete and another follows. Choices appear only on the last page.
+- **Fast-forward:** holding E (or Space, Enter, gamepad A) skips through pages the player has already read on this profile; unread pages still need a fresh press each.
+- **Choices:** W/S or ↑/↓ move a visible highlight, E, Space or Enter take it, and 1–4 take a choice directly. Mouse hover moves the highlight, and clicks and taps still take a choice at once. The gamepad works as before (P-41).
+
+**Why.** Short pages read better on a phone than a scrolling block, and a keyboard player should never need the mouse.
+
+**Revised by** P-49 (page size from the space available, pages by sentences).
+
+**Spec.** §4.8.
+
+---
+
+## P-45 — Story gates are obstacles in the world
+
+**Problem.** A gated exit only answered "The way is closed." and put the player back, which looks like a bug.
+
+**Decision.**
+- A path that opens later is closed by an **`obstacle`** map object: a flooded ford, rubble, a fallen tree, crates, a locked gate or a guard. Interacting with it shows flavour text (its `dialogue`). Its tiles are drawn in the map's `obstacles` layer, and it blocks its rectangle **while it is active**, on the client and the server alike. `hideIf` (or `showIf`) names the flag that removes it, so the same object can also change by swapping it for another one.
+- A path that never opens in any planned phase is a **natural boundary** (trees, water) with no exit.
+- An exit may only lead to an area that has a map; unbuilt areas have no edges yet. Edges keep `gateFlag` as a server-side check.
+- **Validator:** every flag that opens or closes a gate (an obstacle's `showIf`/`hideIf`, an edge's `gateFlag`) must be set somewhere in the content, or startup fails. Every obstacle must be reachable.
+- Eldmere: the flooded road west (opens with the Whispering Wood) and the north rubble in the Old Ruins (opens in V7) are obstacles without a flag for now; crates block Tanner's Alley until the player follows Corvin (`following_corvin`); the alley's iron gate is locked; Mill Road's south road ends in a natural boundary.
+
+**Why.** The world explains itself: the player sees why a way is closed and can tell it might open.
+
+**Supersedes** the "edges to unbuilt areas must be gated" rule in §9.
+
+**Spec.** §4.11, §9.
+
+---
+
+## P-46 — Interaction marker and current objective
+
+**Problem.** Players could not tell what they can use, and returning players did not know what to do next.
+
+**Decision.**
+- A small **marker** shows above the nearest NPC or object in reach: the key or button for the device in use (E, gamepad A, a tap icon).
+- The **current objective** is one short line, chosen by the server from `objectives` in `world.json` (the first entry whose conditions hold, using the usual condition format) and sent in `SessionView`. It shows briefly when it changes and always in the pause menu.
+
+**Why.** Both answer "what now?" without a tutorial; the server decides, as with every game rule.
+
+**Spec.** §4.8, §4.16.
+
+---
+
+## P-47 — Layout polish
+
+**Decision.**
+- **Portrait deck:** about 28–30 % of the screen height with the same button sizes; Bag and Menu as small pill buttons.
+- **Area name:** a title card on entering an area (large, centred, fading after about 2.5 s) instead of a permanent label.
+- **Desktop:** larger, higher-contrast HUD numbers; Bag and Menu as small icon buttons with key hints (I opens the Bag, Esc the menu).
+- **Landscape:** Bag and Menu are translucent like the D-pad and Ⓐ until pressed.
+
+**Why.** More of the screen goes to the world, and a keyboard player gets a key for every button.
+
+**Spec.** §4.16.
+
+---
+
+## P-48 — An AAC fallback for the music
+
+**Problem.** Safari on older iPhones cannot play OGG Vorbis, so the Eldmere music stayed silent there.
+
+**Decision.** Each music track ships as the pack's OGG plus an AAC (`.m4a`, 64 kbps) fallback. The client plays the OGG where the browser can, otherwise the AAC. `tools/audio/prepare.mjs` decodes the OGG in Playwright's Chromium and encodes the AAC with Windows' Media Foundation (`tools/audio/wav-to-m4a.ps1`), so no new tool is needed. The audio budget counts what one player downloads: the effects plus the larger version of the music.
+
+**Why.** Every phone gets the music without a new dependency, and players never download both versions.
+
+**Spec.** §4.9.
+
+---
+
+## P-49 — Pages by sentences and space, one overlay at a time, message boxes, story cues
+
+**Problem.** Fixed line counts (P-44) wasted space in the portrait deck and split sentences anywhere, sometimes leaving the choices under a scrap of text. On arrival the title card, an opening dialogue and the objective banner could overlap. Signs and obstacles showed a lone "Turn back" choice, and affinity changes showed bare numbers.
+
+**Decision.**
+- **Pages:** a page holds as many lines as the box has room for (over the world the box fits its text up to its share of the view; in the deck it fills the deck), and the last page leaves room for the choices. Pages hold whole sentences while they fit; a sentence is split only when it alone exceeds a page. The last two pages are rebalanced so the final page starts a sentence and the two are even. `[page]` still forces a break. Revises the line counts in P-44.
+- **Arrival:** the area title card shows first (about 2 s), then any opening dialogue, then the objective banner once the dialogue closes, then hints. Never more than one at once.
+- **Message boxes:** a node whose only option is unlocked, ends the dialogue and has no effects is sent as `DialogueView.message`; the client shows a message box (■) closed with E, A or a tap, without a choice button (signs, the cottage door, obstacles, narration).
+- **Story cues:** an affinity change shows a cue from `world.json` (`affinityCues`, with the NPC's `shortName`: "Corvin will remember that.") instead of a number; numbers stay in the Bag. Toasts are smaller in portrait and never cover the touch controls.
+- **Stepping:** a frame counts as at most 100 ms and physics moves at most 8 px between collision checks, so nothing walks through a one-tile wall on a slow device.
+
+**Why.** Text reads in natural units, the choices always have room, the first seconds in an area stay calm, and the story speaks in its own voice.
+
+**Revised by** P-50 (pages of at most 3 or 4 lines, clause breaks, a deck that fits its dialogue) and P-51 (tile steps replace the physics stepping).
+
+**Spec.** §4.8, §4.16.
+
+---
+
+## P-50 — Short pages, broken at sentences and clauses
+
+**Problem.** Pages sized to all the available space (P-49) made long blocks of text, and the portrait deck kept empty space under short messages.
+
+**Decision.**
+- A page holds at most **3 lines** over the world (desktop, landscape) and **4** in the portrait deck, fewer if the box has no room; the last page still leaves room for the choices.
+- Pages break between sentences; a sentence too long for a page breaks between clauses (after a comma, semicolon, colon or dash), and only a clause too long for a page breaks between words. The last two pages are still rebalanced: the final page starts a sentence wherever possible (else a clause), and the two are as even as possible. `[page]` still forces a break.
+- The box fits its pages, and every page but the last keeps the height of the tallest one, so the box does not jump while paging. In portrait the deck shrinks to fit short messages and pages (up to half the screen), with room for the choices.
+
+**Why.** Three or four lines are read at a glance on a phone, and natural breaks keep each page meaningful.
+
+**Revises** the page size in P-49.
+
+**Spec.** §4.8.
+
+---
+
+## P-51 — Tile-step movement
+
+**Problem.** Free movement with arcade physics (P-06, P-43) kept producing snags and edge cases: feet catching wall corners, corner sliding and corner assist to work around them, sub-pixel overlaps, frame-rate-dependent collision on slow phones, and an e2e walker that had to line the player up with tolerances and retries. Players of top-down monster-battlers also expect grid steps.
+
+**Decision.**
+- **One step is one tile.** The player is always on a whole tile; a step slides smoothly to the next tile in `world.stepMs` (160 ms, `balance.json`). Holding a direction keeps walking; a quick tap on a new direction only **turns in place** (the direction must still be held after `world.turnMs` to walk). While walking, a new direction turns and steps at once.
+- **Collision is a tile lookup:** the `collision` layer (building footprints included, P-43), active obstacles (P-45), NPC tiles and the map edge. No physics for the player; corner sliding and corner assist are gone.
+- **Input is queued per step.** Each key, D-pad or gamepad press is a queued step (or turn), so a press that goes down and up within one long frame still counts. Movement is time-based (the real frame time, capped at 250 ms, carries over between steps), so the walking speed and the tiles reached are the same at any frame rate.
+- Exits and triggers fire on arriving at their tile, and stop the walk and its queue. Interactions wait for the current step to finish. NPCs, the interaction marker and the reach checks use the same tiles.
+- **Server:** an event's position must be a tile centre; the tile must be walkable, reachable by BFS on the collision grid with this game's obstacles, and within the speed check, which now counts tiles per second from `stepMs` (`1000 / stepMs × elapsed × speedTolerance + speedSlackTiles`).
+
+**Why.** Whole tiles make collision exact and identical on the client and the server, remove a whole class of snag and tunnelling bugs, make every route replayable tile by tile in tests, and match the genre.
+
+**Supersedes** the free-movement parts of P-06 (smooth, not grid-locked movement) and the feet-box collision of P-43; P-49's physics stepping no longer applies. The REST events, BFS and speed check of P-06 and P-19 stay.
+
+**Spec.** §2, §4.11, §4.16, §10, §12.
+
+---
+
+## P-52 — Real-device fixes: zoom on short screens, released controls, readable nights
+
+**Problem.** The first check on a real phone (Chrome, Android) found:
+- in landscape with the address bar showing, the view is under 300 px tall, so the 11-tile rule gave a zoom of 1: everything looked tiny, and the 40-tile Square was narrower than the screen, leaving a black band;
+- a finger on the D-pad when a dialogue opened never reached the button again (the dialogue takes the D-pad's place in the portrait deck), so the player walked on alone after the dialogue;
+- a long press on the controls selected the deck's text, and the browser then cancelled the touch, which stopped the walk and felt like lag;
+- the storm night was too dark to see at half brightness;
+- an exit stepped on while offline did nothing after reconnecting until the player stepped off and on again.
+
+**Decision.**
+- **Zoom:** still a whole number (P-29). The largest that keeps about 11 tiles across the short side; if that is only 1, the largest that keeps 8; and never less than the map needs to fill the view, so no empty band shows beside a small map.
+- **Touch controls:** any lift of the finger that holds the D-pad, wherever it lands, losing the page, or the D-pad leaving the screen stops the walk. The world screen allows no text selection and no touch callout.
+- **Night light:** every colour channel of an area's ambient light multiplies by at least 0.55 (a content test checks every light state). The storm night is now ambient 0.7 with a softer blue tint and a slightly larger player light.
+- **Outages:** a world event that got no answer moves the player, once the game reconnects, to the position in the server's view (V2_SPEC §4.11).
+
+**Why.** These are what a player meets in the first minute on a phone. Each one now has a test, so it stays fixed.
+
+**Spec.** §4.11, §4.16.
+
+---
+
+## P-53 — Full screen on phones; no browser long-press gesture on the controls
+
+**Problem.** On the real phone, Chrome's tab strip and address bar kept a band of a landscape screen, and holding or tapping the D-pad still made Chrome buzz and play its long-press sound every few seconds (P-52 stopped the selection, not the gesture).
+
+**Decision.**
+- **Full screen:** on a phone layout, the first tap in the game asks the browser for full screen (the Fullscreen API, the way a video player does; browsers allow it only from a tap). It asks once per visit. If the player leaves full screen, a small full-screen button beside Bag and Menu brings it back. Where the browser has no Fullscreen API (iPhone Safari), nothing changes. Installing the game as an app (PWA, V2c) will give full screen without the tap.
+- **Long press:** the D-pad and Ⓐ cancel `touchstart` (a non-passive listener, since React's touch listeners are passive), so the browser starts no long-press gesture. Their pointer events still arrive. The world screen also cancels the context menu.
+
+**Why.** A phone game should own the whole screen, and a held button should only walk.
+
+**Spec.** §4.16.

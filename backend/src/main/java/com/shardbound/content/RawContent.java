@@ -1,29 +1,32 @@
 package com.shardbound.content;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.List;
 
 /**
- * Story content as plain rows, exactly as written in content/*.json, before
- * any Java objects are built from it. {@link JsonContentReader} produces it,
- * {@code StoryValidator} checks it and {@link ContentAssembler} builds the
- * immutable {@link GameContent} from it.
+ * World and dialogue content as plain rows, exactly as written in
+ * content/*.json, before any Java objects are built from it.
+ * {@link JsonContentReader} produces it, {@code DialogueValidator} checks it
+ * and {@link ContentAssembler} builds the immutable {@link GameContent} from it.
  */
 public record RawContent(
         List<FactionDef> factions,
-        List<LocationDef> locations,
         List<NpcDef> npcs,
+        AffinityCues affinityCues,
         List<ItemDef> items,
         List<EnemyDef> enemies,
         List<EncounterDef> encounters,
         List<QuestDef> quests,
         List<AchievementDef> achievements,
         List<EndingDef> endings,
+        List<ObjectiveDef> objectives,
+        List<DialogueDef> dialogues,
         List<NodeDef> nodes,
         List<ChoiceDef> choices) {
 
     public RawContent {
         factions = List.copyOf(factions);
-        locations = List.copyOf(locations);
         npcs = List.copyOf(npcs);
         items = List.copyOf(items);
         enemies = List.copyOf(enemies);
@@ -31,16 +34,19 @@ public record RawContent(
         quests = List.copyOf(quests);
         achievements = List.copyOf(achievements);
         endings = List.copyOf(endings);
+        objectives = List.copyOf(objectives);
+        dialogues = List.copyOf(dialogues);
         nodes = List.copyOf(nodes);
         choices = List.copyOf(choices);
     }
 
     public record FactionDef(String id, String name) { }
 
-    public record LocationDef(String id, String name, String region) { }
+    /** factionId may be null. */
+    public record NpcDef(String id, String name, String shortName, @Nullable String factionId) { }
 
-    /** factionId and locationId may be null. */
-    public record NpcDef(String id, String name, String factionId, String locationId) { }
+    /** Story cues for affinity changes; {@code {name}} is the NPC's short name. */
+    public record AffinityCues(String warmer, String colder) { }
 
     /** Exactly one of weapon / consumable is non-null for those types; both null for KEY. */
     public record ItemDef(String id, String name, String type, String description, int price,
@@ -77,15 +83,36 @@ public record RawContent(
         }
     }
 
-    /** encounterId/win/lose/flee are null except on COMBAT nodes. */
-    public record NodeDef(String id, int chapter, String locationId, String type, String title, String body,
-                          String encounterId, String winNode, String loseNode, String fleeNode) { }
+    /** A current-objective line (P-46): the first whose conditions hold is shown. */
+    public record ObjectiveDef(String id, String text, List<RuleDef> conditions) {
+        public ObjectiveDef {
+            conditions = List.copyOf(conditions);
+        }
+    }
+
+    /** One dialogue file: its id, optional NPC, default first node and conditional first nodes. */
+    public record DialogueDef(String id, @Nullable String npc, String start, List<EntryDef> entries) {
+        public DialogueDef {
+            entries = List.copyOf(entries);
+        }
+    }
+
+    public record EntryDef(String node, List<RuleDef> conditions) {
+        public EntryDef {
+            conditions = List.copyOf(conditions);
+        }
+    }
+
+    /** encounterId/win/lose/flee are null except on COMBAT nodes; speaker may be null. */
+    public record NodeDef(String id, String dialogueId, String type, String title, @Nullable String speaker,
+                          String body, @Nullable String encounterId, @Nullable String winNode,
+                          @Nullable String loseNode, @Nullable String fleeNode) { }
 
     /**
-     * One choice. {@code id} is the database choice_id, or a sequential number
-     * when loaded straight from JSON (no database yet).
+     * One choice, numbered in file order. {@code toNode} is null when the
+     * choice ends the dialogue.
      */
-    public record ChoiceDef(int id, String fromNode, String toNode, String label, int sortOrder,
+    public record ChoiceDef(int id, String fromNode, @Nullable String toNode, String label, int sortOrder,
                             boolean hiddenWhenLocked, List<RuleDef> conditions, List<RuleDef> effects) {
         public ChoiceDef {
             conditions = List.copyOf(conditions);

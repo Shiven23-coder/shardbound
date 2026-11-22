@@ -7,6 +7,8 @@ import com.shardbound.model.Faction;
 import com.shardbound.quest.QuestStatus;
 import com.shardbound.save.SaveCodec;
 import com.shardbound.save.SaveSnapshot;
+import com.shardbound.world.AreaMap;
+import com.shardbound.world.WorldPosition;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -37,6 +39,10 @@ class SaveFixturesTest {
     void v1PrologueSaveLoadsIntoCurrentContent() throws IOException {
         GameState s = snapshots().restoreSave(fixture("v1/prologue-square.json", 1), "session", 7);
         assertEquals("p03", s.currentNode());
+        assertEquals(Mode.DIALOGUE, s.mode());
+        AreaMap square = TestEngines.content().world().mapOf("eldmere_square");
+        assertEquals(WorldPosition.at("eldmere_square", square, square.spawn("from_lane").orElseThrow()), s.position());
+        assertEquals(1, s.flag("dawn"), "the v1 square is after the storm night");
         assertEquals(34, s.stats().hp());
         assertEquals("rusty_shortsword", s.inventory().equippedWeaponId());
         assertEquals(1, s.inventory().count("heartshard"));
@@ -58,7 +64,7 @@ class SaveFixturesTest {
 
     /** playSeconds keeps ticking between the two restores; everything else must match exactly. */
     private static SaveSnapshot withoutTime(SaveSnapshot s) {
-        return new SaveSnapshot(s.currentNode(), s.hp(), s.energy(), s.level(), s.xp(), s.gold(), s.inventory(),
+        return new SaveSnapshot(s.currentNode(), s.world(), s.hp(), s.energy(), s.level(), s.xp(), s.gold(), s.inventory(),
                 s.equipped(), s.flags(), s.reputation(), s.affinity(), s.quests(), s.history(), s.rngSeed(),
                 s.demoMode(), 0);
     }
@@ -66,9 +72,20 @@ class SaveFixturesTest {
     @Test
     void unknownContentIsRefused() throws IOException {
         SaveSnapshot original = fixture("v1/prologue-square.json", 1);
-        SaveSnapshot gone = new SaveSnapshot("p999", original.hp(), original.energy(), original.level(),
+        SaveSnapshot gone = new SaveSnapshot("p999", original.world(), original.hp(), original.energy(), original.level(),
                 original.xp(), original.gold(), original.inventory(), original.equipped(), original.flags(),
                 original.reputation(), original.affinity(), original.quests(), original.history(),
+                original.rngSeed(), original.demoMode(), original.playSeconds());
+        assertThrows(SaveIncompatibleException.class, () -> snapshots().restoreSave(gone, "s", 7));
+    }
+
+    @Test
+    void anUnknownAreaIsRefused() throws IOException {
+        SaveSnapshot original = fixture("v1/prologue-square.json", 1);
+        SaveSnapshot gone = new SaveSnapshot(original.currentNode(),
+                new SaveSnapshot.WorldEntry("atlantis", null, 8, 8, "DOWN"), original.hp(), original.energy(),
+                original.level(), original.xp(), original.gold(), original.inventory(), original.equipped(),
+                original.flags(), original.reputation(), original.affinity(), original.quests(), original.history(),
                 original.rngSeed(), original.demoMode(), original.playSeconds());
         assertThrows(SaveIncompatibleException.class, () -> snapshots().restoreSave(gone, "s", 7));
     }

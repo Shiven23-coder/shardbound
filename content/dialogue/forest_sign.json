@@ -1,0 +1,54 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "forest_sign",
+  "start": "forest_sign",
+  "nodes": [
+    {
+      "id": "forest_sign",
+      "title": "A Weathered Sign",
+      "text": "The road to the Whispering Wood is under brown water from here to the trees. Someone has nailed a board across the sign: CLOSED BY ORDER OF THE ELDER.",
+      "choices": [
+        {
+          "label": "Ask the Wardens",
+          "to": "p04w",
+          "conditions": [
+            {
+              "type": "FLAG",
+              "key": "met_wardens",
+              "op": "=",
+              "value": 1
+            },
+            {
+              "type": "ITEM",
+              "key": "heartshard",
+              "op": ">=",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "label": "Turn back",
+          "end": true
+        }
+      ]
+    },
+    {
+      "id": "p04w",
+      "title": "The Forest Edge",
+      "text": "You walk to the last fence post and whistle the three falling notes, the way the Warden taught you. For a long time nothing happens. Then a woman in moss-green leathers is simply there, leaning on a spear of pale wood as if she has been waiting all morning. Her eyes go straight to the bulge under your coat. \"So it was you,\" she says. \"The whole forest felt it land.\" She does not reach for it. The Wardens, she explains, do not take what is not offered. But they would keep it safer than a village with thatched roofs and a single locked door.",
+      "choices": [
+        {
+          "label": "Let the Wardens keep it safe",
+          "to": "p11",
+          "effects": [
+            {
+              "type": "REP",
+              "key": "SYLVAN",
+              "value": 10
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "ruins_rubble",
+  "start": "ruins_rubble",
+  "nodes": [
+    {
+      "id": "ruins_rubble",
+      "title": "Fallen Stones",
+      "text": "Stones from the watchtower block the old way north. Beyond them, something has scorched the trees black.",
+      "choices": [
+        {
+          "label": "Turn back",
+          "end": true
+        }
+      ]
+    }
+  ]
+}

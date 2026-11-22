@@ -32,3 +32,9 @@ Thumbs.db
 
 # ===== Claude Code local settings =====
 .claude/settings.local.json
+
+# Nightly performance numbers (P-38): written by perf.spec.ts, kept as CI artifacts
+e2e/perf/
+
+# Review screenshots from e2e/tests/screenshots.spec.ts (sent for review, not kept in the repo)
+docs/screenshots/

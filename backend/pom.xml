@@ -124,10 +124,14 @@
             <resource>
                 <directory>src/main/resources</directory>
             </resource>
-            <!-- Game content ships inside the jar and is loaded at startup (P-04) -->
+            <!-- Game content ships inside the jar and is loaded at startup (P-04); art and audio are the client's -->
             <resource>
                 <directory>../content</directory>
                 <targetPath>content</targetPath>
+                <excludes>
+                    <exclude>art/**</exclude>
+                    <exclude>audio/**</exclude>
+                </excludes>
             </resource>
         </resources>
         <plugins>

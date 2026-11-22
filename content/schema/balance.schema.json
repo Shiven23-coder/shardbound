@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shardbound.game/schema/balance.schema.json",
+  "title": "Shardbound balance constants (content/balance.json)",
+  "type": "object",
+  "required": ["world", "budgets"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "world": {
+      "description": "Walking and the server's world-event checks (V2_SPEC §4.11).",
+      "type": "object",
+      "required": ["stepMs", "turnMs", "speedTolerance", "speedSlackTiles", "interactRange"],
+      "additionalProperties": false,
+      "properties": {
+        "stepMs": { "description": "Milliseconds per one-tile step (P-51); the walking speed is 1000 / stepMs tiles per second.", "type": "integer", "minimum": 50, "maximum": 1000 },
+        "turnMs": { "description": "How long a new direction must be held, standing still, before the player walks; a shorter tap only turns (P-51). Client only.", "type": "integer", "minimum": 0, "maximum": 500 },
+        "speedTolerance": { "description": "Multiplier on the distance the player could have walked.", "type": "number", "minimum": 1 },
+        "speedSlackTiles": { "description": "Extra tiles allowed for network latency.", "type": "number", "minimum": 0 },
+        "interactRange": { "description": "Chebyshev distance in tiles for interactions.", "type": "integer", "minimum": 1 }
+      }
+    },
+    "budgets": {
+      "description": "Performance budgets (V2_SPEC §4.13). The bundle and asset budgets gate PRs (tools/ci/check-bundle.mjs); the performance budget runs nightly (P-36).",
+      "type": "object",
+      "required": ["initialJsGzipKb", "phaserChunkGzipKb", "regionAssetsKb", "textureMemoryMb", "audioKb", "performance"],
+      "additionalProperties": false,
+      "properties": {
+        "initialJsGzipKb": { "description": "JavaScript the title screen loads, gzipped.", "type": "number", "exclusiveMinimum": 0 },
+        "phaserChunkGzipKb": { "description": "The lazy Phaser chunk, gzipped.", "type": "number", "exclusiveMinimum": 0 },
+        "regionAssetsKb": { "description": "Maps and art files of one region.", "type": "number", "exclusiveMinimum": 0 },
+        "textureMemoryMb": { "description": "Decoded size (width × height × 4) of one region's images.", "type": "number", "exclusiveMinimum": 0 },
+        "audioKb": { "description": "Sound effects plus one region's music in its larger version, as one player downloads them (P-42, P-48).", "type": "number", "exclusiveMinimum": 0 },
+        "performance": {
+          "type": "object",
+          "required": ["cpuThrottle", "p95FrameCpuMs", "maxRegression", "jsHeapMb"],
+          "additionalProperties": false,
+          "properties": {
+            "cpuThrottle": { "description": "Chrome DevTools CPU slowdown factor.", "type": "number", "minimum": 1 },
+            "p95FrameCpuMs": { "description": "95th percentile main-thread CPU time per frame while walking (animation-frame callbacks: Phaser update and render), P-38.", "type": "number", "exclusiveMinimum": 0 },
+            "maxRegression": { "description": "The nightly fails when its p95 CPU time per frame is worse than the last good nightly by more than this share (P-38).", "type": "number", "exclusiveMinimum": 0 },
+            "jsHeapMb": { "description": "Used JS heap after walking every area.", "type": "number", "exclusiveMinimum": 0 }
+          }
+        }
+      }
+    }
+  }
+}

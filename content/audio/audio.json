@@ -1,0 +1,17 @@
+{
+  "$schema": "../schema/audio.schema.json",
+  "description": "Sounds and music (P-42). Paths are relative to content/audio; files come from tools/audio/prepare.mjs. Volumes are 0-1 before the player's settings.",
+  "effects": {
+    "rain": { "file": "sfx/rain.wav", "volume": 0.35, "loop": true },
+    "footstep": { "file": "sfx/footstep-grass.wav", "volume": 1 },
+    "blip": { "file": "sfx/blip.wav", "volume": 0.18 },
+    "click": { "file": "sfx/click.wav", "volume": 0.35 }
+  },
+  "music": {
+    "eldmere": { "file": "music/eldmere.ogg", "fallback": "music/eldmere.m4a", "volume": 0.3 }
+  },
+  "footstepIntervalMs": 300,
+  "footstepPitchJitter": 0.08,
+  "blipEveryChars": 8,
+  "musicFadeMs": 1500
+}

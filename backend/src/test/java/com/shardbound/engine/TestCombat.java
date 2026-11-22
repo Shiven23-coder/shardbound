@@ -10,6 +10,6 @@ public final class TestCombat {
 
     public static void setCombat(GameState state, CombatState combat) {
         state.setCombat(combat);
-        state.setMode(combat == null ? Mode.STORY : Mode.COMBAT);
+        state.setMode(combat == null ? Mode.DIALOGUE : Mode.COMBAT);
     }
 }

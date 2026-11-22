@@ -1,0 +1,26 @@
+{
+  "$schema": "./schema/regions.schema.json",
+  "start": {
+    "area": "eldmere_cottage_lane",
+    "spawn": "home",
+    "dialogue": "storm_intro",
+    "flags": { "storm_night": 1 }
+  },
+  "regions": [
+    {
+      "id": "eldmere", "name": "Eldmere", "music": "eldmere",
+      "lightStates": [{ "id": "storm_night", "flag": "storm_night" }, { "id": "dawn" }]
+    }
+  ],
+  "areas": [
+    { "id": "eldmere_cottage_lane", "region": "eldmere", "name": "Cottage Lane", "map": "eldmere_cottage_lane" },
+    { "id": "eldmere_old_ruins", "region": "eldmere", "name": "The Old Ruins", "map": "eldmere_old_ruins" },
+    { "id": "eldmere_square", "region": "eldmere", "name": "Eldmere Square", "map": "eldmere_square" },
+    { "id": "eldmere_mill_road", "region": "eldmere", "name": "Mill Road", "map": "eldmere_mill_road" }
+  ],
+  "edges": [
+    { "from": "eldmere_cottage_lane", "to": "eldmere_old_ruins", "weight": 1 },
+    { "from": "eldmere_cottage_lane", "to": "eldmere_square", "weight": 1 },
+    { "from": "eldmere_square", "to": "eldmere_mill_road", "weight": 1 }
+  ]
+}

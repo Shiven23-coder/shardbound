@@ -1,0 +1,91 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "maren",
+  "npc": "maren",
+  "start": "maren_greet",
+  "entries": [
+    {
+      "node": "maren_shard",
+      "conditions": [
+        {
+          "type": "ITEM",
+          "key": "heartshard",
+          "op": ">=",
+          "value": 1
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "maren_greet",
+      "title": "Elder Maren",
+      "speaker": "maren",
+      "text": "Elder Maren stands in her doorway, watching the hill. \"Go home and bar your door,\" she says. \"Nothing good falls out of a sky like this one.\"",
+      "choices": [
+        {
+          "label": "Leave her be",
+          "end": true
+        }
+      ]
+    },
+    {
+      "id": "maren_shard",
+      "title": "Elder Maren",
+      "speaker": "maren",
+      "text": "Maren's eyes go to your coat before they reach your face. \"Inside,\" she says quietly. \"Whatever you are carrying, do not show it to me in the street.\"",
+      "choices": [
+        {
+          "label": "Follow her inside",
+          "to": "p04e",
+          "effects": [
+            {
+              "type": "REP",
+              "key": "ELDMERE",
+              "value": 5
+            }
+          ]
+        },
+        {
+          "label": "Not yet",
+          "end": true
+        }
+      ]
+    },
+    {
+      "id": "p04e",
+      "title": "Elder Maren",
+      "speaker": "maren",
+      "text": "Elder Maren does not ask what you have brought. She closes the shutters first, then holds out her spotted hands, and when you unwrap the crystal she goes very still. \"Heartshard,\" she whispers, as if the word might wake something. She tells you about a blade of living crystal, broken into three before the kingdom had a name, and about the Ashen Circle, who have spent two hundred years trying to put it back together. \"They will have seen it fall,\" she says. \"They will come tonight.\" She does not tell you to run. She looks at you the way she looked at your father, once, before he went to war.",
+      "choices": [
+        {
+          "label": "Promise to guard it through the night",
+          "to": "p11",
+          "effects": [
+            {
+              "type": "AFFINITY",
+              "key": "maren",
+              "value": 10
+            },
+            {
+              "type": "REP",
+              "key": "ELDMERE",
+              "value": 5
+            }
+          ]
+        },
+        {
+          "label": "Ask her what the Ashen Circle really wants",
+          "to": "p11",
+          "effects": [
+            {
+              "type": "AFFINITY",
+              "key": "maren",
+              "value": 5
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

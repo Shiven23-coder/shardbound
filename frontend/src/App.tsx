@@ -1,21 +1,22 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import type { ComponentType } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { GameProvider, useGame } from './state/GameContext';
 import type { State } from './state/gameReducer';
 import TitleScreen from './screens/TitleScreen';
 import ProfileScreen from './screens/ProfileScreen';
-import GameScreen from './screens/GameScreen';
-import CombatScreen from './screens/CombatScreen';
+import WorldScreen from './screens/WorldScreen';
 import EndingScreen from './screens/EndingScreen';
 import AchievementsScreen from './screens/AchievementsScreen';
 import LeaderboardScreen from './screens/LeaderboardScreen';
 import ToastLayer from './components/ToastLayer';
 import ReconnectingOverlay from './components/ReconnectingOverlay';
 import SaveLoadModal from './components/SaveLoadModal';
-import InspectorPanel from './components/InspectorPanel';
 
-// React only renders the GameView sent by Java and posts player intents.
+// Dev builds only: in production the condition is false and the module is never bundled.
+const InspectorPanel = import.meta.env.DEV ? lazy(() => import('./dev/InspectorPanel')) : null;
+
+// React and Phaser only render the SessionView sent by Java and post player intents.
 export default function App() {
   return (
     <GameProvider>
@@ -24,7 +25,7 @@ export default function App() {
   );
 }
 
-// Picks which screen to show. In the game, GameView.mode decides.
+// Picks which screen to show. In the game, the world stays on screen until the ending.
 // Returns [animation key, screen component].
 function screenFor(state: State): [string, ComponentType] {
   const { screen, view } = state;
@@ -32,9 +33,8 @@ function screenFor(state: State): [string, ComponentType] {
   if (screen === 'achievements') return ['achievements', AchievementsScreen];
   if (screen === 'leaderboard') return ['leaderboard', LeaderboardScreen];
   if (screen === 'game' && view) {
-    if (view.mode === 'COMBAT') return ['combat', CombatScreen];
     if (view.mode === 'ENDED') return ['ended', EndingScreen];
-    return ['story', GameScreen];
+    return ['world', WorldScreen];
   }
   return ['title', TitleScreen];
 }
@@ -44,12 +44,11 @@ function AppShell() {
   const [key, Screen] = screenFor(state);
   const view = state.view;
 
-  // Region / location themes are pure CSS driven by these body attributes.
+  // Region themes are pure CSS driven by this body attribute.
+  const regionId = view?.world.regionId;
   useEffect(() => {
-    document.body.dataset.region = view?.region ?? 'VILLAGE';
-    if (view?.location) document.body.dataset.location = view.location;
-    else delete document.body.dataset.location;
-  }, [view?.region, view?.location]);
+    document.body.dataset.region = regionId ?? 'eldmere';
+  }, [regionId]);
 
   // "~" (the backquote key) toggles the dev-only inspector, except while typing.
   // The server only serves /api/debug in its dev profile, and production builds drop this code.
@@ -92,7 +91,11 @@ function AppShell() {
       </AnimatePresence>
 
       {state.modal && <SaveLoadModal />}
-      {import.meta.env.DEV && state.inspectorOpen && <InspectorPanel />}
+      {InspectorPanel && state.inspectorOpen && (
+        <Suspense fallback={null}>
+          <InspectorPanel />
+        </Suspense>
+      )}
       {state.reconnecting && <ReconnectingOverlay />}
       <ToastLayer />
     </div>

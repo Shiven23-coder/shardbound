@@ -1,0 +1,18 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "alley_crates",
+  "start": "alley_crates",
+  "nodes": [
+    {
+      "id": "alley_crates",
+      "title": "Tanner's Crates",
+      "text": "Crates and a barrel are wedged across Tanner's Alley, roped down against the storm. Nobody gets through here without a reason, and a good shove.",
+      "choices": [
+        {
+          "label": "Leave them",
+          "end": true
+        }
+      ]
+    }
+  ]
+}

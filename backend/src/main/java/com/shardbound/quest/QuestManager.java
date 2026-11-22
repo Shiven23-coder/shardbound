@@ -26,7 +26,7 @@ import java.util.Map;
  * player's statuses live in their GameState.
  *
  * <p>Invalid transitions never throw during play (D14): they log a warning
- * and leave the quest unchanged. StoryValidator catches what it can at import.
+ * and leave the quest unchanged. DialogueValidator catches what it can at import.
  */
 public class QuestManager {
 

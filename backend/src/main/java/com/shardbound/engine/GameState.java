@@ -6,6 +6,8 @@ import com.shardbound.item.Inventory;
 import com.shardbound.model.Faction;
 import com.shardbound.model.Stats;
 import com.shardbound.quest.QuestStatus;
+import com.shardbound.world.WorldPosition;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -40,8 +42,10 @@ public class GameState {
 
     private final String sessionId;
     private final int playerId;
-    private String currentNode;
-    private Mode mode = Mode.STORY;
+    private @Nullable String currentNode;       // the dialogue node shown; null in WORLD mode
+    private Mode mode;
+    private WorldPosition position;              // the last validated position (§4.11)
+    private long lastWorldEventMillis;           // server time of the last accepted world event
     private final Stats stats;
     private final Inventory inventory;
     private final Map<String, Integer> flags = new HashMap<>();
@@ -62,11 +66,17 @@ public class GameState {
     private int endingsFound;                   // set when an ending is reached
     private long runVersion;                    // optimistic-locking version in active_run
 
-    public GameState(String sessionId, int playerId, String startNode, Stats stats, Inventory inventory,
-                     long rngSeed, boolean demoMode, int playSecondsBefore) {
+    /**
+     * @param node     the dialogue node to show, or null to start in the world
+     * @param position where the player stands
+     */
+    public GameState(String sessionId, int playerId, @Nullable String node, WorldPosition position, Stats stats,
+                     Inventory inventory, long rngSeed, boolean demoMode, int playSecondsBefore) {
         this.sessionId = sessionId;
         this.playerId = playerId;
-        this.currentNode = startNode;
+        this.currentNode = node;
+        this.mode = node == null ? Mode.WORLD : Mode.DIALOGUE;
+        this.position = position;
         this.stats = stats;
         this.inventory = inventory;
         this.rngSeed = rngSeed;
@@ -84,7 +94,9 @@ public class GameState {
     // =====================================================================
     public String sessionId()      { return sessionId; }
     public int playerId()          { return playerId; }
-    public String currentNode()    { return currentNode; }
+    public @Nullable String currentNode() { return currentNode; }
+    public WorldPosition position()  { return position; }
+    public long lastWorldEventMillis() { return lastWorldEventMillis; }
     public Mode mode()             { return mode; }
     public Stats stats()           { return stats; }
     public Inventory inventory()   { return inventory; }
@@ -150,7 +162,7 @@ public class GameState {
         quests.put(questId, status);
     }
 
-    /** Queues a toast for the next GameView. O(1). */
+    /** Queues a toast for the next SessionView. O(1). */
     public void addToast(Toast toast) {
         pendingToasts.add(toast);
     }
@@ -190,7 +202,13 @@ public class GameState {
     // =====================================================================
     Deque<Step> historyStack()               { return history; }
     Queue<Toast> toastQueue()                { return pendingToasts; }
-    void setCurrentNode(String nodeId)       { this.currentNode = nodeId; }
+    void setCurrentNode(@Nullable String nodeId) { this.currentNode = nodeId; }
+
+    /** Moves the player to a validated position at server time {@code millis}. */
+    void moveTo(WorldPosition position, long millis) {
+        this.position = position;
+        this.lastWorldEventMillis = millis;
+    }
     void setMode(Mode mode)                  { this.mode = mode; }
     void setCombat(CombatState combat)       { this.combat = combat; }
     void setBus(EventBus bus)                { this.bus = bus; }

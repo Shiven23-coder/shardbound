@@ -1,10 +1,11 @@
-/* Region themes. App.jsx sets body[data-region] and body[data-location]
-   from the GameView; these rules only swap colour tokens. The crossfade
-   comes from the transitions declared on body in theme.css. */
+/* Region themes for the UI around the world. App.tsx sets body[data-region]
+   from SessionView.world.regionId (regions.json); these rules only swap colour
+   tokens. The crossfade comes from the transitions declared on body in theme.css.
+   DUNGEON, KINGDOM and SPIRE take their regions.json ids when those regions are built. */
 
-/* VILLAGE: warm amber and brown (also the default). */
+/* Eldmere: warm amber and brown (also the default). */
 body,
-body[data-region='VILLAGE'] {
+body[data-region='eldmere'] {
   --bg: #1b1712;
   --bg-2: #33241a;
   --surface: rgba(43, 32, 22, 0.85);
@@ -17,8 +18,8 @@ body[data-region='VILLAGE'] {
   --glow: rgba(232, 166, 67, 0.28);
 }
 
-/* FOREST: deep greens with a moss accent. */
-body[data-region='FOREST'] {
+/* The Whispering Wood: deep greens with a moss accent. */
+body[data-region='whispering_wood'] {
   --bg: #0f1a12;
   --bg-2: #1b3020;
   --surface: rgba(20, 38, 25, 0.86);
@@ -73,15 +74,3 @@ body[data-region='SPIRE'] {
   --glow: rgba(160, 180, 255, 0.55);
 }
 
-/* Location accent: Eldmere burning tints everything ember red. */
-body[data-location='eldmere_burning'] {
-  --bg: #1a0c08;
-  --bg-2: #4a160c;
-  --surface: rgba(48, 20, 12, 0.88);
-  --surface-solid: #2e130b;
-  --border: #a2442a;
-  --text-dim: #e3b29c;
-  --accent: #ff7a3d;
-  --accent-text: #1a0904;
-  --glow: rgba(255, 90, 40, 0.38);
-}

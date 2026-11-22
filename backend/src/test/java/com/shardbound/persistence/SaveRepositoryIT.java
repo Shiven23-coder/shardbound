@@ -50,8 +50,9 @@ class SaveRepositoryIT extends IntegrationTest {
         int player = players.findOrCreate("save-overwrite");
         SaveSnapshot first = fixture();
         saves.save(player, 2, first, "eldmere_square");
-        SaveSnapshot later = new SaveSnapshot("p03", 40, 3, 2, 10, 50, first.inventory(), first.equipped(),
-                first.flags(), first.reputation(), first.affinity(), first.quests(), first.history(), 99L, false, 600);
+        SaveSnapshot later = new SaveSnapshot("p03", first.world(), 40, 3, 2, 10, 50, first.inventory(),
+                first.equipped(), first.flags(), first.reputation(), first.affinity(), first.quests(), first.history(),
+                99L, false, 600);
         saves.save(player, 2, later, "eldmere_mill");
 
         List<SlotSummary> slots = saves.list(player);
@@ -76,17 +77,17 @@ class SaveRepositoryIT extends IntegrationTest {
     @Test
     void anOldSaveIsUpgradedOnLoadAndWrittenBackOnce() throws IOException {
         int player = players.findOrCreate("save-upgrade");
-        saves.save(player, 1, fixture(), "eldmere_square");          // stored as format 1
+        saves.save(player, 1, fixture(), "eldmere_square");          // stored in the current format (2)
 
         SaveUpgrade addGold = new SaveUpgrade() {
-            public int fromVersion() { return 1; }
+            public int fromVersion() { return 2; }
             public ObjectNode apply(ObjectNode d) { d.put("gold", d.get("gold").asInt() + 100); return d; }
         };
         SaveRepository newerServer = new SaveRepository(jdbc,
-                new SaveCodec(new SaveUpgrader(2, List.of(addGold))));
+                new SaveCodec(new SaveUpgrader(3, List.of(addGold))));
 
         assertEquals(112, newerServer.load(player, 1).orElseThrow().gold());
-        assertEquals(2, jdbc.sql("SELECT save_version FROM save_slot WHERE player_id = :p AND slot_no = 1")
+        assertEquals(3, jdbc.sql("SELECT save_version FROM save_slot WHERE player_id = :p AND slot_no = 1")
                 .param("p", player).query(Integer.class).single());
         assertEquals(112, newerServer.load(player, 1).orElseThrow().gold(), "upgraded once, not on every load");
     }

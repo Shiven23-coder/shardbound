@@ -81,7 +81,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/GameView"
+                  "$ref" : "#/components/schemas/SessionView"
                 }
               }
             },
@@ -157,6 +157,58 @@
         "tags" : [ "dev" ]
       }
     },
+    "/api/dialogue/choose" : {
+      "post" : {
+        "operationId" : "choose",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ChooseRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionView"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "Take a dialogue choice",
+        "tags" : [ "game" ]
+      }
+    },
     "/api/endings" : {
       "get" : {
         "operationId" : "listEndings",
@@ -219,7 +271,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/GameView"
+                  "$ref" : "#/components/schemas/SessionView"
                 }
               }
             },
@@ -253,58 +305,6 @@
         "tags" : [ "game" ]
       }
     },
-    "/api/game/choose" : {
-      "post" : {
-        "operationId" : "choose",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ChooseRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/GameView"
-                }
-              }
-            },
-            "description" : "OK"
-          },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description" : "Client error"
-          },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description" : "Server error"
-          }
-        },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "Take a story choice",
-        "tags" : [ "game" ]
-      }
-    },
     "/api/game/new" : {
       "post" : {
         "operationId" : "newGame",
@@ -323,7 +323,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/GameView"
+                  "$ref" : "#/components/schemas/SessionView"
                 }
               }
             },
@@ -372,7 +372,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/GameView"
+                  "$ref" : "#/components/schemas/SessionView"
                 }
               }
             },
@@ -424,7 +424,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/GameView"
+                  "$ref" : "#/components/schemas/SessionView"
                 }
               }
             },
@@ -728,7 +728,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/GameView"
+                  "$ref" : "#/components/schemas/SessionView"
                 }
               }
             },
@@ -760,6 +760,110 @@
         } ],
         "summary" : "Load a slot into this session (or a new one)",
         "tags" : [ "saves" ]
+      }
+    },
+    "/api/world/exit" : {
+      "post" : {
+        "operationId" : "worldExit",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ExitRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionView"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "Walk through an exit into the next area (§4.11)",
+        "tags" : [ "game" ]
+      }
+    },
+    "/api/world/interact" : {
+      "post" : {
+        "operationId" : "worldInteract",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/InteractRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionView"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "Talk to an NPC, use an object, or step into a trigger (§4.11)",
+        "tags" : [ "game" ]
       }
     }
   },
@@ -896,6 +1000,33 @@
         },
         "required" : [ "canFlee", "encounterName", "enemies", "lastHits", "log", "round", "skillCost", "usableItems" ]
       },
+      "DialogueView" : {
+        "type" : "object",
+        "properties" : {
+          "choices" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ChoiceView"
+            }
+          },
+          "message" : {
+            "type" : "boolean"
+          },
+          "nodeId" : {
+            "type" : "string"
+          },
+          "speaker" : {
+            "type" : "string"
+          },
+          "text" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "choices", "message", "nodeId", "text", "title" ]
+      },
       "EndingInfoView" : {
         "type" : "object",
         "properties" : {
@@ -969,88 +1100,30 @@
         },
         "required" : [ "alive", "defending", "hp", "index", "maxHp", "name" ]
       },
-      "GameView" : {
+      "ExitRequest" : {
         "type" : "object",
         "properties" : {
-          "affinity" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/AffinityView"
-            }
-          },
-          "chapter" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "choices" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ChoiceView"
-            }
-          },
-          "combat" : {
-            "$ref" : "#/components/schemas/CombatView"
-          },
-          "demoMode" : {
-            "type" : "boolean"
-          },
-          "ending" : {
-            "$ref" : "#/components/schemas/EndingView"
-          },
-          "hud" : {
-            "$ref" : "#/components/schemas/HudView"
-          },
-          "inventory" : {
-            "$ref" : "#/components/schemas/InventoryView"
-          },
-          "journal" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/JournalView"
-            }
-          },
-          "location" : {
-            "type" : "string"
-          },
-          "locationName" : {
-            "type" : "string"
-          },
-          "mode" : {
+          "exitId" : {
             "type" : "string",
-            "enum" : [ "STORY", "COMBAT", "ENDED" ]
+            "maxLength" : 64,
+            "minLength" : 0
           },
-          "node" : {
-            "$ref" : "#/components/schemas/NodeInfo"
+          "facing" : {
+            "type" : "string",
+            "enum" : [ "DOWN", "UP", "LEFT", "RIGHT" ]
           },
-          "offerReload" : {
-            "type" : "boolean"
+          "x" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
           },
-          "quests" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/QuestView"
-            }
-          },
-          "region" : {
-            "type" : "string"
-          },
-          "reputation" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ReputationView"
-            }
-          },
-          "sessionId" : {
-            "type" : "string"
-          },
-          "toasts" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ToastView"
-            }
+          "y" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
           }
         },
-        "required" : [ "affinity", "chapter", "choices", "demoMode", "hud", "inventory", "journal", "location", "locationName", "mode", "node", "offerReload", "quests", "region", "reputation", "sessionId", "toasts" ]
+        "required" : [ "exitId", "facing", "x", "y" ]
       },
       "HitView" : {
         "type" : "object",
@@ -1164,6 +1237,31 @@
           }
         },
         "required" : [ "affinity", "flags", "mode", "nodeId", "quests", "reputation", "rngSeed", "runVersion" ]
+      },
+      "InteractRequest" : {
+        "type" : "object",
+        "properties" : {
+          "facing" : {
+            "type" : "string",
+            "enum" : [ "DOWN", "UP", "LEFT", "RIGHT" ]
+          },
+          "targetId" : {
+            "type" : "string",
+            "maxLength" : 64,
+            "minLength" : 0
+          },
+          "x" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
+          },
+          "y" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "facing", "targetId", "x", "y" ]
       },
       "InventoryView" : {
         "type" : "object",
@@ -1290,20 +1388,43 @@
         },
         "required" : [ "demoMode", "playerId" ]
       },
-      "NodeInfo" : {
+      "NpcView" : {
         "type" : "object",
         "properties" : {
           "id" : {
             "type" : "string"
           },
-          "text" : {
+          "npcId" : {
             "type" : "string"
           },
-          "title" : {
-            "type" : "string"
+          "x" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "y" : {
+            "type" : "integer",
+            "format" : "int32"
           }
         },
-        "required" : [ "id", "text", "title" ]
+        "required" : [ "id", "npcId", "x", "y" ]
+      },
+      "PlayerView" : {
+        "type" : "object",
+        "properties" : {
+          "facing" : {
+            "type" : "string",
+            "enum" : [ "DOWN", "UP", "LEFT", "RIGHT" ]
+          },
+          "x" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "y" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "facing", "x", "y" ]
       },
       "Problem" : {
         "type" : "object",
@@ -1411,6 +1532,76 @@
         },
         "required" : [ "faction", "name", "value" ]
       },
+      "SessionView" : {
+        "type" : "object",
+        "properties" : {
+          "affinity" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AffinityView"
+            }
+          },
+          "combat" : {
+            "$ref" : "#/components/schemas/CombatView"
+          },
+          "demoMode" : {
+            "type" : "boolean"
+          },
+          "dialogue" : {
+            "$ref" : "#/components/schemas/DialogueView"
+          },
+          "ending" : {
+            "$ref" : "#/components/schemas/EndingView"
+          },
+          "hud" : {
+            "$ref" : "#/components/schemas/HudView"
+          },
+          "inventory" : {
+            "$ref" : "#/components/schemas/InventoryView"
+          },
+          "journal" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/JournalView"
+            }
+          },
+          "mode" : {
+            "type" : "string",
+            "enum" : [ "WORLD", "DIALOGUE", "COMBAT", "ENDED" ]
+          },
+          "objective" : {
+            "type" : "string"
+          },
+          "offerReload" : {
+            "type" : "boolean"
+          },
+          "quests" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/QuestView"
+            }
+          },
+          "reputation" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ReputationView"
+            }
+          },
+          "sessionId" : {
+            "type" : "string"
+          },
+          "toasts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ToastView"
+            }
+          },
+          "world" : {
+            "$ref" : "#/components/schemas/WorldView"
+          }
+        },
+        "required" : [ "affinity", "demoMode", "hud", "inventory", "journal", "mode", "offerReload", "quests", "reputation", "sessionId", "toasts", "world" ]
+      },
       "SlotView" : {
         "type" : "object",
         "properties" : {
@@ -1487,6 +1678,42 @@
           }
         },
         "required" : [ "attack", "id", "name", "tier" ]
+      },
+      "WorldView" : {
+        "type" : "object",
+        "properties" : {
+          "areaId" : {
+            "type" : "string"
+          },
+          "areaName" : {
+            "type" : "string"
+          },
+          "hiddenObjects" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "lightState" : {
+            "type" : "string"
+          },
+          "mapKey" : {
+            "type" : "string"
+          },
+          "npcs" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/NpcView"
+            }
+          },
+          "player" : {
+            "$ref" : "#/components/schemas/PlayerView"
+          },
+          "regionId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "areaId", "areaName", "hiddenObjects", "lightState", "mapKey", "npcs", "player", "regionId" ]
       }
     },
     "securitySchemes" : {

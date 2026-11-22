@@ -13,7 +13,7 @@ A 2D top-down, walkable dark-fantasy RPG for desktop and mobile browsers. You ca
 | | |
 |---|---|
 | Audience | Players on phones and desktops (mobile-first, §4.16), plus reviewers reading a public repository. |
-| Look | 32×32 pixel art, one CC0 pack family (Kenney or 0x72, not mixed), dark palette, original UI. Fonts **Cinzel** (headings) and **Cormorant Garamond** (text), self-hosted (OFL). Inspired by the *mood* of Souls-like games; no borrowed names, assets, fonts or UI. |
+| Look | 16×16 pixel art drawn at an integer scale, pixel-perfect (P-29); one CC0 pack family, **Ninja Adventure** by pixel-boy, graded dark (palette remap + per-region colour grade); code and content use logical sprite keys mapped by an art manifest (P-34); original UI. Fonts **Cinzel** (headings) and **Cormorant Garamond** (text), self-hosted (OFL). Inspired by the *mood* of Souls-like games; no borrowed names, assets, fonts or UI. |
 | Battles | Turn-based, classic monster-battler layout: enemy info top-left / sprite top-right, player sprite bottom-left / info bottom-right, text box with **ATTACK · SKILLS · BAG · FLEE**. |
 | HUD | Top-left: HP bar, FP bar below it, level below that. Bottom-right: Shards counter. Bottom-left: 4 quick slots. Bottom-centre during boss fights: boss name + long bar. |
 | Length | Critical path **1–2 h** (budget 105 min, §10); side content **+2–3 h**. 6 regions, 28 areas, 85 creep fights, 8 bosses. |
@@ -56,7 +56,7 @@ flowchart LR
 | Ops | Docker Compose for dev (postgres + mailpit), GitHub Actions CI (Testcontainers, OpenAPI drift, gitleaks, PR-title lint), Dependabot, release-please, Cloudflare Turnstile, Sentry |
 
 **Rules**
-- The server is authoritative. React and Phaser render server views and send intents. The client moves the player freely; the server validates every world event (§4.11).
+- The server is authoritative. React and Phaser render server views and send intents. The client moves the player tile by tile (P-51); the server validates every world event (§4.11).
 - The engine packages are framework-free (no Spring, `jakarta.*` or `java.sql`), enforced by ArchUnit. Persistence is reached through ports in `engine/port/`.
 - One lock per game: every handler runs game logic inside `synchronized (state)` (D16).
 - Content is schema-validated JSON (`content/**`), loaded and validated once at startup. Any content error stops startup. There are no content tables.
@@ -109,6 +109,7 @@ backend/src/test/resources/saves/v1/   golden save fixtures for SaveUpgrader
 backend/Dockerfile                     container image (V2c)
 content/
   schema/*.schema.json (JSON Schema 2020-12; every content file names its "$schema")
+  art/manifest.json (logical sprite keys → atlas frames, P-34)
   balance.json  regions.json  items.json  creeps.json  bosses.json  skills.json  elements.json  statuses.json
   world.json (factions, npcs, endings, achievements)  quests.json  maps/*.tmj  dialogue/*.json  cutscenes/*.json
 frontend/src/
@@ -282,6 +283,11 @@ Bosses on the critical path: Ashen Herald (Eldmere) · Thornmother (Whispering W
 - **Dialogue** graphs (`content/dialogue/<npc>.json`) reuse v1 choices: every option has `conditions` (ConditionGroup with `grp`, D4) and `effects`.
   - Nodes carry `speaker`, `portrait`, and `mood` (neutral/happy/angry/sad/afraid), so dialogue reacts via conditions on flags, reputation, affinity and quest steps.
   - The v1 prologue becomes Eldmere dialogue. The merchant route ends in **END_QUICK**.
+  - **Pages (P-44, P-49, P-50):** the client splits a node's text into pages of at most 3 lines over the world and 4 in the portrait deck (fewer if the box has no room), the last page leaving room for the choices; the box, and the portrait deck, fit their pages. Pages break between sentences, else clauses (after , ; : or a dash), else words, and the last two are rebalanced so the final page starts a sentence; `[page]` in the text forces a break. Each page types out; E, Space, Enter, gamepad A or a tap completes it, then turns the page; ▼ marks a finished page with more to come. Choices appear on the last page only. Holding the key fast-forwards pages already read on this profile.
+  - **Choices (P-44):** W/S or ↑/↓ move a visible highlight, E, Space or Enter take it, 1–4 take a choice directly; mouse hover, clicks, taps and the gamepad also work.
+  - **Message boxes (P-49):** a node whose only option is unlocked, ends the dialogue and has no effects is `DialogueView.message`: a box closed with E, A or a tap, without a choice button.
+  - **Story cues (P-49):** an affinity change shows a cue from `world.json` `affinityCues` ("Corvin will remember that."), not a number; the number stays in the Bag.
+- **Current objective (P-46):** `objectives` in `world.json` (`{id, text, conditions}`, the first whose conditions hold wins) give one short line, sent as `SessionView.objective`; it shows briefly when it changes and always in the pause menu. Quest steps (below) take over when they arrive.
 - **Quests** gain ordered **steps**, each with an objective text and a marker target (`area` + optional object id). The quest state machine and Kahn order stay as in v1 (D14, `topoOrder`).
 - **Quest markers:** the active quest's current step shows a marker on the map. In the world, an edge arrow points along the Dijkstra next hop.
 - **Journal:** quests (in topo order) with completed steps, and dialogue memory (last 30 entries).
@@ -289,7 +295,7 @@ Bosses on the critical path: Ashen Herald (Eldmere) · Thornmother (Whispering W
 - **Bestiary:** a creep entry is created at first sight (`seen`). Its stats are revealed after the first battle, and its weakness row after the first battle **or** after hitting it with an element.
 
 ### 4.9 Audio, settings and accessibility
-- **Audio:** one loop per region, a battle theme, a boss theme and a final-boss theme; SFX for steps, hits, crits, statuses, menus, Lantern and banner. CC0 or CC-BY only, all listed in CREDITS.md.
+- **Audio:** one loop per region, a battle theme, a boss theme and a final-boss theme; SFX for steps, hits, crits, statuses, menus, Lantern and banner. CC0 or CC-BY only, all listed in CREDITS.md. **From V3 (P-42):** rain, footsteps, dialogue blips, UI clicks and the Eldmere track, starting after the first user interaction, within a CI audio size budget; each music track ships as OGG plus an AAC (`.m4a`) fallback for Safari (P-48); mute, music and effects volume in a small settings panel (stored in the browser until account settings arrive in V2a).
 - **Settings** (stored per account in `account_setting`):
 
 | Setting | Values |
@@ -419,8 +425,8 @@ They are bound by `@ConfigurationProperties` from `application.yml` and can be o
 **Privacy and terms:** §4.18.
 
 ### 4.11 Server-validated world events
-- **The client moves freely.** Movement is smooth (not grid-locked), with keyboard, gamepad or the touch D-pad (§4.16). Phaser handles walking and collision locally for responsiveness. The client does not report every step.
-- **The server validates events, not steps.** Three REST endpoints carry the client's current position (pixels within the area map; the server uses tile `floor(x/32), floor(y/32)`):
+- **The client moves in tile steps (P-51).** The player always stands on a whole tile; each step slides smoothly to the next tile in `world.stepMs` (`balance.json`, 160 ms). Holding a direction keeps walking; a quick tap on a new direction turns in place (it must still be held after `world.turnMs` to walk). Every press is a queued step, so no press is lost in a long frame, and movement is time-based, so speed and arrival tiles are the same at any frame rate. Collision is a tile lookup (the `collision` layer, active obstacles, NPC tiles, the map edge); no physics. Keyboard, gamepad or the touch D-pad (§4.16). The client does not report every step.
+- **The server validates events, not steps.** Three REST endpoints carry the client's current position (the pixel centre of the player's tile; the server uses tile `floor(x/tilewidth), floor(y/tileheight)` from the map, 16 px today, P-29):
 
 | Endpoint | Body | Effect when accepted |
 |---|---|---|
@@ -430,12 +436,13 @@ They are bound by `@ConfigurationProperties` from `application.yml` and can be o
 
 - **Checks**, in order; all must pass:
   1. the game is in WORLD mode;
-  2. the position tile is in bounds and walkable on the area's `CollisionGrid` (a `BitSet`, index `y·width + x`, plus NPC/object tiles);
+  2. the position is a tile centre (P-51), and its tile is in bounds and walkable on the area's `CollisionGrid` (a `BitSet`, index `y·width + x`: the `collision` layer, every building footprint (P-43) and every **active obstacle** for this game's flags (P-45));
   3. the tile is **reachable** by BFS on the `CollisionGrid` from the **last validated position**;
-  4. **speed check** (P-19): the BFS path length in tiles ≤ `speed × elapsed × 1.25 + slack`, where `speed` is the walk speed in tiles per second, `elapsed` is the server time since the last validated event, and `slack` absorbs latency (both in `balance.json`);
+  4. **speed check** (P-19): the BFS path length in tiles ≤ `speed × elapsed × speedTolerance + slack`, where `speed = 1000 / stepMs` is the walk speed in tiles per second (P-51), `elapsed` is the server time since the last validated event, and `slack` absorbs latency (both in `balance.json`);
   5. the target object or creep exists, is active (not opened, not defeated), and is **within range**: Chebyshev distance ≤ 1 tile for interactions, on the exit's rectangle for exits, ≤ `aggroRadius` for encounters.
 - **Accepted:** the position becomes the new last validated position, the event's effect runs, and the response is the updated `SessionView`.
 - **Rejected:** `409` `ProblemDetail` with `code = WORLD_EVENT_REJECTED` and the last validated position; the client moves the player back to it.
+- **Lost to an outage:** an event that never got an answer (network down, server restarting) shows "Reconnecting…" (P-30); once the game reconnects, the client moves the player to the position in the server's view, so stepping onto the exit or trigger again sends it again.
 - **The last validated position is what saves store.** It changes only on accepted events, area changes and respawns.
 - **Locking:** every world event runs inside `synchronized (state)`, the same per-game lock as every other handler (D16). Each accepted event is written through to `active_run` (§4.12).
 - There is no WebSocket and no reconnect protocol. After a reload the client fetches `GET /api/game` and continues from the last validated position.
@@ -475,7 +482,7 @@ There is no v1 → v2 conversion: v1 never ran in production, so no v1 saves exi
 
 | Budget | Target | How it is measured |
 |---|---|---|
-| Frame rate | 60 fps target, 30 fps floor: **p95 frame time ≤ 33 ms** | Playwright + Chrome DevTools Protocol with 4× CPU throttling in CI, walking and fighting in each region |
+| Frame rate | 60 fps target, 30 fps floor: **p95 main-thread CPU time per frame ≤ 33 ms**, and no more than 25 % worse than the last good nightly run (P-38) | Playwright + Chrome DevTools Protocol with 4× CPU throttling in CI, walking (and from V4 fighting) in each region; per-frame CPU is the sum of the frame's animation-frame callbacks (Phaser update and render) in a DevTools trace. GPU cost is checked on the real device |
 | JS heap | ≤ 100 MB per region | CDP heap metrics in the same run |
 | Texture memory | ≤ 64 MB per region | atlas sizes summed per region (CI asset check) |
 | Real device | one check per region | manual run on a device of the target class, recorded in the phase report |
@@ -529,8 +536,20 @@ There is no v1 → v2 conversion: v1 never ran in production, so no v1 saves exi
 - Checklist: domain + TLS, env secrets, log retention 14 days, Turnstile production keys, Google OAuth production client, Sentry alerts; SPF/DKIM/DMARC before email goes live (V2b).
 
 ### 4.16 Mobile and PWA
-- **Mobile-first controls:** an on-screen touch D-pad (or drag-to-move stick) for movement; **tap to interact** with the faced or tapped object; keyboard and gamepad stay available.
-- **Layout:** landscape-first, responsive HUD that scales from phone to desktop; safe-area insets respected.
+- **Controls:** keyboard (WASD or arrows, E or Space to interact, I for the Bag, Esc for the menu), gamepad (D-pad or left stick, A) and touch (an on-screen D-pad, the interact button, **tap to interact** with a tapped object in reach).
+- **View scale (P-29, P-52):** a whole-number zoom that keeps about 11 tiles across the short side, at least 2 where 8 tiles still fit (a phone on its side with the address bar showing), and never less than the map needs to fill the screen. A lifted finger always stops the D-pad, wherever it lands; the world screen allows no text selection or touch callout. Every area's ambient light multiplies each colour channel by at least 0.55, so nights stay readable at half brightness.
+- **Full screen (P-53):** on a phone layout the first tap in the game asks for full screen (where the browser supports it); a full-screen button beside Bag and Menu brings it back after the player leaves it. The D-pad and Ⓐ start no browser long-press gesture.
+- **Input-aware layouts (P-40, replaces landscape-first):** the layout follows input capability and the last input used (coarse pointer, touch, key presses), not screen width, and switches live; `dvh` units and safe-area insets.
+  - *Keyboard and mouse:* no touch controls; the game view fills the screen.
+  - *Phone portrait (the main phone layout):* the game view with the HUD cluster on top, a control deck below (D-pad, interact A, menu, bag). An open dialogue renders inside the deck.
+  - *Phone landscape:* the desktop layout plus translucent touch controls (about 40 % opacity idle, full while pressed).
+  - On touch, quick slots sit behind the bag button; the boss bar is bottom-centre (V7).
+- **Interaction marker (P-46):** the key or button for the device in use (E, gamepad A, a tap icon) floats above the nearest NPC or object in reach.
+- **Arrival (P-49):** the area title card first (about 2 s), then any opening dialogue, then the objective banner, then hints; never two at once.
+- **Layout polish (P-47):** the portrait deck takes about 28–30 % of the height, with pill-shaped Bag and Menu; the area name is a title card when entering an area; desktop shows Bag and Menu as icon buttons with key hints (I, Esc); in landscape Bag and Menu are translucent until pressed.
+- **HUD (P-39):** a compact top-left cluster without a panel: level badge, thin HP bar, thinner energy bar. Phones: at most ~10 % of the height and ~35 % of the width, numbers only while a value changes or after a tap. Desktop: fixed maximum width, numbers always. After a few calm seconds at full HP it fades to ~35 % opacity, and returns on damage, energy use, level-up, low HP or a nearby enemy. Shards show bottom-right, briefly, on change. No HUD element covers the player or the area around them.
+- **Onboarding (P-41):** a Controls screen on the title screen and in the pause menu; contextual hints once per profile (movement at the start, interact at the first object in reach), skippable, with a setting to turn them off; button labels match the device (E, gamepad A, the tap icon).
+- **Every** touch target (menus, dialogue choices, tabs, modals, battle buttons) is at least 48 × 48 px; a Playwright check measures it at mobile size on each screen.
 - **Battle:** every touch target (menu buttons, skills, bag items) is at least **48 × 48 px**.
 - **Installable PWA (V2c):** web app manifest and a service worker.
   - The app shell (HTML, JS, CSS, fonts) is precached.
@@ -666,6 +685,8 @@ interface Fighter { name: string; level: number; hp: number; maxHp: number; hpPc
 interface DialogueView { speaker: string; portrait: string; mood: Mood; text: string;
   choices: { id: number; label: string; locked: boolean; lockReason?: string }[] }
 ```
+**Built in V3** (the rest arrives with its phase): `SessionView { sessionId, mode: WORLD | DIALOGUE | COMBAT | ENDED, world, dialogue?, combat? (v1 fight until V4), ending?, hud, inventory, quests, reputation, affinity, journal, toasts, offerReload }`; `WorldView { areaId, areaName, regionId, mapKey, lightState, player {x, y, facing}, npcs [{id, npcId, x, y}], hiddenObjects [] }`, where `lightState` names a lighting state of the region in `content/art/grades.json` and `hiddenObjects` lists the map objects absent for this game (by `showIf`/`hideIf`, or a once-only trigger that fired); `DialogueView { nodeId, title, speaker?, text, choices }`, whose portrait comes from the art manifest by `speaker`. The client talks to Phaser through a typed bridge (`src/world/bridge.ts`).
+
 Menus (LevelUpView with server preview, UpgradeView, MapView with Dijkstra route, JournalView, BestiaryView) are separate GET responses. A springdoc `ModelConverter` marks record properties required unless they are `@Nullable` (JSpecify), so optional fields above are exactly the nullable ones. **Vitest** covers `store/mappers.ts` (view → store events), the event store and the API client's error mapping.
 
 ---
@@ -675,17 +696,29 @@ Menus (LevelUpView with server preview, UpgradeView, MapView with Dijkstra route
 All content is JSON (plus Tiled `.tmj` maps) under `content/`, packaged into the backend jar and loaded once at startup by `ContentLoader`. Any error stops startup. In the `dev` profile, `shardbound.content.dir` reads the files from disk instead.
 
 - **JSON Schemas** (draft 2020-12) live in `content/schema/`, one per file type: `balance`, `regions`, `items`, `creeps`, `bosses`, `skills`, `elements`, `statuses`, `world`, `quests`, `dialogue`, `cutscene`. Every content file names its schema in a `"$schema"` key. Validation errors point to the exact file and JSON location. `ContentSchemaTest` checks every real file passes and that broken fixtures fail with the right pointer.
-- **Maps** `content/maps/<area>.tmj` (Tiled JSON, 32×32, one tileset family):
-  - layers `ground`, `decor` (client only), `collision` (any non-empty tile blocks);
-  - an object layer `objects` with types `spawn_point{id}`, `exit{toArea,toSpawn}`, `creep_spawn{template,levelMin,levelMax,aggroRadius,patrol?}`, `npc{npcId,dialogue}`, `lantern{lanternId}`, `smith{npcId}`, `chest{item,qty,flag}`, `trigger{cutscene?,setFlag?,once}`.
-  - Maps are loaded and validated at startup (no database). `MapValidator` checks the structure, that every referenced id exists, and that every `spawn_point`, exit, Lantern, NPC and trigger is reachable by BFS from the area's main spawn.
-- **regions.json:** `regions[{id,name,music}]`, `areas[{id,region,map,music?}]`, `edges[{from,to,weight,gateFlag?}]`.
+- **Art manifest** `content/art/manifest.json` (P-34): logical sprite keys (`npc.maren`, `creep.<template>`, `portrait.<npc>.<mood>`, tile roles such as `tiles.village.ground`) map to atlas frames. Content and code only ever name keys, so swapping art is a manifest change. Schema-validated like every content file.
+- **Maps** `content/maps/<area>.tmj` (Tiled JSON, 16×16 tiles, one tileset family, P-29). The same files are loaded by the server and copied into the frontend build (hashed, CDN-cached, precached by the PWA); there is no map endpoint, and CI checks the two copies match (P-35):
+  - tile layers as listed below; only `collision` matters to the server (any non-empty tile blocks);
+  - an object layer `objects` with types `spawn_point{main?}` (the object's name is its id), `exit{toArea,toSpawn}`, `creep_spawn{template,levelMin,levelMax,aggroRadius,patrol?,showIf?,once?}`, `npc{npcId,dialogue,showIf?}`, `interact{dialogue}` (signs and objects such as the crater crystal), `lantern{lanternId}`, `smith{npcId}`, `chest{item,qty,flag}`, `trigger{dialogue?,cutscene?,setFlag?,once}`, `effect{effect}` (cosmetic particles such as steam; client only), `prop{sprite}` (a sprite drawn by the client, `<tileset>:<tile id>`, for things that can disappear, such as the Heartshard), `building` (a building's footprint, P-43) and `obstacle{dialogue, opensIn?}` (P-45: what closes a path, blocking its rectangle while active; its tiles are in the `obstacles` layer). `showIf`/`hideIf` name a flag and apply to every object type; the server lists the absent ones in `WorldView.hiddenObjects`. A closed way is always an obstacle in the world; an exit only leads to a built area.
+  - Maps are loaded and validated at startup (no database). `MapValidator` checks the structure, that every referenced id exists, that every `spawn_point`, exit, Lantern, NPC, trigger and obstacle is reachable by BFS from the area's main spawn (with every obstacle open), and that every building footprint is blocked in the `collision` layer. Every flag an obstacle or edge gate reads must be set somewhere in the content.
+  - Layers, bottom to top: `ground`, `shadows` (soft drop shadows), `decor` (trunks, walls, props), `obstacles` (drawn only while their obstacle is active), the actors (drawn by the game, each with a drop shadow), `above` (canopies, roof edges: always drawn over the player), `collision` (hidden). Object types also include `light{radius,color,intensity}` and `reserved{for: lantern|creep|chest|secret}` (space kept for later phases; ignored at runtime).
+- **Map rules (level design), for every map:**
+  1. **Boundaries:** dense tree walls, cliffs or fences form the edges. No lone trees as obstacles; interior trees stand in deliberate groups with clear walkable space between them.
+  2. **Purpose:** every region has a reason: a landmark, a secret, or space reserved for a Lantern, creep or chest (marked with `reserved` objects). Empty areas are cut or shrunk, and maps shrink if they stay empty.
+  3. **Ground variation:** dark patches, mud, tall grass and flowers break up the base tile, and the ground tells the area's story (Cottage Lane after the storm: puddles, fallen branches, mud along the lane, the flooded west road).
+  4. **Paths:** gentle bends, wider junctions and worn edges, using the full autotile set including inner corners.
+  5. **Depth:** soft drop shadows under trees, buildings, props and characters; canopies and roof edges in `above`.
+  6. **Lighting:** warm light sources (windows, doors, lanterns) are `light` objects rendered as additive light sprites. Each area has an ambient level per story state (the storm-night opening is darkest, with pools of warm light). Weather such as light rain is a particle effect within the performance budget (§4.13).
+  7. **Foreshadowing:** the edge toward the next region hints at it (Cottage Lane's west edge: dead trees and the flooded road toward the Whispering Wood).
+  8. **Solid buildings and visible gates (P-43, P-45):** a building blocks its whole footprint and its door is an interactable until interiors exist; a way that opens later is closed by an obstacle the player can look at; a way that never opens is a natural boundary.
+- **regions.json:** `start{area,spawn,dialogue,flags}` (where a new game begins and its opening dialogue), `regions[{id,name,music,lightStates[{id,flag?}]}]` (the first light state whose flag is set wins; the last has no flag), `areas[{id,region,name,map|null}]` (an area without a map is not built yet), `edges[{from,to,weight,gateFlag?}]` (undirected, between built areas; a gate's flag must be set somewhere in the content).
+- **art/grades.json** (schema `grades`): the offline colour grade per region with per-file overrides (`match` limits one to some pixels), and the runtime `lighting` per region: ambient level and tint per light state, light radius scale, the player's night light and rain (opacity, density, length and angle ranges, splashes). **art/manifest.json** (schema `manifest`, P-34): sprite keys (`player`, `npc.<id>`) to sheets and facesets, and the sheet layout. Both are schema-checked with the rest of the content but not shipped in the server jar.
 - **creeps.json:** `{id,name,family,sprite,baseHp,baseAtk,baseDef,baseSpd,skills[],statusChance?,status?,drops[{item,pct}]}`.
 - **bosses.json:** `{id,name,family,level,arena,introCutscene,phases[{phase2At?,line,family?,spdDelta?,moves[{skill,weight,telegraph?}]}],rewards}`.
 - **skills.json:** `{id,name,element,power,fpCost,scaling,target,status?,statusChance?,unlock}`.
-- **dialogue/<npc>.json:** `{id,npc,start,nodes[{id,speaker,portrait,mood,text,choices[{label,to|end,conditions[],effects[],hiddenWhenLocked?}]}]}` (v1 condition/effect shape, `grp` OR-groups).
+- **dialogue/<id>.json:** `{id,npc?,start,entries?[{node,conditions[]}],nodes[{id,type?: TEXT|COMBAT|RESOLVER|ENDING,title,speaker?,text,encounter?,win?,lose?,flee?,choices[{label,to|end,conditions[],effects[],hiddenWhenLocked?}]}]}` (v1 condition/effect shape, `grp` OR-groups). A dialogue opens on its first entry whose conditions hold, else `start`; a choice goes `to` a node (in any dialogue) or `end`s the dialogue and returns to the world (P-37). Portrait moods arrive with the V7 portraits.
 - **cutscenes/<id>.json:** `{id,skippable:true,steps[{say|move|camera|music|wait|fade}]}`.
-- **balance.json:** every constant from §4 (curves as point lists, formulas' coefficients, flee, status values, walk speed and speed-check slack, budget targets).
+- **balance.json:** every constant from §4 (curves as point lists, formulas' coefficients, flee, status values, step and turn times, speed-check tolerance and slack, budget targets).
 
 ---
 
@@ -747,7 +780,7 @@ The harsher case (dying mid-region with a full purse, or under-levelled) is cove
 ---
 
 ## 11. Assets and licensing (CREDITS.md)
-1. **One pack family, one tile size (32×32)**: either Kenney or 0x72. Never mixed.
+1. **One pack family, one tile size (16×16 at an integer scale, P-29)**: Ninja Adventure by pixel-boy (CC0). Recolours and the dark grade are allowed and recorded per file in CREDITS. Never mixed with another family.
 2. **No AI-generated art or audio.**
 3. Art: **CC0** only. Audio: **CC0 or CC-BY** (credited per file).
 4. Fonts: Cinzel and Cormorant Garamond (SIL OFL 1.1), self-hosted, licence files in `frontend/public/fonts/`.
@@ -762,13 +795,13 @@ The harsher case (dying mid-region with a full purse, or under-levelled) is cove
 | # | Phase | Acceptance (summary) |
 |---|---|---|
 | **P0** | Platform reset | Tag `v1-archive` on `main`. From a fresh clone with Docker running, `npm run dev` starts postgres, mailpit, API and Vite, and the prologue plays to the quick ending with save/load. Restarting the backend mid-run loses nothing (`ActiveRunIT` + manual restart). `mvnw verify` green (unit tests, ArchUnit, content schema tests, Testcontainers ITs, OpenAPI export). `npm run typecheck`, `npm test`, `npm run build` green with no hand-written view types. No content tables, no `ContentImporter`, no Javalin, no `db.properties`. CI config complete |
-| **V3** | World | Phaser lazy-loaded; Tiled maps loaded and validated at startup (BFS reachability). Free client movement; REST events (exit, interact, encounter) validated with BFS reachability **+ speed check** (path ≤ speed × elapsed × 1.25 + slack). Eldmere's 4 areas walkable, NPC dialogue, merchant ending reachable. **Touch D-pad + tap to interact, landscape responsive HUD.** **Mobile performance budget** met (mid-range Android, 60 fps target / 30 fps floor, per-region memory budget). Playwright e2e (desktop + mobile) and bundle budgets in CI |
-| **V4** | Battles | Battle layout, ATTACK/SKILLS/BAG/FLEE with touch targets ≥ 48 px, elements, statuses, 4 skill slots, visible creeps with aggro; Eldmere creeps fightable |
+| **V3** | World | Phaser 4 lazy-loaded (P-33); 16×16 art at integer scale with the art manifest (P-29, P-34); Tiled maps loaded and validated at startup (BFS reachability) and shipped in the frontend build (P-35). Tile-step client movement (P-51); REST events (exit, interact, encounter) validated with BFS reachability **+ speed check** (path ≤ speed × elapsed × 1.25 + slack). Eldmere's 4 areas walkable, NPC dialogue, merchant ending reachable. **Touch D-pad + tap to interact, landscape responsive HUD, every touch target ≥ 48 px.** No debug inspector code in the production bundle. PR gates: Playwright e2e (desktop + mobile, resume ×5), bundle and asset budgets, bundle grep, CREDITS check; **mobile performance budget** nightly (P-36) |
+| **V4** | Battles | Battle layout, ATTACK/SKILLS/BAG/FLEE with touch targets ≥ 48 px, elements, statuses, 4 skill slots, visible creeps with aggro; Eldmere creeps fightable. **Idempotency keys** on every state-changing action (P-31) |
 | **V5** | Progression | Shards, Lanterns (rest, respawn, autosave), attributes and curves, level-up with preview, Lost Shards; first level-up after fight 3 |
 | **V7** | Bosses (Eldmere only) | Ashen Herald: phases, telegraphs, Guard, skippable intro, FOE VANQUISHED, boss bar; tuned for an unupgraded weapon |
 | **V2a** | Accounts + privacy | Guest + Google sign-in (OIDC), guest → Google upgrade, Spring Security sessions, CSRF, configurable rate limits, Turnstile, data export, account deletion, privacy policy + terms |
 | **V2c** | Observability, deploy, PWA, version skew | Sentry (frontend + backend), JSON logs, Actuator metrics + health. Container image; hosting (backend Mumbai/Singapore, frontend CDN proxying `/api`, managed Postgres with PITR or daily backups plus a tested restore). Preview deployments per PR. Installable PWA with asset caching. Version skew: `X-API-Version`, "Update available — reload", backend compatible with the previous frontend for one release (`oasdiff` check). Content id guard in CI: no id removed or renamed without a `SaveUpgrade` (P-28) |
-| **ALPHA** | Public alpha (Eldmere) | Deployed; Eldmere start → Ashen Herald on phone and desktop. In-game feedback button. Release `v0.x`. Launch checklist: ASVS L1 review, backup restore drill, Sentry alert, privacy page live, **licences chosen (code vs story/art)**, repo public |
+| **ALPHA** | Public alpha (Eldmere) | Deployed; Eldmere start → Ashen Herald on phone and desktop. In-game feedback button. Release `v0.x`. Launch checklist: ASVS L1 review, backup restore drill, Sentry alert, privacy page live, **licences chosen (code vs story/art)**, **no endpoint accepts a player id from the client (P-32)**, repo public |
 | **V6** | Gear | Smith upgrades +0..+10, scaling, materials, bag + quick slots |
 | **WW** | Whispering Wood (Alpha 2) | 5 areas, 15 fights, Thornmother with both phases; released as Alpha 2. Verified by manual playtests and the §10.2 progression table (expected level 9 at Thornmother); V10's bot re-checks the 18-minute budget later (P-27) |
 | **V8** | Navigation | Map, Dijkstra fast travel, quest markers + next hop, journal, bestiary |
@@ -795,7 +828,7 @@ Order after ALPHA (P-27): V6 → **WW** (Alpha 2) → V8 → V2b → V9 → V10 
 3. Art: CC0 Kenney or 0x72, one pack family and one tile size, no AI art.
 4. Audio: CC0/CC-BY, listed in CREDITS.md.
 5. Hosting: backend in Mumbai/Singapore, CDN frontend proxying `/api`, managed Postgres; the provider is chosen at deploy time (P-16). A domain is bought before V2b (SPF/DKIM/DMARC).
-6. Free client movement with server-validated REST events; no WebSocket (P-06, P-19).
+6. Tile-step client movement with server-validated REST events; no WebSocket (P-06, P-19, P-51).
 7. Spring Boot 4.1 on Java 25, JdbcClient + hand-written SQL, Flyway via Spring (P-02, P-03).
 8. Accounts: guest + Google at alpha, email + password in V2b (P-11).
 9. 6 endings; the merchant ending is the secret early one.
@@ -809,7 +842,7 @@ Order after ALPHA (P-27): V6 → **WW** (Alpha 2) → V8 → V2b → V9 → V10 
 |---|---|
 | Scope is months of solo work | playable after every phase; public alpha after the Eldmere slice; cut V11/V12 side content first |
 | Migration churn in the early phases | merged migrations are never edited; saves are JSONB documents, so most format changes are save upgrades, not schema changes; Testcontainers ITs run every migration from empty |
-| Cheating under free movement | the server owns every outcome; world events pass reachability, speed and range checks (§4.11); rewards and encounters are decided server-side |
+| Cheating under client-side movement | the server owns every outcome; world events pass reachability, speed and range checks (§4.11); rewards and encounters are decided server-side |
 | Mobile performance | mobile budget enforced in CI with CPU throttling from V3, plus a real-device check per region; one atlas per region; lazy Phaser chunk |
 | Managed-stack cost (hosting, managed Postgres, CDN, Sentry) | small instance sizes and free tiers for the alpha; costs reviewed at V2c and before 1.0 |
 | Art pipeline (one CC0 family must cover 6 regions, portraits, bosses) | choose the pack in V3 after checking coverage; recolour within the licence |

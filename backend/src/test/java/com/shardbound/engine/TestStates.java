@@ -3,6 +3,8 @@ package com.shardbound.engine;
 import com.shardbound.event.EventBus;
 import com.shardbound.item.Inventory;
 import com.shardbound.model.Stats;
+import com.shardbound.world.Facing;
+import com.shardbound.world.WorldPosition;
 
 /**
  * Test helper: builds a bare GameState with an EventBus that has no
@@ -19,7 +21,9 @@ public final class TestStates {
     }
 
     public static GameState fresh(long seed, boolean demoMode) {
-        GameState state = new GameState("test-session", 1, "p01", Stats.starting(), new Inventory(), seed, demoMode, 0);
+        GameState state = new GameState("test-session", 1, "p01",
+                new WorldPosition("eldmere_cottage_lane", 120, 168, Facing.DOWN), Stats.starting(), new Inventory(), seed,
+                demoMode, 0);
         EventBus bus = new EventBus(state);
         bus.subscribe((event, s) -> {
             Toast toast = Toast.from(event);

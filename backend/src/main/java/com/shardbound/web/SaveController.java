@@ -3,10 +3,10 @@ package com.shardbound.web;
 import com.shardbound.config.OpenApiConfig;
 import com.shardbound.engine.GameEngine;
 import com.shardbound.engine.GameState;
-import com.shardbound.model.Location;
 import com.shardbound.save.SlotSummary;
-import com.shardbound.view.GameView;
+import com.shardbound.view.SessionView;
 import com.shardbound.view.MetaViews.SlotView;
+import com.shardbound.world.World;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -61,8 +61,8 @@ public class SaveController {
             if (s == null) {
                 result.add(new SlotView(slot, false, null, null, null, null, null));
             } else {
-                Location location = engine.content().locationOf(s.areaId());
-                String areaName = location == null ? s.areaId() : location.name();
+                World.Area area = engine.content().world().areas().get(s.areaId());
+                String areaName = area == null ? s.areaId() : area.name();
                 result.add(new SlotView(slot, true, s.areaId(), areaName, s.level(), s.playSeconds(),
                         s.updatedAt().toString()));
             }
@@ -81,7 +81,7 @@ public class SaveController {
     @PostMapping("/{slot}/load")
     @Operation(operationId = "loadGame", summary = "Load a slot into this session (or a new one)")
     @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
-    public GameView load(@CurrentGame(required = false) @Nullable GameState current,
+    public SessionView load(@CurrentGame(required = false) @Nullable GameState current,
                          @PathVariable @Min(0) @Max(SLOT_COUNT - 1) int slot,
                          @RequestParam(required = false) @Nullable Integer playerId) {
         String sessionId = current == null ? null : current.sessionId();

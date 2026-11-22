@@ -1,0 +1,29 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "storm_intro",
+  "start": "p01",
+  "nodes": [
+    {
+      "id": "p01",
+      "title": "Storm Night",
+      "text": "The storm arrives an hour after dusk and does not leave. Rain hammers the shutters of your cottage and the hearth gutters every time the wind finds the chimney. Then the thunder stops, all at once, and in the silence you see it: a thread of pale green light falling slowly from the clouds toward the old ruins on the hill. Outside, Corvin the travelling merchant is shouting at his horses, his wagon rocking as the gale tries to tip it into the ditch. The light touches the ruins. The ground hums under your bare feet, so softly you might have imagined it. You reach for your boots.",
+      "choices": [
+        {
+          "label": "Help Corvin lash down his wagon before the wind takes it",
+          "end": true,
+          "effects": [
+            {
+              "type": "AFFINITY",
+              "key": "corvin",
+              "value": 10
+            }
+          ]
+        },
+        {
+          "label": "Ignore the shouting and follow the light",
+          "end": true
+        }
+      ]
+    }
+  ]
+}

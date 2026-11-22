@@ -1,0 +1,46 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "millstone",
+  "start": "millstone_idle",
+  "entries": [
+    {
+      "node": "p04h",
+      "conditions": [
+        {
+          "type": "ITEM",
+          "key": "heartshard",
+          "op": ">=",
+          "value": 1
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "millstone_idle",
+      "title": "The Old Mill",
+      "text": "The millstone has not turned since the river shifted its course. Owls nest in the rafters above it.",
+      "choices": [
+        {
+          "label": "Leave it",
+          "end": true
+        }
+      ]
+    },
+    {
+      "id": "p04h",
+      "title": "The Old Mill",
+      "text": "The mill has not turned since the river shifted its course, and nobody comes here but owls and courting couples. The great millstone sits on its axle like a sleeping beast. Dust hangs in the shafts of light from the broken roof. You turn a slow circle, looking for a place where a beating crystal will not be found. Under the stone, where the grain once fell, there is a dry hollow just large enough. Or you could simply keep it on you, where you can feel it. It is strange how quickly you have grown used to that warmth against your ribs, and how little you want to let it go.",
+      "choices": [
+        {
+          "label": "Bury it beneath the millstone",
+          "to": "p11"
+        },
+        {
+          "label": "Keep it close, under your shirt",
+          "to": "p11"
+        }
+      ]
+    }
+  ]
+}

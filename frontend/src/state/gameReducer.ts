@@ -1,7 +1,7 @@
 // UI state and the reducer that changes it. Kept free of React so it can be
-// unit-tested on its own. The GameView from the server is stored verbatim in
+// unit-tested on its own. The SessionView from the server is stored verbatim in
 // `view`; the reducer never edits it (no game rules here).
-import type { GameView } from '../api/types';
+import type { SessionView } from '../api/types';
 
 const PLAYER_KEY = 'shardbound.player';
 
@@ -29,8 +29,8 @@ export interface State {
   returnScreen: Screen;      // where "Back" goes from achievements / leaderboard
   profileNext: ProfileNext;
   player: Player | null;
-  view: GameView | null;     // latest GameView, exactly as sent by the server
-  viewSeq: number;           // bumps on every new GameView (used as animation keys)
+  view: SessionView | null;     // latest SessionView, exactly as sent by the server
+  viewSeq: number;           // bumps on every new SessionView (used as animation keys)
   error: ErrorState | null;
   busy: boolean;
   inspectorOpen: boolean;
@@ -43,7 +43,7 @@ export type Action =
   | { type: 'GO'; screen: Screen; returnTo?: Screen }
   | { type: 'GO_PROFILE'; next: ProfileNext }
   | { type: 'SET_PLAYER'; player: Player | null }
-  | { type: 'SET_VIEW'; view: GameView }
+  | { type: 'SET_VIEW'; view: SessionView }
   | { type: 'QUIT' }
   | { type: 'SET_ERROR'; message: string }
   | { type: 'SET_BUSY'; busy: boolean }

@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shardbound.game/schema/grades.schema.json",
+  "title": "Shardbound look per region (content/art/grades.json, P-29)",
+  "type": "object",
+  "required": ["regions", "lighting"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "description": { "type": "string" },
+    "regions": {
+      "description": "Offline colour grades applied by tools/art/grade.mjs, per region, with per-file overrides.",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/regionGrade" }
+    },
+    "lighting": {
+      "description": "Runtime light per region, read by the Phaser world scene.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["states", "lightRadiusScale", "playerLight", "rain"],
+        "additionalProperties": false,
+        "properties": {
+          "states": {
+            "description": "Keyed by the light-state ids of the region in regions.json.",
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["ambient", "tint", "rain", "playerLight"],
+              "additionalProperties": false,
+              "properties": {
+                "ambient": { "type": "number", "minimum": 0, "maximum": 1 },
+                "tint": { "$ref": "#/$defs/rgbFactors" },
+                "rain": { "type": "boolean" },
+                "playerLight": { "type": "boolean" }
+              }
+            }
+          },
+          "lightRadiusScale": { "type": "number", "exclusiveMinimum": 0 },
+          "playerLight": {
+            "type": "object",
+            "required": ["radius", "color", "intensity"],
+            "additionalProperties": false,
+            "properties": {
+              "radius": { "type": "number", "exclusiveMinimum": 0 },
+              "color": { "$ref": "#/$defs/hexColour" },
+              "intensity": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          },
+          "rain": {
+            "type": "object",
+            "required": ["opacity", "dropsPerScreen", "length", "angle", "splashes"],
+            "additionalProperties": false,
+            "properties": {
+              "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+              "dropsPerScreen": { "type": "integer", "minimum": 0, "maximum": 400 },
+              "length": { "$ref": "#/$defs/range" },
+              "angle": { "$ref": "#/$defs/range" },
+              "splashes": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "grade": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "saturation": { "type": "number", "minimum": 0 },
+        "brightness": { "type": "number", "minimum": 0 },
+        "gamma": { "type": "number", "exclusiveMinimum": 0 },
+        "shadowTint": { "$ref": "#/$defs/rgbShift" },
+        "shadowStrength": { "type": "number", "minimum": 0 },
+        "highlightTint": { "$ref": "#/$defs/rgbShift" },
+        "highlightStrength": { "type": "number", "minimum": 0 },
+        "ceiling": { "type": "number", "minimum": 0, "maximum": 255 },
+        "match": {
+          "type": "object",
+          "required": ["hue", "minLightness"],
+          "additionalProperties": false,
+          "properties": {
+            "hue": { "$ref": "#/$defs/range" },
+            "minLightness": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        }
+      }
+    },
+    "regionGrade": {
+      "type": "object",
+      "required": ["saturation", "brightness", "gamma", "shadowTint", "shadowStrength", "highlightTint", "highlightStrength"],
+      "additionalProperties": false,
+      "properties": {
+        "saturation": { "type": "number", "minimum": 0 },
+        "brightness": { "type": "number", "minimum": 0 },
+        "gamma": { "type": "number", "exclusiveMinimum": 0 },
+        "shadowTint": { "$ref": "#/$defs/rgbShift" },
+        "shadowStrength": { "type": "number", "minimum": 0 },
+        "highlightTint": { "$ref": "#/$defs/rgbShift" },
+        "highlightStrength": { "type": "number", "minimum": 0 },
+        "ceiling": { "type": "number", "minimum": 0, "maximum": 255 },
+        "files": {
+          "description": "Per-file overrides; match limits one to some pixels.",
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/grade" }
+        }
+      }
+    },
+    "rgbShift": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+    "rgbFactors": { "type": "array", "items": { "type": "number", "minimum": 0 }, "minItems": 3, "maxItems": 3 },
+    "range": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+    "hexColour": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+  }
+}

@@ -1,8 +1,10 @@
 name: Nightly
 
 # Checks that are too slow or too noisy to gate every PR (P-36): the 20-cycle
-# restart-and-reload test now, the mobile performance budget from V3.
-# Also run by hand before each release.
+# restart-and-reload test and the mobile performance budget (4x CPU throttle,
+# p95 CPU time per frame and JS heap from content/balance.json, P-38), which
+# also fails on a p95 more than 25 % worse than the last successful nightly
+# (its perf-numbers artifact). Also run by hand before each release.
 on:
   schedule:
     - cron: '30 21 * * *'   # 03:00 IST
@@ -10,9 +12,11 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
-  resume-20:
+  resume-20-and-perf:
     uses: ./.github/workflows/e2e.yml
     with:
       resume-cycles: '20'
+      perf: true

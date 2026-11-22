@@ -1,70 +1,93 @@
 package com.shardbound.engine;
 
-import com.shardbound.view.ChoiceView;
-import com.shardbound.view.GameView;
 import com.shardbound.combat.Action;
 import com.shardbound.combat.ActionType;
 import com.shardbound.exception.ActionNotAllowedException;
 import com.shardbound.exception.InvalidChoiceException;
 import com.shardbound.exception.LockedChoiceException;
 import com.shardbound.model.Faction;
-import org.junit.jupiter.api.BeforeAll;
+import com.shardbound.support.MutableClock;
+import com.shardbound.support.QuickRoute;
+import com.shardbound.view.ChoiceView;
+import com.shardbound.view.SessionView;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Whole-engine tests on the REAL prologue, in memory (content from JSON, no database).
- * Startup computes the quest order with QuestManager.topoOrder (Kahn).
+ * Whole-engine tests on the REAL prologue in the world, in memory (content
+ * from JSON and the maps, no database).
  */
 class GameEngineTest {
 
-    private static GameEngine engine;
+    private final MutableClock clock = new MutableClock();
+    private GameEngine engine;
 
-    @BeforeAll
-    static void setUp() {
-        engine = TestEngines.inMemory();
+    @BeforeEach
+    void setUp() {
+        engine = TestEngines.inMemory(clock);
     }
 
-    private static GameView pick(GameEngine e, GameState s, String label) {
-        GameView view = e.view(s);
-        for (ChoiceView c : view.choices()) {
-            if (c.label().startsWith(label)) {
-                return e.choose(s, c.id());
-            }
-        }
-        throw new AssertionError("No choice starting with '" + label + "' on " + view.node().id());
+    private RoutePlayer newPlayer(boolean demoMode, long seed) {
+        return new RoutePlayer(engine, engine.newGame(0, demoMode, seed), clock);
+    }
+
+    /** From the opening to the Square at dawn, carrying the Heartshard. */
+    private static void toTheSquare(RoutePlayer p, String opening) {
+        p.choose(opening);
+        p.exit("to_ruins");
+        p.interact("crater_crystal");
+        p.choose("Take the crystal");
+        p.choose("Walk on");
+        p.exit("to_lane");
+        p.exit("to_square");
     }
 
     @Test
-    void quickRouteIsPlayableWithRealConditions() {             // spec §8.4
-        GameState s = engine.newGame(0, true, TestEngines.QUICK_ROUTE_SEED);
-        GameView end = TestEngines.playQuickRoute(engine, s);
+    void quickRouteIsPlayableWithRealConditions() {
+        RoutePlayer p = newPlayer(true, QuickRoute.SEED);
+        SessionView end = p.play(QuickRoute.STEPS);
+        assertEquals(Mode.ENDED, end.mode());
         assertNotNull(end.ending());
         assertEquals("END_QUICK", end.ending().id());
     }
 
     @Test
-    void newGameStartsAtP01WithTheRustySword() {
-        GameState s = engine.newGame(0, false, 1L);
-        GameView v = engine.view(s);
-        assertEquals("p01", v.node().id());
+    void aNewGameOpensOnTheStormNightAtHome() {
+        SessionView v = newPlayer(false, 1L).view();
+        assertEquals(Mode.DIALOGUE, v.mode());
+        assertEquals("p01", v.dialogue().nodeId());
+        assertEquals("eldmere_cottage_lane", v.world().areaId());
+        assertEquals("eldmere", v.world().regionId());
+        assertEquals("storm_night", v.world().lightState());
+        assertEquals(7 * 16 + 8, v.world().player().x());           // the centre of the home spawn
+        assertEquals(10 * 16 + 8, v.world().player().y());
         assertEquals("rusty_shortsword", v.hud().weapon().id());
         assertEquals(40, v.hud().hp());
-        assertEquals("VILLAGE", v.region());
+    }
+
+    @Test
+    void endingADialogueReturnsToTheWorld() {
+        RoutePlayer p = newPlayer(false, 1L);
+        SessionView v = p.choose("Ignore the shouting");
+        assertEquals(Mode.WORLD, v.mode());
+        assertNull(v.dialogue());
+        assertTrue(v.world().npcs().stream().anyMatch(n -> n.npcId().equals("corvin")), "Corvin is on the lane");
     }
 
     @Test
     void lockedChoiceShowsReasonAndIsRejected() {
-        GameState s = engine.newGame(0, false, 1L);
-        pick(engine, s, "Ignore the shouting");
-        GameView square = pick(engine, s, "Take the crystal");
-        ChoiceView wardens = square.choices().stream().filter(ChoiceView::locked).findFirst().orElseThrow();
-        assertEquals("Requires flag met_wardens = 1", wardens.lockReason());
-        assertThrows(LockedChoiceException.class, () -> engine.choose(s, wardens.id()));
+        RoutePlayer p = newPlayer(false, 1L);
+        p.choose("Ignore");
+        SessionView sign = p.interact("forest_sign");
+        ChoiceView wardens = sign.dialogue().choices().stream().filter(ChoiceView::locked).findFirst().orElseThrow();
+        assertTrue(wardens.lockReason().startsWith("Requires flag met_wardens = 1"), wardens.lockReason());
+        assertThrows(LockedChoiceException.class, () -> engine.choose(p.state(), wardens.id()));
     }
 
     @Test
@@ -75,11 +98,11 @@ class GameEngineTest {
 
     @Test
     void affinityUnlocksTheBetterDealAndCountsForSilverTongue() {
-        GameState s = engine.newGame(0, false, 1L);
-        pick(engine, s, "Help Corvin");                          // +10 affinity
-        pick(engine, s, "Take the crystal");
-        pick(engine, s, "Show it to Corvin");
-        pick(engine, s, "\"You owe me");                          // AFFINITY corvin ≥ 10
+        RoutePlayer p = newPlayer(false, 1L);
+        toTheSquare(p, "Help Corvin");                           // +10 affinity
+        p.interact("corvin_stall");
+        p.choose("\"You owe me");                                // AFFINITY corvin ≥ 10
+        GameState s = p.state();
         assertEquals(15 + 500, s.stats().gold());
         assertEquals(1, s.flag("_locked_passed"));
         assertEquals(10, s.reputation(Faction.ASHEN));
@@ -87,16 +110,30 @@ class GameEngineTest {
 
     @Test
     void elderPathFoldsIntoTheRaidAndResolvesToTheWanderer() {  // D3, D11
-        GameState s = engine.newGame(0, false, 1L);
-        pick(engine, s, "Ignore");
-        pick(engine, s, "Take the crystal");
-        pick(engine, s, "Take it to Elder Maren");
-        pick(engine, s, "Promise");
-        GameView end = pick(engine, s, "Stand your ground");
+        RoutePlayer p = newPlayer(false, 1L);
+        toTheSquare(p, "Ignore");
+        p.interact("maren");
+        p.choose("Follow her inside");
+        p.choose("Promise");
+        SessionView end = p.choose("Stand your ground");
         assertEquals(Mode.ENDED, end.mode());
         assertNotNull(end.ending());
         assertEquals("END_WANDERER", end.ending().id());
         assertEquals(6, end.ending().endingsTotal());
+    }
+
+    @Test
+    void takingTheCrystalTurnsTheNightToDawn() {
+        RoutePlayer p = newPlayer(false, 1L);
+        p.choose("Ignore");
+        p.exit("to_ruins");
+        p.interact("crater_crystal");
+        SessionView v = p.choose("Take the crystal");
+        assertEquals("dawn", v.world().lightState());
+        assertTrue(v.toasts().stream().anyMatch(t -> t.text().equals("Obtained: Heartshard")));
+        assertTrue(v.toasts().stream().anyMatch(t -> t.kind().equals("ACHIEVEMENT")));
+        assertTrue(v.quests().stream().anyMatch(q -> q.id().equals("q_strange_light") && q.status().equals("ACTIVE")));
+        assertTrue(engine.view(p.state()).toasts().isEmpty(), "toasts are delivered once");
     }
 
     @Test
@@ -107,25 +144,8 @@ class GameEngineTest {
 
     @Test
     void savingOfflineIsRefusedNotCrashed() {
-        GameState s = engine.newGame(0, false, 1L);
-        assertThrows(ActionNotAllowedException.class, () -> engine.save(s, 1));
-    }
-
-    @Test
-    void toastsAreDeliveredOnce() {
-        GameState s = engine.newGame(0, false, 1L);
-        pick(engine, s, "Ignore");
-        GameView v = pick(engine, s, "Take the crystal");
-        assertTrue(v.toasts().stream().anyMatch(t -> t.text().equals("Obtained: Heartshard")));
-        assertTrue(v.toasts().stream().anyMatch(t -> t.kind().equals("ACHIEVEMENT")));
-        assertTrue(engine.view(s).toasts().isEmpty());
-    }
-
-    @Test
-    void questLogShowsTheActiveMainQuest() {
-        GameState s = engine.newGame(0, false, 1L);
-        pick(engine, s, "Ignore");
-        GameView v = pick(engine, s, "Take the crystal");
-        assertTrue(v.quests().stream().anyMatch(q -> q.id().equals("q_strange_light") && q.status().equals("ACTIVE")));
+        RoutePlayer p = newPlayer(false, 1L);
+        p.choose("Ignore");
+        assertThrows(ActionNotAllowedException.class, () -> engine.save(p.state(), 1));
     }
 }

@@ -15,10 +15,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Checks every content file against its JSON Schema (draft 2020-12) in
- * {@code content/schema/}. Each problem names the file and the exact place in
- * it, for example {@code ch0_prologue.json /nodes/3/type: does not have a
- * value in the enumeration [...]}.
+ * Checks every JSON content file against the JSON Schema (draft 2020-12) it
+ * names in its {@code "$schema"} key, from {@code content/schema/} (§9). Each
+ * problem names the file and the exact place in it, for example
+ * {@code dialogue/maren.json /nodes/3/type: does not have a value in the
+ * enumeration [...]}.
  *
  * <p>Schemas reference each other by {@code $id}; they are all registered from
  * the content files themselves, so validation never touches the network.
@@ -26,8 +27,7 @@ import java.util.Map;
 public class ContentSchemaValidator {
 
     public static final String SCHEMA_BASE = "https://shardbound.game/schema/";
-    public static final String WORLD_SCHEMA = "world.schema.json";
-    public static final String CHAPTER_SCHEMA = "chapter.schema.json";
+    private static final List<String> REQUIRED = List.of(ContentFiles.WORLD, ContentFiles.REGIONS, ContentFiles.BALANCE);
 
     private final JsonMapper mapper = JsonMapper.builder().build();
 
@@ -37,32 +37,25 @@ public class ContentSchemaValidator {
         for (Map.Entry<String, String> schema : files.schemas().entrySet()) {
             byIri.put(SCHEMA_BASE + schema.getKey(), schema.getValue());
         }
-        List<String> problems = new ArrayList<>();
-        if (!byIri.containsKey(SCHEMA_BASE + WORLD_SCHEMA) || !byIri.containsKey(SCHEMA_BASE + CHAPTER_SCHEMA)) {
-            problems.add("schema/" + WORLD_SCHEMA + " and schema/" + CHAPTER_SCHEMA + " are required");
-            return problems;
-        }
         SchemaRegistry registry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12,
                 builder -> builder.schemas(byIri));
-        Schema worldSchema = registry.getSchema(SchemaLocation.of(SCHEMA_BASE + WORLD_SCHEMA));
-        Schema chapterSchema = registry.getSchema(SchemaLocation.of(SCHEMA_BASE + CHAPTER_SCHEMA));
-
-        if (!files.all().containsKey(ContentFiles.WORLD)) {
-            problems.add(ContentFiles.WORLD + " is missing");
-        } else {
-            check(ContentFiles.WORLD, files.text(ContentFiles.WORLD), worldSchema, problems);
+        List<String> problems = new ArrayList<>();
+        for (String required : REQUIRED) {
+            if (!files.all().containsKey(required)) {
+                problems.add(required + " is missing");
+            }
         }
-        List<String> chapters = files.chapterNames();
-        if (chapters.isEmpty()) {
-            problems.add("no chapter files (ch*.json) found");
+        if (files.dialogueNames().isEmpty()) {
+            problems.add("no dialogue files (dialogue/*.json) found");
         }
-        for (String chapter : chapters) {
-            check(chapter, files.text(chapter), chapterSchema, problems);
+        for (String name : files.jsonDocuments()) {
+            check(name, files.text(name), byIri, registry, problems);
         }
         return problems;
     }
 
-    private void check(String fileName, String text, Schema schema, List<String> problems) {
+    private void check(String fileName, String text, Map<String, String> byIri, SchemaRegistry registry,
+                       List<String> problems) {
         JsonNode document;
         try {
             document = mapper.readTree(text);
@@ -70,6 +63,17 @@ public class ContentSchemaValidator {
             problems.add(fileName + ": not valid JSON: " + e.getOriginalMessage());
             return;
         }
+        JsonNode declared = document.get("$schema");
+        if (declared == null || !declared.isString()) {
+            problems.add(fileName + ": names no \"$schema\"");
+            return;
+        }
+        String schemaFile = declared.asString().substring(declared.asString().lastIndexOf('/') + 1);
+        if (!byIri.containsKey(SCHEMA_BASE + schemaFile)) {
+            problems.add(fileName + ": its schema " + schemaFile + " is not in schema/");
+            return;
+        }
+        Schema schema = registry.getSchema(SchemaLocation.of(SCHEMA_BASE + schemaFile));
         for (Error error : schema.validate(document)) {
             problems.add(fileName + " " + error.getInstanceLocation() + ": " + error.getMessage());
         }

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shardbound.game/schema/regions.schema.json",
+  "title": "Shardbound regions, areas and the area graph (content/regions.json)",
+  "type": "object",
+  "required": ["start", "regions", "areas", "edges"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "start": {
+      "description": "Where a new game begins: the area and spawn point, the opening dialogue, and the flags set first.",
+      "type": "object",
+      "required": ["area", "spawn", "dialogue", "flags"],
+      "additionalProperties": false,
+      "properties": {
+        "area": { "$ref": "common.schema.json#/$defs/id" },
+        "spawn": { "$ref": "common.schema.json#/$defs/id" },
+        "dialogue": { "$ref": "common.schema.json#/$defs/id" },
+        "flags": {
+          "type": "object",
+          "propertyNames": { "$ref": "common.schema.json#/$defs/id" },
+          "additionalProperties": { "type": "integer" }
+        }
+      }
+    },
+    "regions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "music", "lightStates"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/id" },
+          "name": { "$ref": "common.schema.json#/$defs/text" },
+          "music": { "$ref": "common.schema.json#/$defs/id" },
+          "lightStates": {
+            "description": "Lighting states in priority order (see content/art/grades.json): the first whose flag is set wins; the last has no flag.",
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["id"],
+              "additionalProperties": false,
+              "properties": {
+                "id": { "$ref": "common.schema.json#/$defs/id" },
+                "flag": { "$ref": "common.schema.json#/$defs/id" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "areas": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "region", "name", "map"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/id" },
+          "region": { "$ref": "common.schema.json#/$defs/id" },
+          "name": { "$ref": "common.schema.json#/$defs/text" },
+          "map": {
+            "description": "Map file name in content/maps without .tmj; null for an area not built yet (its edges must be gated).",
+            "$ref": "common.schema.json#/$defs/nullableId"
+          }
+        }
+      }
+    },
+    "edges": {
+      "description": "Undirected connections between areas. A gated edge is closed until its flag is set.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "weight"],
+        "additionalProperties": false,
+        "properties": {
+          "from": { "$ref": "common.schema.json#/$defs/id" },
+          "to": { "$ref": "common.schema.json#/$defs/id" },
+          "weight": { "type": "integer", "minimum": 1 },
+          "gateFlag": { "$ref": "common.schema.json#/$defs/id" }
+        }
+      }
+    }
+  }
+}

@@ -2,8 +2,11 @@ package com.shardbound.web;
 
 import com.shardbound.ShardboundApplication;
 import com.shardbound.content.GameContent;
+import com.shardbound.support.MutableClock;
+import com.shardbound.support.QuickRoute;
 import com.shardbound.support.QuickRouteDriver;
 import com.shardbound.support.SharedPostgres;
+import com.shardbound.support.TestClockConfig;
 import com.shardbound.support.TestApi;
 import com.shardbound.support.TestApi.Response;
 import org.junit.jupiter.api.AfterEach;
@@ -33,7 +36,8 @@ class ActiveRunIT {
     private TestApi startServer() {
         // Command-line arguments outrank application.yml (default properties would not: server.port
         // there is ${PORT:8080}, and two servers cannot share it).
-        ConfigurableApplicationContext context = new SpringApplicationBuilder(ShardboundApplication.class)
+        ConfigurableApplicationContext context = new SpringApplicationBuilder(ShardboundApplication.class,
+                TestClockConfig.class)
                 .profiles("test")
                 .run("--server.port=0",
                         "--spring.datasource.url=" + SharedPostgres.POSTGRES.getJdbcUrl(),
@@ -68,8 +72,9 @@ class ActiveRunIT {
         int player = first.profile("restart-mid-fight");
         Response created = first.post("/api/game/new", null, Map.of("playerId", player, "demoMode", false));
         String session = created.body().get("sessionId").asString();
-        JsonNode inFight = QuickRouteDriver.playUntil(first, content().graph(), session, created.body(),
-                view -> "COMBAT".equals(view.get("mode").asString()));
+        MutableClock clock = servers.get(0).getBean(MutableClock.class);
+        JsonNode inFight = new QuickRouteDriver(first, content(), clock, session).playUntil(created.body(),
+                QuickRoute.STEPS, view -> "COMBAT".equals(view.get("mode").asString()));
         Response hit = first.post("/api/combat/action", session, Map.of("type", "ATTACK", "target", 0));
         TestApi.expect(200, hit);
         servers.get(0).close();                                            // the deploy
@@ -78,7 +83,7 @@ class ActiveRunIT {
         Response resumed = second.get("/api/game", session);
         TestApi.expect(200, resumed);
         assertEquals(withoutToasts(hit.body()), withoutToasts(resumed.body()));
-        assertEquals("COMBAT", resumed.body().get("mode").asString(), "still in the fight: " + inFight.get("node"));
+        assertEquals("COMBAT", resumed.body().get("mode").asString(), "still in the fight: " + inFight.get("combat"));
         TestApi.expect(200, second.post("/api/combat/action", session, Map.of("type", "ATTACK", "target", 0)));
     }
 
@@ -89,14 +94,14 @@ class ActiveRunIT {
         int player = a.profile("two-servers");
         Response created = a.post("/api/game/new", null, Map.of("playerId", player, "demoMode", false));
         String session = created.body().get("sessionId").asString();
-        int firstChoice = created.body().get("choices").get(0).get("id").asInt();
+        int firstChoice = created.body().get("dialogue").get("choices").get(0).get("id").asInt();
 
         TestApi.expect(200, b.get("/api/game", session));                  // b caches version 1
-        TestApi.expect(200, a.post("/api/game/choose", session, Map.of("choiceId", firstChoice)));
+        TestApi.expect(200, a.post("/api/dialogue/choose", session, Map.of("choiceId", firstChoice)));
 
         JsonNode bView = b.get("/api/game", session).body();               // still the cached old screen
-        int bChoice = bView.get("choices").get(0).get("id").asInt();
-        Response conflict = b.post("/api/game/choose", session, Map.of("choiceId", bChoice));
+        int bChoice = bView.get("dialogue").get("choices").get(0).get("id").asInt();
+        Response conflict = b.post("/api/dialogue/choose", session, Map.of("choiceId", bChoice));
         assertEquals(409, conflict.status());
         assertEquals("RUN_CONFLICT", conflict.code());
 

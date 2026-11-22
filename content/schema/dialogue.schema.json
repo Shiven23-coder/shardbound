@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shardbound.game/schema/dialogue.schema.json",
+  "title": "Shardbound dialogue file (content/dialogue/*.json)",
+  "description": "A dialogue starts from a world object (NPC, interact, trigger) or the game's opening. The first entry whose conditions hold picks the first node, otherwise `start`. Choices go `to` another node (in any dialogue) or `end` the dialogue and return to the world.",
+  "type": "object",
+  "required": ["id", "start", "nodes"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "$ref": "common.schema.json#/$defs/id" },
+    "npc": { "$ref": "common.schema.json#/$defs/id" },
+    "start": { "$ref": "common.schema.json#/$defs/id" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["node", "conditions"],
+        "additionalProperties": false,
+        "properties": {
+          "node": { "$ref": "common.schema.json#/$defs/id" },
+          "conditions": { "$ref": "common.schema.json#/$defs/conditions" }
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/node" }
+    }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": ["id", "title", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/id" },
+        "type": { "enum": ["TEXT", "COMBAT", "RESOLVER", "ENDING"] },
+        "title": { "$ref": "common.schema.json#/$defs/text" },
+        "speaker": { "$ref": "common.schema.json#/$defs/id" },
+        "text": { "$ref": "common.schema.json#/$defs/text" },
+        "encounter": { "$ref": "common.schema.json#/$defs/id" },
+        "win": { "$ref": "common.schema.json#/$defs/id" },
+        "lose": { "$ref": "common.schema.json#/$defs/id" },
+        "flee": { "$ref": "common.schema.json#/$defs/id" },
+        "choices": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/choice" }
+        }
+      },
+      "if": { "properties": { "type": { "const": "COMBAT" } }, "required": ["type"] },
+      "then": { "required": ["encounter", "win", "lose"] },
+      "else": { "not": { "anyOf": [{ "required": ["encounter"] }, { "required": ["win"] }, { "required": ["lose"] }, { "required": ["flee"] }] } }
+    },
+    "choice": {
+      "type": "object",
+      "required": ["label"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "$ref": "common.schema.json#/$defs/text" },
+        "to": { "$ref": "common.schema.json#/$defs/id" },
+        "end": { "const": true },
+        "hiddenWhenLocked": { "type": "boolean" },
+        "conditions": { "$ref": "common.schema.json#/$defs/conditions" },
+        "effects": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/effect" }
+        }
+      },
+      "oneOf": [{ "required": ["to"] }, { "required": ["end"] }]
+    }
+  }
+}

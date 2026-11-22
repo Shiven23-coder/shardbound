@@ -37,7 +37,7 @@ jobs:
           fi
 
   frontend:
-    name: Frontend (typecheck, Vitest, build)
+    name: Frontend (typecheck, Vitest, build, budgets)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -53,10 +53,25 @@ jobs:
       - run: npm run typecheck   # generates the client from api/openapi.json first
       - run: npm test
       - run: npm run build
+      # Bundle and asset budgets, and no dev-only code in the bundle (§4.13, P-36)
+      - run: node ../tools/ci/check-bundle.mjs dist
+
+  credits:
+    name: CREDITS covers every asset
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - run: node tools/ci/check-credits.mjs
 
   e2e:
     name: E2E
     uses: ./.github/workflows/e2e.yml
+    permissions:
+      contents: read
+      actions: read   # e2e.yml declares it for the nightly perf baseline; a called workflow cannot exceed its caller
     with:
       resume-cycles: '5'
 

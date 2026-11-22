@@ -52,6 +52,9 @@ public class SaveCodec {
             throw new SaveIncompatibleException("Stored game has no 'game' object.");
         }
         run.set("game", upgrader.upgrade(gameObject, storedVersion));
+        if (storedVersion < 2 && "STORY".equals(run.path("mode").asString())) {
+            run.put("mode", "DIALOGUE");    // format 2: v1 story pages are dialogue nodes
+        }
         return convert(run, RunSnapshot.class);
     }
 

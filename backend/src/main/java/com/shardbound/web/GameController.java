@@ -6,9 +6,11 @@ import com.shardbound.engine.GameEngine;
 import com.shardbound.engine.GameState;
 import com.shardbound.exception.PlayerNotFoundException;
 import com.shardbound.persistence.PlayerRepository;
-import com.shardbound.view.GameView;
+import com.shardbound.view.SessionView;
 import com.shardbound.web.Requests.ChooseRequest;
 import com.shardbound.web.Requests.CombatRequest;
+import com.shardbound.web.Requests.ExitRequest;
+import com.shardbound.web.Requests.InteractRequest;
 import com.shardbound.web.Requests.ItemRequest;
 import com.shardbound.web.Requests.NewGameRequest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,7 +41,7 @@ public class GameController {
 
     @PostMapping("/game/new")
     @Operation(operationId = "newGame", summary = "Start a new game; the view's sessionId is the X-Session token")
-    public GameView newGame(@Valid @RequestBody NewGameRequest body) {
+    public SessionView newGame(@Valid @RequestBody NewGameRequest body) {
         if (!players.exists(body.playerId())) {
             throw new PlayerNotFoundException(body.playerId());
         }
@@ -51,35 +53,50 @@ public class GameController {
     @GetMapping("/game")
     @Operation(operationId = "getGame", summary = "The current screen of this session's game")
     @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
-    public GameView game(@CurrentGame GameState state) {
+    public SessionView game(@CurrentGame GameState state) {
         return engine.view(state);
     }
 
-    @PostMapping("/game/choose")
-    @Operation(operationId = "choose", summary = "Take a story choice")
+    @PostMapping("/dialogue/choose")
+    @Operation(operationId = "choose", summary = "Take a dialogue choice")
     @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
-    public GameView choose(@CurrentGame GameState state, @Valid @RequestBody ChooseRequest body) {
+    public SessionView choose(@CurrentGame GameState state, @Valid @RequestBody ChooseRequest body) {
         return engine.choose(state, body.choiceId());
+    }
+
+    @PostMapping("/world/exit")
+    @Operation(operationId = "worldExit", summary = "Walk through an exit into the next area (§4.11)")
+    @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
+    public SessionView exit(@CurrentGame GameState state, @Valid @RequestBody ExitRequest body) {
+        return engine.exit(state, body.exitId(), body.x(), body.y(), body.facing());
+    }
+
+    @PostMapping("/world/interact")
+    @Operation(operationId = "worldInteract",
+            summary = "Talk to an NPC, use an object, or step into a trigger (§4.11)")
+    @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
+    public SessionView interact(@CurrentGame GameState state, @Valid @RequestBody InteractRequest body) {
+        return engine.interact(state, body.targetId(), body.x(), body.y(), body.facing());
     }
 
     @PostMapping("/combat/action")
     @Operation(operationId = "combatAction", summary = "Play one combat round")
     @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
-    public GameView combatAction(@CurrentGame GameState state, @Valid @RequestBody CombatRequest body) {
+    public SessionView combatAction(@CurrentGame GameState state, @Valid @RequestBody CombatRequest body) {
         return engine.combatAction(state, new Action(body.type(), body.target(), body.itemId()));
     }
 
     @PostMapping("/inventory/equip")
     @Operation(operationId = "equip", summary = "Equip a weapon outside combat")
     @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
-    public GameView equip(@CurrentGame GameState state, @Valid @RequestBody ItemRequest body) {
+    public SessionView equip(@CurrentGame GameState state, @Valid @RequestBody ItemRequest body) {
         return engine.equip(state, body.itemId());
     }
 
     @PostMapping("/inventory/use")
     @Operation(operationId = "useItem", summary = "Use a consumable outside combat")
     @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
-    public GameView use(@CurrentGame GameState state, @Valid @RequestBody ItemRequest body) {
+    public SessionView use(@CurrentGame GameState state, @Valid @RequestBody ItemRequest body) {
         return engine.use(state, body.itemId());
     }
 }

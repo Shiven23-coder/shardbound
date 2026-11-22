@@ -108,9 +108,9 @@ sequenceDiagram
 | `engine`, `engine.port` | `GameEngine`, `GameState`, `EndingResolver`, `Mode`; `SaveStore`, `MetaStore`, `RunStore` | none |
 | `view` | records sent to the client | none |
 | `save` | `SaveSnapshot`, `CombatSnapshot`, `SaveUpgrader` | none |
-| `content` | `ContentLoader`, reader, assembler | none |
-| `story`, `ds`, `rules`, `model`, `item`, `quest`, `combat`, `event`, `achievement`, `exception` | game rules and data | none |
-| `tools` | `GraphExporter` (later `BalanceSimulator`, `PlaytestBot`) | — |
+| `content` | `ContentLoader`, readers (content, world, maps), assembler | none |
+| `world` | maps, `CollisionGrid` (BFS), `MapValidator`, `WorldEventValidator`, the area graph | none |
+| `dialogue`, `ds`, `rules`, `model`, `item`, `quest`, `combat`, `event`, `achievement`, `exception` | game rules and data | none |
 
 ArchUnit fails the build if a framework-free package imports Spring, `jakarta.*` or `java.sql`. Class detail: `diagrams/class-diagram-v2.md`. Tables: `diagrams/er-diagram-v2.md`.
 

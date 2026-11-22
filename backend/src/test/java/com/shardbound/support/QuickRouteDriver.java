@@ -1,55 +1,97 @@
 package com.shardbound.support;
 
-import com.shardbound.engine.TestEngines;
-import com.shardbound.story.Choice;
-import com.shardbound.story.StoryGraph;
+import com.shardbound.content.GameContent;
 import com.shardbound.support.TestApi.Response;
+import com.shardbound.world.AreaMap;
+import com.shardbound.world.MapObject;
 import tools.jackson.databind.JsonNode;
 
+import java.time.Duration;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 
 /**
- * Plays the quick route over HTTP, exactly as the browser would: read the
- * view, pick the unlocked choice that leads to the next route node, attack
- * in fights.
+ * Plays {@link QuickRoute} steps over HTTP, exactly as the browser would:
+ * dialogue choices by label, walking up to exits and objects and reporting
+ * the position (with the server's test clock moved on by the walking time),
+ * and attacking in fights.
  */
 public final class QuickRouteDriver {
 
-    private QuickRouteDriver() {
+    private static final Duration WALK = Duration.ofMinutes(1);
+
+    private final TestApi api;
+    private final GameContent content;
+    private final MutableClock clock;
+    private final String session;
+
+    public QuickRouteDriver(TestApi api, GameContent content, MutableClock clock, String session) {
+        this.api = api;
+        this.content = content;
+        this.clock = clock;
+        this.session = session;
     }
 
-    /** Plays until {@code stop} matches the current view or the game ends; returns the last view. */
-    public static JsonNode playUntil(TestApi api, StoryGraph graph, String session, JsonNode view,
-                                     Predicate<JsonNode> stop) {
-        int guard = 0;
-        while (!stop.test(view) && !"ENDED".equals(view.get("mode").asString()) && guard++ < 200) {
-            Response next;
-            if ("COMBAT".equals(view.get("mode").asString())) {
-                next = api.post("/api/combat/action", session, Map.of("type", "ATTACK", "target", 0));
-            } else {
-                next = api.post("/api/game/choose", session, Map.of("choiceId", nextChoice(graph, view)));
+    /** Plays the steps until {@code stop} matches the current view or the game ends; returns the last view. */
+    public JsonNode playUntil(JsonNode view, List<QuickRoute.Step> steps, Predicate<JsonNode> stop) {
+        JsonNode current = view;
+        for (QuickRoute.Step step : steps) {
+            if (stop.test(current) || "ENDED".equals(current.get("mode").asString())) {
+                return current;
             }
-            TestApi.expect(200, next);
-            view = next.body();
+            current = play(current, step);
+            if (stop.test(current)) {
+                return current;
+            }
+            current = fight(current);
         }
-        return view;
+        return current;
     }
 
-    private static int nextChoice(StoryGraph graph, JsonNode view) {
-        String node = view.get("node").get("id").asString();
-        int index = TestEngines.QUICK_ROUTE.indexOf(node);
-        if (index < 0 || index + 1 >= TestEngines.QUICK_ROUTE.size()) {
-            throw new AssertionError("Left the quick route at " + node);
-        }
-        String target = TestEngines.QUICK_ROUTE.get(index + 1);
-        for (JsonNode choice : view.get("choices")) {
-            int id = choice.get("id").asInt();
-            boolean leadsThere = graph.choice(node, id).map(Choice::to).map(target::equals).orElse(false);
-            if (leadsThere && !choice.get("locked").asBoolean()) {
-                return id;
+    private JsonNode play(JsonNode view, QuickRoute.Step step) {
+        Response next = switch (step) {
+            case QuickRoute.Choose c -> api.post("/api/dialogue/choose", session, Map.of("choiceId", choice(view, c.label())));
+            case QuickRoute.Exit e -> worldEvent(view, "/api/world/exit", "exitId", e.exitId());
+            case QuickRoute.Interact i -> worldEvent(view, "/api/world/interact", "targetId", i.targetId());
+        };
+        TestApi.expect(200, next);
+        return next.body();
+    }
+
+    private Response worldEvent(JsonNode view, String path, String idField, String objectName) {
+        JsonNode world = view.get("world");
+        AreaMap map = content.world().mapOf(world.get("areaId").asString());
+        MapObject target = map.object(objectName).orElseThrow(() -> new AssertionError(objectName + " not in " + map.key()));
+        JsonNode player = world.get("player");
+        Set<String> hidden = new HashSet<>();
+        world.get("hiddenObjects").forEach(name -> hidden.add(name.asString()));
+        int[] spot = QuickRoute.standingSpot(map, map.collisionWith(o -> !hidden.contains(o.name())), target,
+                map.tileOf(player.get("x").asInt()),
+                map.tileOf(player.get("y").asInt()), content.worldRules().interactRange());
+        clock.advance(WALK);
+        return api.post(path, session, Map.of(idField, objectName, "x", spot[0], "y", spot[1],
+                "facing", player.get("facing").asString()));
+    }
+
+    private static int choice(JsonNode view, String label) {
+        for (JsonNode c : view.get("dialogue").get("choices")) {
+            if (c.get("label").asString().startsWith(label) && !c.get("locked").asBoolean()) {
+                return c.get("id").asInt();
             }
         }
-        throw new AssertionError("No unlocked choice from " + node + " to " + target);
+        throw new AssertionError("No unlocked choice '" + label + "' in " + view.get("dialogue"));
+    }
+
+    private JsonNode fight(JsonNode view) {
+        JsonNode current = view;
+        while ("COMBAT".equals(current.get("mode").asString())) {
+            Response hit = api.post("/api/combat/action", session, Map.of("type", "ATTACK", "target", 0));
+            TestApi.expect(200, hit);
+            current = hit.body();
+        }
+        return current;
     }
 }

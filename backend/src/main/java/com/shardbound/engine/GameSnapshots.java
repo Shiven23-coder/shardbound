@@ -13,7 +13,11 @@ import com.shardbound.save.RunSnapshot;
 import com.shardbound.save.SaveSnapshot;
 import com.shardbound.save.SaveSnapshot.ItemEntry;
 import com.shardbound.save.SaveSnapshot.StepEntry;
-import com.shardbound.story.StoryNode;
+import com.shardbound.save.SaveSnapshot.WorldEntry;
+import com.shardbound.world.AreaMap;
+import com.shardbound.world.Facing;
+import com.shardbound.world.MapObject;
+import com.shardbound.world.WorldPosition;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,7 +27,7 @@ import java.util.Map;
 /**
  * Converts between a live {@link GameState} and its stored snapshots.
  *
- * <p>Restoring is strict: a snapshot that names a node, item, quest or faction
+ * <p>Restoring is strict: a snapshot that names a node, area, item, quest or faction
  * the current content does not have is rejected with
  * {@link SaveIncompatibleException}. Content renames must ship with a save
  * upgrade instead of silently dropping the player's things.
@@ -60,7 +64,9 @@ final class GameSnapshots {
         for (Step step : s.historyOldestFirst()) {
             history.add(new StepEntry(step.nodeId(), step.choiceId()));
         }
-        return new SaveSnapshot(s.currentNode(), stats.hp(), stats.energy(), stats.level(), stats.xp(), stats.gold(),
+        WorldPosition p = s.position();
+        WorldEntry world = new WorldEntry(p.areaId(), null, p.x(), p.y(), p.facing().name());
+        return new SaveSnapshot(s.currentNode(), world, stats.hp(), stats.energy(), stats.level(), stats.xp(), stats.gold(),
                 inventory, s.inventory().equippedWeaponId(), s.flagsView(), reputation, s.affinityView(), quests,
                 history, s.rngSeed(), s.demoMode(), s.playSeconds());
     }
@@ -71,10 +77,9 @@ final class GameSnapshots {
                 s.offerReload(), s.endingSeconds(), s.endingsFound());
     }
 
-    /** The location shown for a save slot (the summary column {@code area_id}). */
+    /** The area shown for a save slot (the summary column {@code area_id}). */
     String areaOf(GameState s) {
-        StoryNode node = content.graph().node(s.currentNode());
-        return node == null ? s.currentNode() : node.locationId();
+        return s.position().areaId();
     }
 
     // ---------------------------------------------------------------------
@@ -82,9 +87,10 @@ final class GameSnapshots {
     // ---------------------------------------------------------------------
 
     GameState restoreSave(SaveSnapshot d, String sessionId, int playerId) {
-        if (content.graph().node(d.currentNode()) == null) {
-            throw incompatible("story node", d.currentNode());
+        if (d.currentNode() != null && content.graph().node(d.currentNode()) == null) {
+            throw incompatible("dialogue node", d.currentNode());
         }
+        WorldPosition position = position(d.world());
         Stats stats = new Stats(d.hp(), d.energy(), d.level(), d.xp(), d.gold());   // the rest is derived (D6, D28)
         Inventory inventory = new Inventory();
         for (ItemEntry entry : d.inventory()) {
@@ -97,7 +103,7 @@ final class GameSnapshots {
         if (d.equipped() != null && inventory.equip(d.equipped()) == null) {
             throw incompatible("equipped weapon", d.equipped());
         }
-        GameState s = new GameState(sessionId, playerId, d.currentNode(), stats, inventory, d.rngSeed(),
+        GameState s = new GameState(sessionId, playerId, d.currentNode(), position, stats, inventory, d.rngSeed(),
                 d.demoMode(), d.playSeconds());
         content.questManager().initialStates(s);                // quests added to content since the save
         for (Map.Entry<String, String> quest : d.quests().entrySet()) {
@@ -135,6 +141,23 @@ final class GameSnapshots {
         s.setOfferReload(run.offerReload());
         s.recordEnding(run.endingSeconds(), run.endingsFound());
         return s;
+    }
+
+    /** The stored position; a spawn point (saves upgraded from format 1) wins over pixels. */
+    private WorldPosition position(WorldEntry entry) {
+        AreaMap map = content.world().maps().get(entry.area());
+        if (map == null) {
+            throw incompatible("area", entry.area());
+        }
+        if (entry.spawn() != null) {
+            MapObject spawn = map.spawn(entry.spawn()).orElseThrow(() -> incompatible("spawn point", entry.spawn()));
+            return WorldPosition.at(entry.area(), map, spawn);
+        }
+        try {
+            return new WorldPosition(entry.area(), entry.x(), entry.y(), Facing.valueOf(entry.facing()));
+        } catch (IllegalArgumentException e) {
+            throw incompatible("facing", entry.facing());
+        }
     }
 
     private static Faction faction(String name) {

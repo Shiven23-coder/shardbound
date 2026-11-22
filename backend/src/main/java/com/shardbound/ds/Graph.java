@@ -114,7 +114,7 @@ public class Graph<V, E> {
      * for "visited".
      *
      * <p>Complexity: time O(V + E) — each vertex is queued/pushed and expanded at most once, each edge is examined once; space O(V) for the visited set and the queue/stack.
-     * Used by StoryValidator checks 1 and 4 (reachability).
+     * Used by DialogueValidator checks 1 and 4 (reachability).
      */
     public List<V> bfs(V start) {
         List<V> order = new ArrayList<>();
@@ -156,7 +156,7 @@ public class Graph<V, E> {
      * <p>Complexity: time O(V + E) — each vertex is expanded at most once and each
      * edge causes at most one push; space O(V + E) worst case, because a vertex can
      * sit on the stack several times (pushed by different neighbours) before its
-     * first pop. Used by StoryValidator check 2 (dead ends).
+     * first pop.
      */
     public List<V> dfs(V start) {
         List<V> order = new ArrayList<>();
@@ -204,7 +204,7 @@ public class Graph<V, E> {
      * edges is {@code size() - 1}.
      *
      * <p>Complexity: time O(V + E) — each vertex is queued/pushed and expanded at most once, each edge is examined once; space O(V) for the visited set and the queue/stack.
-     * Used by StoryValidator check 5 (quick route ≤ 12 steps).
+     * Unweighted shortest path; the area graph uses Dijkstra below.
      */
     public List<V> shortestPath(V from, V to) {
         // Step 0: both ends must exist.

@@ -9,7 +9,6 @@ import com.shardbound.exception.ContentValidationException;
 import com.shardbound.item.Weapon;
 import com.shardbound.model.Tier;
 import com.shardbound.engine.port.MetaStore;
-import com.shardbound.story.StoryGraph;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,6 +32,8 @@ public class AchievementManager implements GameListener {
 
     public static final int SPEEDRUN_SECONDS = 360;
 
+    /** The ending the SHORT_TALE achievement is for (world.json). */
+    private static final String QUICK_ENDING = "END_QUICK";
     private static final EnumMap<EventType, List<AchievementRule>> RULES = buildRules();
 
     private final int playerId;
@@ -89,7 +90,7 @@ public class AchievementManager implements GameListener {
                 AchievementRule.of("FIRST_BLOOD", EventType.COMBAT_WON,
                         (e, s) -> true),
                 AchievementRule.of("SHORT_TALE", EventType.ENDING_REACHED,
-                        (e, s) -> StoryGraph.QUICK_ENDING_NODE.equals(e.text("endingId"))),
+                        (e, s) -> QUICK_ENDING.equals(e.text("endingId"))),
                 AchievementRule.of("SILVER_TONGUE", EventType.LOCKED_CHOICE_PASSED,
                         (e, s) -> s.flag("_locked_passed") >= 3),
                 AchievementRule.of("ARMORY", EventType.ITEM_GAINED,

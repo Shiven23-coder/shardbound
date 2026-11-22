@@ -25,7 +25,6 @@ cd backend
 .\mvnw.cmd test               # unit tests, ArchUnit, content schemas, OpenAPI export (no Docker needed)
 .\mvnw.cmd verify             # + Testcontainers integration tests (needs Docker)
 .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"    # API only, on :8080; starts the compose services
-.\mvnw.cmd spring-boot:run "-Dspring-boot.run.main-class=com.shardbound.tools.GraphExporter"   # story graph as DOT
 ```
 `test` also exports the OpenAPI contract to `api/openapi.json`. Commit it when it changes; CI fails on drift.
 

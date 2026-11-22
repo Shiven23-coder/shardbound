@@ -6,11 +6,14 @@ import com.shardbound.content.RawContent.ConsumableDef;
 import com.shardbound.content.RawContent.EncounterDef;
 import com.shardbound.content.RawContent.EncounterEnemyDef;
 import com.shardbound.content.RawContent.EndingDef;
+import com.shardbound.content.RawContent.ObjectiveDef;
 import com.shardbound.content.RawContent.EnemyDef;
 import com.shardbound.content.RawContent.FactionDef;
 import com.shardbound.content.RawContent.ItemDef;
-import com.shardbound.content.RawContent.LocationDef;
+import com.shardbound.content.RawContent.DialogueDef;
+import com.shardbound.content.RawContent.EntryDef;
 import com.shardbound.content.RawContent.NodeDef;
+import com.shardbound.content.RawContent.AffinityCues;
 import com.shardbound.content.RawContent.NpcDef;
 import com.shardbound.content.RawContent.QuestDef;
 import com.shardbound.content.RawContent.RuleDef;
@@ -27,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Reads world.json and the ch*.json chapter files into a {@link RawContent}.
+ * Reads world.json and the dialogue files (dialogue/*.json) into a {@link RawContent}.
  * {@link ContentLoader} checks the files against their JSON Schemas first; the
  * checks here are a second line of defence with readable messages.
  */
@@ -47,20 +50,21 @@ public class JsonContentReader {
     }
 
     /**
-     * Reads world.json, then every chapter file in name order.
+     * Reads world.json, then every dialogue file in name order.
      * Time O(total JSON size), space O(total content).
      */
     public RawContent read() {
         JsonNode world = parse(ContentFiles.WORLD);
+        List<DialogueDef> dialogues = new ArrayList<>();
         List<NodeDef> nodes = new ArrayList<>();
         List<ChoiceDef> choices = new ArrayList<>();
-        for (String chapterFile : files.chapterNames()) {
-            readChapter(chapterFile, nodes, choices);
+        for (String dialogueFile : files.dialogueNames()) {
+            readDialogue(dialogueFile, dialogues, nodes, choices);
         }
         return new RawContent(
-                readFactions(world), readLocations(world), readNpcs(world), readItems(world),
+                readFactions(world), readNpcs(world), readAffinityCues(world), readItems(world),
                 readEnemies(world), readEncounters(world), readQuests(world), readAchievements(world),
-                readEndings(world), nodes, choices);
+                readEndings(world), readObjectives(world), dialogues, nodes, choices);
     }
 
     // ---------------------------------------------------------------------
@@ -87,18 +91,20 @@ public class JsonContentReader {
         return result;
     }
 
-    private List<LocationDef> readLocations(JsonNode world) {
-        List<LocationDef> result = new ArrayList<>();
-        for (JsonNode n : array(world, "locations")) {
-            result.add(new LocationDef(text(n, "id"), text(n, "name"), text(n, "region")));
+    private AffinityCues readAffinityCues(JsonNode world) {
+        JsonNode cues = world.get("affinityCues");
+        if (cues == null) {
+            throw new ContentValidationException("world.json has no affinityCues");
         }
-        return result;
+        return new AffinityCues(text(cues, "warmer"), text(cues, "colder"));
     }
 
     private List<NpcDef> readNpcs(JsonNode world) {
         List<NpcDef> result = new ArrayList<>();
         for (JsonNode n : array(world, "npcs")) {
-            result.add(new NpcDef(text(n, "id"), text(n, "name"), optText(n, "faction"), optText(n, "location")));
+            String name = text(n, "name");
+            String shortName = optText(n, "shortName");
+            result.add(new NpcDef(text(n, "id"), name, shortName == null ? name : shortName, optText(n, "faction")));
         }
         return result;
     }
@@ -179,21 +185,36 @@ public class JsonContentReader {
         return result;
     }
 
+    private List<ObjectiveDef> readObjectives(JsonNode world) {
+        List<ObjectiveDef> result = new ArrayList<>();
+        for (JsonNode n : array(world, "objectives")) {
+            String id = text(n, "id");
+            result.add(new ObjectiveDef(id, text(n, "text"), readConditions(n, "objective " + id)));
+        }
+        return result;
+    }
+
     // ---------------------------------------------------------------------
-    // chapter files
+    // dialogue files
     // ---------------------------------------------------------------------
 
-    private void readChapter(String fileName, List<NodeDef> nodes, List<ChoiceDef> choices) {
+    private void readDialogue(String fileName, List<DialogueDef> dialogues, List<NodeDef> nodes,
+                              List<ChoiceDef> choices) {
         JsonNode root = parse(fileName);
-        int chapter = integer(root, "chapter");
+        String dialogueId = text(root, "id");
+        List<EntryDef> entries = new ArrayList<>();
+        for (JsonNode e : array(root, "entries")) {
+            entries.add(new EntryDef(text(e, "node"), readConditions(e, "entry of dialogue " + dialogueId)));
+        }
+        dialogues.add(new DialogueDef(dialogueId, optText(root, "npc"), text(root, "start"), entries));
         for (JsonNode n : array(root, "nodes")) {
             String nodeId = text(n, "id");
-            nodes.add(new NodeDef(nodeId, chapter, text(n, "location"), text(n, "type"), text(n, "title"),
-                    text(n, "text"), optText(n, "encounter"), optText(n, "win"), optText(n, "lose"),
-                    optText(n, "flee")));
+            String type = n.has("type") ? text(n, "type") : "TEXT";
+            nodes.add(new NodeDef(nodeId, dialogueId, type, text(n, "title"), optText(n, "speaker"), text(n, "text"),
+                    optText(n, "encounter"), optText(n, "win"), optText(n, "lose"), optText(n, "flee")));
             int sortOrder = 0;
             for (JsonNode c : array(n, "choices")) {
-                choices.add(new ChoiceDef(nextChoiceId++, nodeId, text(c, "to"), text(c, "label"), sortOrder++,
+                choices.add(new ChoiceDef(nextChoiceId++, nodeId, optText(c, "to"), text(c, "label"), sortOrder++,
                         c.path("hiddenWhenLocked").asBoolean(false),
                         readConditions(c, "choice '" + text(c, "label") + "' on " + nodeId),
                         readEffects(c)));

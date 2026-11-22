@@ -1,0 +1,58 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "finale",
+  "start": "p11",
+  "nodes": [
+    {
+      "id": "p11",
+      "title": "The Cult Raid",
+      "text": "They come an hour after midnight, as Maren said they would. Grey robes, ash-smeared faces, and torches that burn with a green flame that gives no warmth. The shrine bell rings and keeps ringing. Neighbours you have known all your life stumble out of their doors with pitchforks and fire irons. At the head of the raiders walks a tall figure with no torch at all, and every flame in the square leans toward them as they pass. They stop in the middle of the square and turn their hooded face, slowly, toward you. Whatever comes next, Eldmere will not be the same village tomorrow.",
+      "choices": [
+        {
+          "label": "Stand your ground",
+          "to": "c5_resolver"
+        },
+        {
+          "label": "Slip away into the dark",
+          "to": "c5_resolver"
+        }
+      ]
+    },
+    {
+      "id": "c5_resolver",
+      "type": "RESOLVER",
+      "title": "The Weight of Every Choice",
+      "text": "Placeholder (D2/D3): until Chapters 1–5 are written, the prologue's raid leads here. The resolver checks the endings by priority and moves straight on to the first one whose conditions hold."
+    },
+    {
+      "id": "END_TRUE",
+      "type": "ENDING",
+      "title": "Aether Reborn",
+      "text": "Placeholder ending text (written in Phase 9). The three shards become one blade again in your hands, and no faction in Valdren has reason to fear it."
+    },
+    {
+      "id": "END_TYRANT",
+      "type": "ENDING",
+      "title": "The Shard Tyrant",
+      "text": "Placeholder ending text (written in Phase 9). You drew on the crystal's dark power once too often, and now it draws on you."
+    },
+    {
+      "id": "END_ASHEN",
+      "type": "ENDING",
+      "title": "Ashen Dawn",
+      "text": "Placeholder ending text (written in Phase 9). The Ashen Circle completes its rite, and the sun rises grey over a kingdom remade in their image."
+    },
+    {
+      "id": "END_GUARDIAN",
+      "type": "ENDING",
+      "title": "Guardian of Valdren",
+      "text": "Placeholder ending text (written in Phase 9). Crown and village stand together behind you, and the heartshard is sealed away under your watch."
+    },
+    {
+      "id": "END_WANDERER",
+      "type": "ENDING",
+      "title": "The Wanderer",
+      "text": "Placeholder ending text (written in Phase 9). No banner claims you and no crown thanks you. You take the road alone, the crystal's pulse fading behind you."
+    }
+  ]
+}

@@ -27,9 +27,9 @@ public class SaveUpgrader {
         }
     }
 
-    /** The upgrader this server uses. No upgrades exist yet: format 1 is the first. */
+    /** The upgrader this server uses. */
     public static SaveUpgrader standard() {
-        return new SaveUpgrader(SaveFormat.CURRENT_VERSION, List.of());
+        return new SaveUpgrader(SaveFormat.CURRENT_VERSION, List.of(new WorldPositionUpgrade()));
     }
 
     public int currentVersion() {

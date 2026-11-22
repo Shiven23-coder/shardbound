@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shardbound.game/schema/audio.schema.json",
+  "title": "Shardbound sounds and music (content/audio/audio.json, P-42)",
+  "type": "object",
+  "required": ["effects", "music", "footstepIntervalMs", "footstepPitchJitter", "blipEveryChars", "musicFadeMs"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "description": { "type": "string" },
+    "effects": {
+      "description": "Sound effects by the name the client plays them by.",
+      "type": "object",
+      "required": ["rain", "footstep", "blip", "click"],
+      "additionalProperties": { "$ref": "#/$defs/sound" }
+    },
+    "music": {
+      "description": "One track per region id (regions.json).",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/track" }
+    },
+    "footstepIntervalMs": { "description": "Time between footsteps while walking.", "type": "integer", "minimum": 50 },
+    "footstepPitchJitter": { "description": "Each step's playback rate varies by up to this share either way.", "type": "number", "minimum": 0, "maximum": 0.5 },
+    "blipEveryChars": { "description": "The dialogue typewriter blips once per this many characters.", "type": "integer", "minimum": 1 },
+    "musicFadeMs": { "description": "Fade in and out of a region's music.", "type": "integer", "minimum": 0 }
+  },
+  "$defs": {
+    "track": {
+      "description": "A music track: the OGG, and an AAC fallback for browsers that cannot play OGG (P-48).",
+      "type": "object",
+      "required": ["file", "fallback", "volume"],
+      "additionalProperties": false,
+      "properties": {
+        "file": { "type": "string", "pattern": "^music/[a-z0-9-]+[.]ogg$" },
+        "fallback": { "type": "string", "pattern": "^music/[a-z0-9-]+[.]m4a$" },
+        "volume": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "sound": {
+      "type": "object",
+      "required": ["file", "volume"],
+      "additionalProperties": false,
+      "properties": {
+        "file": { "description": "Path inside content/audio.", "type": "string", "pattern": "^sfx/[a-z0-9-]+[.]wav$" },
+        "volume": { "type": "number", "minimum": 0, "maximum": 1 },
+        "loop": { "type": "boolean" }
+      }
+    }
+  }
+}

@@ -6,7 +6,7 @@ import Hud from '../components/Hud';
 import EnemyCard from '../components/EnemyCard';
 import CombatActions from '../components/CombatActions';
 import { DamageNumbers } from '../components/DamageNumber';
-import type { CombatActionType, CombatView, GameView } from '../api/types';
+import type { CombatActionType, CombatView, SessionView } from '../api/types';
 
 const LOG_LINES = 8;
 
@@ -20,7 +20,7 @@ export default function CombatScreen() {
 }
 
 interface CombatContentProps {
-  view: GameView;
+  view: SessionView;
   combat: CombatView; // view.combat, already checked to be non-null
 }
 
@@ -43,7 +43,7 @@ function CombatContent({ view, combat }: CombatContentProps) {
     if (hasCrit && !reduceMotion && scope.current) {
       animate(scope.current, { x: [0, -12, 12, -8, 8, -4, 0] }, { duration: 0.45 });
     }
-  }, [viewSeq]); // run once per new GameView
+  }, [viewSeq]); // run once per new SessionView
 
   function sendAction(type: CombatActionType, itemId?: string) {
     run(() => api.combatAction(type, target, itemId));

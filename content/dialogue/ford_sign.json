@@ -1,0 +1,18 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "ford_sign",
+  "start": "ford_sign",
+  "nodes": [
+    {
+      "id": "ford_sign",
+      "title": "The Ford",
+      "text": "The ford is under fast brown water. Nobody is crossing to the forest until it falls.",
+      "choices": [
+        {
+          "label": "Turn back",
+          "end": true
+        }
+      ]
+    }
+  ]
+}

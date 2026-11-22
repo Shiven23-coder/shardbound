@@ -1,0 +1,20 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "corvin_storm",
+  "npc": "corvin",
+  "start": "corvin_storm",
+  "nodes": [
+    {
+      "id": "corvin_storm",
+      "title": "Corvin the Merchant",
+      "speaker": "corvin",
+      "text": "\"Mind the ditch!\" Corvin shouts over the wind, both hands on the bridle. \"If you're going up to those ruins, go quick. Whatever fell up there, I'd rather it were found by someone I know.\"",
+      "choices": [
+        {
+          "label": "Leave him to his horses",
+          "end": true
+        }
+      ]
+    }
+  ]
+}

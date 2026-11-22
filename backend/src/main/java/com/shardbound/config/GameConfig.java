@@ -17,7 +17,10 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /** Wires the framework-free engine into Spring: content, save codec and the engine itself. */
@@ -40,16 +43,24 @@ public class GameConfig {
         return SaveCodec.standard();
     }
 
-    @Bean(destroyMethod = "shutdown")
-    GameEngine gameEngine(GameContent content, SaveRepository saves, MetaRepository meta, ActiveRunRepository runs) {
-        return new GameEngine(content, saves, meta, runs);
+    /** Server time for the world-event speed check (§4.11); integration tests replace it. */
+    @Bean
+    Clock clock() {
+        return Clock.systemUTC();
     }
 
-    /** Every {@code *.json} under {@code content/} in the jar, keyed by its path inside that folder. */
+    @Bean(destroyMethod = "shutdown")
+    GameEngine gameEngine(GameContent content, SaveRepository saves, MetaRepository meta, ActiveRunRepository runs,
+                          Clock clock) {
+        return new GameEngine(content, saves, meta, runs, clock);
+    }
+
+    /** Every content file ({@code *.json}, {@code maps/*.tmj}) under {@code content/} in the jar, keyed by its path inside that folder. */
     static ContentFiles classpathContent() {
         try {
-            Resource[] resources = new PathMatchingResourcePatternResolver()
-                    .getResources(CLASSPATH_CONTENT + "**/*.json");
+            PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+            List<Resource> resources = new ArrayList<>(List.of(resolver.getResources(CLASSPATH_CONTENT + "**/*.json")));
+            resources.addAll(List.of(resolver.getResources(CLASSPATH_CONTENT + ContentFiles.MAPS_DIR + "*.tmj")));
             Map<String, String> texts = new HashMap<>();
             for (Resource resource : resources) {
                 String url = resource.getURL().toString();

@@ -3,8 +3,9 @@ package com.shardbound.engine;
 import com.shardbound.combat.Action;
 import com.shardbound.combat.ActionType;
 import com.shardbound.exception.RunConflictException;
-import com.shardbound.view.ChoiceView;
-import com.shardbound.view.GameView;
+import com.shardbound.support.MutableClock;
+import com.shardbound.support.QuickRoute;
+import com.shardbound.view.SessionView;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -18,33 +19,26 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class DurableRunTest {
 
-    private static GameEngine engineWith(InMemoryRunStore runs) {
-        return new GameEngine(TestEngines.content(), null, null, runs);
+    private final MutableClock clock = new MutableClock();
+
+    private GameEngine engineWith(InMemoryRunStore runs) {
+        return TestEngines.withRuns(runs, clock);
     }
 
     /** Plays the quick route until the first fight and lands one blow, so the fight is under way. */
-    private static GameState midFight(GameEngine engine) {
-        GameState s = engine.newGame(1, false, TestEngines.QUICK_ROUTE_SEED);
-        GameView view = engine.view(s);
-        while (view.mode() != Mode.COMBAT) {
-            int index = TestEngines.QUICK_ROUTE.indexOf(view.node().id());
-            String next = TestEngines.QUICK_ROUTE.get(index + 1);
-            view = chooseTowards(engine, s, view, next);
-        }
+    private GameState midFight(GameEngine engine) {
+        GameState s = engine.newGame(1, false, QuickRoute.SEED);
+        RoutePlayer player = new RoutePlayer(engine, s, clock);
+        int fightStarts = QuickRoute.STEPS.indexOf(new QuickRoute.Choose("Step into the lantern light"));
+        player.play(QuickRoute.STEPS.subList(0, fightStarts));
+        SessionView view = player.view();
+        int choice = view.dialogue().choices().getFirst().id();
+        view = engine.choose(s, choice);
+        assertEquals(Mode.COMBAT, view.mode());
         view = engine.combatAction(s, Action.of(ActionType.ATTACK));
         assertEquals(Mode.COMBAT, view.mode(), "the fight should still be going after one round");
         assertTrue(view.combat().round() >= 1);
         return s;
-    }
-
-    private static GameView chooseTowards(GameEngine engine, GameState s, GameView view, String target) {
-        for (ChoiceView choice : view.choices()) {
-            if (!choice.locked() && engine.content().graph().choice(view.node().id(), choice.id())
-                    .map(c -> c.to().equals(target)).orElse(false)) {
-                return engine.choose(s, choice.id());
-            }
-        }
-        throw new AssertionError("No way from " + view.node().id() + " to " + target);
     }
 
     @Test
@@ -58,8 +52,8 @@ class DurableRunTest {
         assertEquals(original.view(live), restarted.view(resumed));
 
         for (int round = 0; round < 3; round++) {
-            GameView a = original.combatAction(live, Action.of(ActionType.ATTACK));
-            GameView b = restarted.combatAction(resumed, Action.of(ActionType.ATTACK));
+            SessionView a = original.combatAction(live, Action.of(ActionType.ATTACK));
+            SessionView b = restarted.combatAction(resumed, Action.of(ActionType.ATTACK));
             assertEquals(a, b, "round " + round + " after the restart");
             if (a.mode() != Mode.COMBAT) {
                 break;
@@ -68,13 +62,25 @@ class DurableRunTest {
     }
 
     @Test
+    void aResumedRunKeepsThePlayersPosition() {
+        InMemoryRunStore store = new InMemoryRunStore();
+        GameEngine engine = engineWith(store);
+        GameState s = engine.newGame(1, false, 7L);
+        RoutePlayer player = new RoutePlayer(engine, s, clock);
+        player.choose("Ignore");
+        SessionView inRuins = player.exit("to_ruins");
+        GameState resumed = engineWith(store.copy()).resume(s.sessionId()).orElseThrow();
+        assertEquals(inRuins.world(), engine.view(resumed).world());
+        assertEquals(Mode.WORLD, resumed.mode());
+    }
+
+    @Test
     void everyActionBumpsTheStoredVersion() {
         InMemoryRunStore store = new InMemoryRunStore();
         GameEngine engine = engineWith(store);
         GameState s = engine.newGame(1, false, 7L);
         long first = s.runVersion();
-        GameView view = engine.view(s);
-        engine.choose(s, view.choices().get(0).id());
+        engine.choose(s, engine.view(s).dialogue().choices().getFirst().id());
         assertEquals(first + 1, s.runVersion());
         assertEquals(s.runVersion(), store.find(s.sessionId()).orElseThrow().version());
     }
@@ -86,8 +92,8 @@ class DurableRunTest {
         GameState s = engine.newGame(1, false, 7L);
         GameState stale = engine.resume(s.sessionId()).orElseThrow();   // e.g. a second server's cache
 
-        engine.choose(s, engine.view(s).choices().get(0).id());          // the first copy moves on
-        int choice = engine.view(stale).choices().get(0).id();
+        engine.choose(s, engine.view(s).dialogue().choices().getFirst().id());   // the first copy moves on
+        int choice = engine.view(stale).dialogue().choices().getFirst().id();
         assertThrows(RunConflictException.class, () -> engine.choose(stale, choice));
     }
 
@@ -101,10 +107,10 @@ class DurableRunTest {
     void aFinishedRunKeepsItsEnding() {
         InMemoryRunStore store = new InMemoryRunStore();
         GameEngine engine = engineWith(store);
-        GameState s = engine.newGame(1, true, TestEngines.QUICK_ROUTE_SEED);
-        GameView end = TestEngines.playQuickRoute(engine, s);
+        GameState s = engine.newGame(1, true, QuickRoute.SEED);
+        SessionView end = new RoutePlayer(engine, s, clock).play(QuickRoute.STEPS);
         GameState resumed = engineWith(store.copy()).resume(s.sessionId()).orElseThrow();
-        GameView again = engine.view(resumed);
+        SessionView again = engine.view(resumed);
         assertEquals(Mode.ENDED, again.mode());
         assertNotNull(again.ending());
         assertEquals(end.ending(), again.ending());

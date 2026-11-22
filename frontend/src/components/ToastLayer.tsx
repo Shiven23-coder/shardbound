@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGame } from '../state/GameContext';
 import type { ErrorState } from '../state/gameReducer';
-import type { GameView, ToastView } from '../api/types';
+import type { SessionView, ToastView } from '../api/types';
 
 const TOAST_MS = 3500;
 
@@ -11,13 +11,13 @@ interface ShownToast extends ToastView {
   id: number;
 }
 
-// Shows the `toasts` array of each new GameView (plus request errors) as a
+// Shows the `toasts` array of each new SessionView (plus request errors) as a
 // stack of messages that slide in and dismiss themselves.
 export default function ToastLayer() {
   const { state } = useGame();
   const [toasts, setToasts] = useState<ShownToast[]>([]);
   const nextId = useRef(1);
-  const lastView = useRef<GameView | null>(null);
+  const lastView = useRef<SessionView | null>(null);
   const lastError = useRef<ErrorState | null>(null);
 
   function push(newToasts: ToastView[]) {
@@ -30,7 +30,7 @@ export default function ToastLayer() {
     setToasts((current) => current.filter((t) => t.id !== id));
   }, []);
 
-  // Each GameView object is processed once (the ref guards against re-runs).
+  // Each SessionView object is processed once (the ref guards against re-runs).
   useEffect(() => {
     const view = state.view;
     if (!view || view === lastView.current) return;

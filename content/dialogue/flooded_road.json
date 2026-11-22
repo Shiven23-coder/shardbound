@@ -1,0 +1,18 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "flooded_road",
+  "start": "flooded_road",
+  "nodes": [
+    {
+      "id": "flooded_road",
+      "title": "The Flooded Road",
+      "text": "Brown water runs fast across the west road, deep enough to take a horse off its feet. The Whispering Wood will have to wait until the flood goes down.",
+      "choices": [
+        {
+          "label": "Turn back",
+          "end": true
+        }
+      ]
+    }
+  ]
+}

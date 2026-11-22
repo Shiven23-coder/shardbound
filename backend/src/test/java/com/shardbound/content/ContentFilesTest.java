@@ -4,12 +4,13 @@ import com.shardbound.engine.Ending;
 import com.shardbound.item.Weapon;
 import com.shardbound.model.Tier;
 import com.shardbound.quest.QuestStatus;
-import com.shardbound.story.NodeType;
-import com.shardbound.story.StoryGraph;
+import com.shardbound.dialogue.NodeType;
+import com.shardbound.dialogue.DialogueGraph;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -29,7 +30,8 @@ class ContentFilesTest {
     @BeforeAll
     static void load() {
         raw = new JsonContentReader(new File("../content")).read();
-        content = new ContentAssembler().assemble(raw);
+        WorldReader world = new WorldReader(ContentFiles.fromDirectory(Path.of("../content")));
+        content = new ContentAssembler().assemble(raw, world.readWorld(), world.readRules());
     }
 
     @Test
@@ -63,7 +65,7 @@ class ContentFilesTest {
 
     @Test
     void quickRouteNodesExist() {
-        StoryGraph g = content.graph();
+        DialogueGraph g = content.graph();
         for (String id : List.of("p01", "p02", "p03", "p04m", "p05m", "p06m", "p07m", "p08m", "p09m", "p10m", "END_QUICK")) {
             assertNotNull(g.node(id), id);
         }
@@ -72,9 +74,16 @@ class ContentFilesTest {
     }
 
     @Test
-    void lockedChoicesExistOnTheSquareAndTheOffer() {
-        assertTrue(content.graph().choicesFrom("p03").stream().anyMatch(c -> !c.conditions().isEmpty()));
+    void lockedChoicesExistAtTheSignAndTheOffer() {
+        assertTrue(content.graph().choicesFrom("forest_sign").stream().anyMatch(c -> !c.conditions().isEmpty()));
         assertTrue(content.graph().choicesFrom("p04m").stream().anyMatch(c -> c.hasRepOrAffinityCondition()));
+    }
+
+    @Test
+    void dialoguesOpenOnTheirEntriesFirst() {
+        var crater = content.graph().dialogue("crater_crystal");
+        assertEquals("crater_empty", crater.start());
+        assertEquals("p02", crater.entries().getFirst().node());
     }
 
     @Test

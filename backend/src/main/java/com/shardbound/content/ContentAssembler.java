@@ -6,28 +6,33 @@ import com.shardbound.combat.Encounter;
 import com.shardbound.combat.EncounterSlot;
 import com.shardbound.combat.EnemyTemplate;
 import com.shardbound.content.RawContent.ChoiceDef;
+import com.shardbound.content.RawContent.DialogueDef;
+import com.shardbound.content.RawContent.EntryDef;
 import com.shardbound.content.RawContent.EncounterDef;
 import com.shardbound.content.RawContent.EncounterEnemyDef;
 import com.shardbound.content.RawContent.EndingDef;
 import com.shardbound.content.RawContent.ItemDef;
 import com.shardbound.content.RawContent.NodeDef;
 import com.shardbound.engine.Ending;
+import com.shardbound.engine.Objective;
 import com.shardbound.exception.ContentValidationException;
 import com.shardbound.item.Consumable;
 import com.shardbound.item.Item;
 import com.shardbound.item.KeyItem;
 import com.shardbound.item.Weapon;
 import com.shardbound.model.Faction;
-import com.shardbound.model.Location;
 import com.shardbound.model.Npc;
 import com.shardbound.model.Tier;
 import com.shardbound.quest.Quest;
 import com.shardbound.quest.QuestManager;
 import com.shardbound.rules.RuleFactory;
-import com.shardbound.story.Choice;
-import com.shardbound.story.NodeType;
-import com.shardbound.story.StoryGraph;
-import com.shardbound.story.StoryNode;
+import com.shardbound.dialogue.Choice;
+import com.shardbound.dialogue.Dialogue;
+import com.shardbound.dialogue.DialogueGraph;
+import com.shardbound.dialogue.DialogueNode;
+import com.shardbound.dialogue.NodeType;
+import com.shardbound.world.World;
+import com.shardbound.world.WorldRules;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,9 +52,8 @@ import java.util.Set;
  */
 public class ContentAssembler {
 
-    public GameContent assemble(RawContent raw) {
+    public GameContent assemble(RawContent raw, World world, WorldRules worldRules) {
         checkFactions(raw);
-        Map<String, Location> locations = buildLocations(raw);
         Map<String, Npc> npcs = buildNpcs(raw);
         Map<String, Item> items = buildItems(raw);
         Map<String, EnemyTemplate> enemies = buildEnemies(raw);
@@ -58,15 +62,15 @@ public class ContentAssembler {
         Map<String, Achievement> achievements = buildAchievements(raw);
 
         QuestManager questManager = new QuestManager(quests, items);
-        RuleFactory rules = new RuleFactory(items, npcs, quests, questManager);
+        RuleFactory rules = new RuleFactory(items, npcs, quests, questManager, raw.affinityCues());
 
-        Map<String, StoryNode> nodes = buildNodes(raw, locations);
+        Map<String, DialogueNode> nodes = buildNodes(raw);
         List<Choice> choices = buildChoices(raw, rules, nodes);
         List<Ending> endings = buildEndings(raw, rules, nodes);
-        StoryGraph graph = new StoryGraph(nodes, choices, resolverNodes(endings));
+        DialogueGraph graph = new DialogueGraph(nodes, choices, buildDialogues(raw, rules), resolverNodes(endings));
 
-        return new GameContent(freeze(locations), freeze(npcs), freeze(items), freeze(enemies),
-                freeze(encounters), freeze(achievements), List.copyOf(endings), questManager, graph);
+        return new GameContent(freeze(npcs), freeze(items), freeze(enemies), freeze(encounters),
+                freeze(achievements), List.copyOf(endings), buildObjectives(raw, rules), questManager, graph, world, worldRules);
     }
 
     // ---------------------------------------------------------------------
@@ -87,19 +91,11 @@ public class ContentAssembler {
         }
     }
 
-    private Map<String, Location> buildLocations(RawContent raw) {
-        Map<String, Location> result = new LinkedHashMap<>();
-        for (RawContent.LocationDef l : raw.locations()) {
-            result.put(l.id(), new Location(l.id(), l.name(), l.region()));
-        }
-        return result;
-    }
-
     private Map<String, Npc> buildNpcs(RawContent raw) {
         Map<String, Npc> result = new LinkedHashMap<>();
         for (RawContent.NpcDef n : raw.npcs()) {
             Faction faction = n.factionId() == null ? null : Faction.valueOf(n.factionId());
-            result.put(n.id(), new Npc(n.id(), n.name(), faction, n.locationId()));
+            result.put(n.id(), new Npc(n.id(), n.name(), n.shortName(), faction));
         }
         return result;
     }
@@ -184,22 +180,31 @@ public class ContentAssembler {
         return result;
     }
 
-    private Map<String, StoryNode> buildNodes(RawContent raw, Map<String, Location> locations) {
-        Map<String, StoryNode> result = new LinkedHashMap<>();
+    private Map<String, DialogueNode> buildNodes(RawContent raw) {
+        Map<String, DialogueNode> result = new LinkedHashMap<>();
         for (NodeDef n : raw.nodes()) {
-            if (!locations.containsKey(n.locationId())) {
-                throw new ContentValidationException("Node " + n.id() + " uses unknown location " + n.locationId());
-            }
-            result.put(n.id(), new StoryNode(n.id(), n.chapter(), n.locationId(), NodeType.valueOf(n.type()),
-                    n.title(), n.body(), n.encounterId(), n.winNode(), n.loseNode(), n.fleeNode()));
+            result.put(n.id(), new DialogueNode(n.id(), NodeType.valueOf(n.type()), n.title(), n.speaker(), n.body(),
+                    n.encounterId(), n.winNode(), n.loseNode(), n.fleeNode()));
         }
         return result;
     }
 
-    private List<Choice> buildChoices(RawContent raw, RuleFactory rules, Map<String, StoryNode> nodes) {
+    private Map<String, Dialogue> buildDialogues(RawContent raw, RuleFactory rules) {
+        Map<String, Dialogue> result = new LinkedHashMap<>();
+        for (DialogueDef d : raw.dialogues()) {
+            List<Dialogue.Entry> entries = new ArrayList<>();
+            for (EntryDef entry : d.entries()) {
+                entries.add(new Dialogue.Entry(entry.node(), rules.group(entry.conditions())));
+            }
+            result.put(d.id(), new Dialogue(d.id(), d.npc(), d.start(), entries));
+        }
+        return result;
+    }
+
+    private List<Choice> buildChoices(RawContent raw, RuleFactory rules, Map<String, DialogueNode> nodes) {
         List<Choice> result = new ArrayList<>();
         for (ChoiceDef c : raw.choices()) {
-            if (!nodes.containsKey(c.toNode())) {
+            if (c.toNode() != null && !nodes.containsKey(c.toNode())) {
                 throw new ContentValidationException("Choice '" + c.label() + "' on " + c.fromNode()
                         + " points to missing node " + c.toNode());
             }
@@ -209,7 +214,7 @@ public class ContentAssembler {
         return result;
     }
 
-    private List<Ending> buildEndings(RawContent raw, RuleFactory rules, Map<String, StoryNode> nodes) {
+    private List<Ending> buildEndings(RawContent raw, RuleFactory rules, Map<String, DialogueNode> nodes) {
         List<Ending> result = new ArrayList<>();
         for (EndingDef e : raw.endings()) {
             if (!nodes.containsKey(e.nodeId())) {
@@ -220,6 +225,10 @@ public class ContentAssembler {
         }
         result.sort(Comparator.comparingInt(Ending::priority));
         return result;
+    }
+
+    private static List<Objective> buildObjectives(RawContent raw, RuleFactory rules) {
+        return raw.objectives().stream().map(o -> new Objective(o.id(), o.text(), rules.group(o.conditions()))).toList();
     }
 
     private static List<String> resolverNodes(List<Ending> endings) {

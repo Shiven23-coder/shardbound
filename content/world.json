@@ -7,29 +7,14 @@
     { "id": "ASHEN",   "name": "Ashen Circle" }
   ],
 
-  "locations": [
-    { "id": "eldmere_cottage",   "name": "Your Cottage",          "region": "VILLAGE" },
-    { "id": "eldmere_ruins",     "name": "The Old Ruins",         "region": "VILLAGE" },
-    { "id": "eldmere_square",    "name": "Eldmere Square",        "region": "VILLAGE" },
-    { "id": "elder_house",       "name": "Elder Maren's House",   "region": "VILLAGE" },
-    { "id": "eldmere_mill",      "name": "The Mill",              "region": "VILLAGE" },
-    { "id": "eldmere_outskirts", "name": "The Forest Edge",       "region": "VILLAGE" },
-    { "id": "corvin_stall",      "name": "Corvin's Wagon",        "region": "VILLAGE" },
-    { "id": "eldmere_alley",     "name": "Tanner's Alley",        "region": "VILLAGE" },
-    { "id": "eldmere_burning",   "name": "Eldmere, Burning",      "region": "VILLAGE" },
-    { "id": "whispering_wood",   "name": "Whispering Wood",       "region": "FOREST" },
-    { "id": "hollow_deep",       "name": "The Hollow Deep",       "region": "DUNGEON" },
-    { "id": "valdren_city",      "name": "Valdren City",          "region": "KINGDOM" },
-    { "id": "crystal_spire",     "name": "The Crystal Spire",     "region": "SPIRE" }
-  ],
-
   "npcs": [
-    { "id": "maren",   "name": "Elder Maren",       "faction": "ELDMERE", "location": "elder_house" },
-    { "id": "corvin",  "name": "Corvin the Merchant","faction": "ASHEN",  "location": "corvin_stall" },
-    { "id": "lyra",    "name": "Warden Lyra",       "faction": "SYLVAN",  "location": "whispering_wood" },
-    { "id": "hale",    "name": "Captain Hale",      "faction": "CROWN",   "location": "valdren_city" },
-    { "id": "brann",   "name": "Brann the Smith",   "faction": "ELDMERE", "location": "eldmere_square" }
+    { "id": "maren",   "name": "Elder Maren",         "shortName": "Maren",  "faction": "ELDMERE" },
+    { "id": "corvin",  "name": "Corvin the Merchant", "shortName": "Corvin", "faction": "ASHEN" },
+    { "id": "lyra",    "name": "Warden Lyra",         "shortName": "Lyra",   "faction": "SYLVAN" },
+    { "id": "hale",    "name": "Captain Hale",        "shortName": "Hale",   "faction": "CROWN" },
+    { "id": "brann",   "name": "Brann the Smith",     "shortName": "Brann",  "faction": "ELDMERE" }
   ],
+  "affinityCues": { "warmer": "{name} will remember that.", "colder": "{name} will not forget that." },
 
   "items": [
     { "id": "rusty_shortsword", "name": "Rusty Shortsword", "type": "WEAPON", "price": 5,
@@ -133,6 +118,13 @@
     { "id": "ALL_ENDINGS",   "title": "All Endings",   "hidden": false, "description": "See every ending." }
   ],
 
+  "objectives": [
+    { "id": "obj_follow_corvin", "text": "Follow Corvin into Tanner's Alley.",
+      "conditions": [{ "type": "FLAG", "key": "following_corvin", "op": "=", "value": 1 }] },
+    { "id": "obj_dawn", "text": "Take the crystal to someone in Eldmere Square.",
+      "conditions": [{ "type": "FLAG", "key": "dawn", "op": "=", "value": 1 }] },
+    { "id": "obj_storm", "text": "Follow the green light to the Old Ruins." }
+  ],
   "endings": [
     { "id": "END_TRUE", "node": "END_TRUE", "title": "Aether Reborn", "priority": 1, "viaResolver": true,
       "conditions": [

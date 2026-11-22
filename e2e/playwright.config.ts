@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 import { E2E_API_PORT } from './support/backend';
 
+const PHONE_TESTS = /(merchant-route|touch-targets|touch-controls|layout|screenshots)\.spec\.ts/;
+
 // End-to-end tests against the real stack: the backend jar (started and
 // restarted by the tests themselves, see support/backend.ts), PostgreSQL and
 // the production frontend build served by `vite preview` (which proxies /api).
@@ -25,5 +27,23 @@ export default defineConfig({
     timeout: 300_000,
     env: { API_PROXY_TARGET: `http://localhost:${E2E_API_PORT}` },
   },
-  projects: [{ name: 'desktop', use: { ...devices['Desktop Chrome'] } }],
+  // The three input-aware layouts (P-40). Touch targets are a phone rule (§4.16);
+  // resume and perf need only one browser.
+  projects: [
+    {
+      name: 'desktop',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } },
+      testIgnore: /touch-(targets|controls)\.spec\.ts/,
+    },
+    {
+      name: 'phone-portrait',
+      use: { ...devices['Pixel 7'], viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true },
+      testMatch: PHONE_TESTS,
+    },
+    {
+      name: 'phone-landscape',
+      use: { ...devices['Pixel 7'], viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true },
+      testMatch: PHONE_TESTS,
+    },
+  ],
 });

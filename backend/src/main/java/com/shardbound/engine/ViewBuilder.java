@@ -2,17 +2,18 @@ package com.shardbound.engine;
 
 import com.shardbound.view.ChoiceView;
 import com.shardbound.view.CombatView;
-import com.shardbound.view.GameView;
-import com.shardbound.view.GameView.AffinityView;
-import com.shardbound.view.GameView.EndingView;
-import com.shardbound.view.GameView.InventoryView;
-import com.shardbound.view.GameView.ItemView;
-import com.shardbound.view.GameView.JournalView;
-import com.shardbound.view.GameView.NodeInfo;
-import com.shardbound.view.GameView.QuestView;
-import com.shardbound.view.GameView.ReputationView;
 import com.shardbound.view.HudView;
+import com.shardbound.view.SessionView;
+import com.shardbound.view.SessionView.AffinityView;
+import com.shardbound.view.SessionView.DialogueView;
+import com.shardbound.view.SessionView.EndingView;
+import com.shardbound.view.SessionView.InventoryView;
+import com.shardbound.view.SessionView.ItemView;
+import com.shardbound.view.SessionView.JournalView;
+import com.shardbound.view.SessionView.QuestView;
+import com.shardbound.view.SessionView.ReputationView;
 import com.shardbound.view.ToastView;
+import com.shardbound.view.WorldView;
 import com.shardbound.combat.CombatEngine;
 import com.shardbound.combat.CombatState;
 import com.shardbound.combat.Enemy;
@@ -24,19 +25,24 @@ import com.shardbound.item.Item;
 import com.shardbound.item.ItemStack;
 import com.shardbound.item.Weapon;
 import com.shardbound.model.Faction;
-import com.shardbound.model.Location;
 import com.shardbound.model.Npc;
 import com.shardbound.quest.Quest;
 import com.shardbound.quest.QuestStatus;
-import com.shardbound.story.Choice;
-import com.shardbound.story.StoryNode;
+import com.shardbound.dialogue.Choice;
+import com.shardbound.dialogue.DialogueNode;
+import com.shardbound.world.AreaMap;
+import com.shardbound.world.MapObject;
+import com.shardbound.world.ObjectType;
+import com.shardbound.world.World;
+import com.shardbound.world.WorldPosition;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 
 /**
- * Turns a GameState into the GameView JSON shape (spec §9.2). Every value
+ * Turns a GameState into the SessionView JSON shape (V2_SPEC §8). Every value
  * React shows is decided here, in Java: which choices are locked and why,
  * item order, quest order, usable items. Draining the toast queue makes
  * each toast appear exactly once.
@@ -51,25 +57,74 @@ public class ViewBuilder {
         this.content = content;
     }
 
-    /** Full view for the current state. Time O(n) over the state's collections. */
-    public GameView build(GameState s) {
-        StoryNode node = content.graph().node(s.currentNode());
-        Location location = content.locationOf(node.locationId());
-        boolean story = s.mode() == Mode.STORY;
-        return new GameView(
-                s.sessionId(), s.mode(), location.region(), location.id(), location.name(), node.chapter(),
-                s.demoMode(),
-                new NodeInfo(node.id(), node.title(), node.body()),
-                story ? choices(s, node) : List.of(),
+    /** Full view for the current state. Time O(n) over the state's collections and the area's objects. */
+    public SessionView build(GameState s) {
+        DialogueNode node = s.currentNode() == null ? null : content.graph().node(s.currentNode());
+        return new SessionView(
+                s.sessionId(), s.mode(), s.demoMode(), world(s),
+                s.mode() == Mode.DIALOGUE ? dialogue(s, node) : null,
                 hud(s), inventory(s), quests(s), reputation(s), affinity(s), journal(s),
                 drainToasts(s),
                 s.mode() == Mode.COMBAT ? combat(s) : null,
                 s.mode() == Mode.ENDED ? ending(s, node) : null,
+                objective(s),
                 s.offerReload());
     }
 
+    /** The current objective (P-46): the first whose conditions hold; none once the game has ended. */
+    private @Nullable String objective(GameState s) {
+        if (s.mode() == Mode.ENDED) {
+            return null;
+        }
+        return content.objectives().stream().filter(o -> o.conditions().test(s)).map(Objective::text).findFirst().orElse(null);
+    }
+
+    /** The area, its light state, the player, the NPCs present and the objects absent right now. */
+    private WorldView world(GameState s) {
+        WorldPosition p = s.position();
+        World world = content.world();
+        World.Area area = world.area(p.areaId());
+        AreaMap map = world.mapOf(p.areaId());
+        List<WorldView.NpcView> npcs = new ArrayList<>();
+        List<String> hidden = new ArrayList<>();
+        for (MapObject o : map.objects()) {
+            if (!WorldObjects.active(s, p.areaId(), o)) {
+                hidden.add(o.name());
+            } else if (o.type() == ObjectType.NPC) {
+                npcs.add(new WorldView.NpcView(o.name(), o.property("npcId"), map.centre(o.x()), map.centre(o.y())));
+            }
+        }
+        return new WorldView(area.id(), area.name(), area.region(), map.key(), lightState(s, world.regions().get(area.region())),
+                new WorldView.PlayerView(p.x(), p.y(), p.facing()), npcs, hidden);
+    }
+
+    /** The first light state whose flag is set; the last one is the default. */
+    private static String lightState(GameState s, World.Region region) {
+        for (World.LightState state : region.lightStates()) {
+            if (state.flag() == null || s.flag(state.flag()) != 0) {
+                return state.id();
+            }
+        }
+        return region.lightStates().getLast().id();
+    }
+
+    private DialogueView dialogue(GameState s, DialogueNode node) {
+        List<ChoiceView> choices = choices(s, node);
+        return new DialogueView(node.id(), node.title(), node.speaker(), node.body(), choices, isMessage(node, choices));
+    }
+
+    /** One unlocked option that ends the dialogue and changes nothing: a message to close, not a choice. */
+    private boolean isMessage(DialogueNode node, List<ChoiceView> shown) {
+        if (shown.size() != 1 || shown.getFirst().locked()) {
+            return false;
+        }
+        Choice only = content.graph().choicesFrom(node.id()).stream()
+                .filter(c -> c.id() == shown.getFirst().id()).findFirst().orElseThrow();
+        return only.endsDialogue() && only.effects().isEmpty();
+    }
+
     /** Locked choices keep their reason, unless hidden_when_locked. O(k · c). */
-    private List<ChoiceView> choices(GameState s, StoryNode node) {
+    private List<ChoiceView> choices(GameState s, DialogueNode node) {
         List<ChoiceView> result = new ArrayList<>();
         for (Choice choice : content.graph().choicesFrom(node.id())) {
             boolean locked = !choice.conditions().test(s);
@@ -94,7 +149,7 @@ public class ViewBuilder {
     /** Weapons best-first (Inventory.weaponsByTier), then everything else in pickup order. O(n log n). */
     private InventoryView inventory(GameState s) {
         Inventory inv = s.inventory();
-        boolean story = s.mode() == Mode.STORY;
+        boolean outsideCombat = s.mode() == Mode.WORLD || s.mode() == Mode.DIALOGUE;
         List<ItemView> items = new ArrayList<>();
         for (Weapon weapon : inv.weaponsByTier()) {
             items.add(new ItemView(weapon.id(), weapon.name(), "WEAPON", weapon.description(), 1,
@@ -108,7 +163,7 @@ public class ViewBuilder {
             }
             Integer heal = item instanceof Consumable c ? c.heal() : null;
             Integer energy = item instanceof Consumable c ? c.energy() : null;
-            boolean usable = story && item instanceof Consumable;
+            boolean usable = outsideCombat && item instanceof Consumable;
             items.add(new ItemView(item.id(), item.name(), item.type().name(), item.description(), stack.qty(),
                     false, null, null, null, heal, energy, usable));
         }
@@ -151,7 +206,7 @@ public class ViewBuilder {
     private List<JournalView> journal(GameState s) {
         List<JournalView> result = new ArrayList<>();
         for (Step step : s.recentHistory(JOURNAL_SIZE)) {
-            StoryNode node = content.graph().node(step.nodeId());
+            DialogueNode node = content.graph().node(step.nodeId());
             Choice choice = content.graph().choiceById(step.choiceId());
             result.add(new JournalView(node == null ? step.nodeId() : node.title(),
                     choice == null ? "—" : choice.label()));
@@ -189,7 +244,7 @@ public class ViewBuilder {
                 CombatEngine.SKILL_COST, usable, hits);
     }
 
-    private EndingView ending(GameState s, StoryNode node) {
+    private EndingView ending(GameState s, DialogueNode node) {
         Ending ending = content.endingAtNode(node.id());
         String id = ending == null ? node.id() : ending.id();
         String title = ending == null ? node.title() : ending.title();

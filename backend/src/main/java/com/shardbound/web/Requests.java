@@ -1,6 +1,7 @@
 package com.shardbound.web;
 
 import com.shardbound.combat.ActionType;
+import com.shardbound.world.Facing;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -22,6 +23,13 @@ public final class Requests {
     public record NewGameRequest(@Positive int playerId, boolean demoMode) { }
 
     public record ChooseRequest(@Positive int choiceId) { }
+
+    /** The player's current pixel position on the area map and facing (§4.11). */
+    public record ExitRequest(@NotBlank @Size(max = MAX_ID) String exitId, @PositiveOrZero int x,
+                              @PositiveOrZero int y, @NotNull Facing facing) { }
+
+    public record InteractRequest(@NotBlank @Size(max = MAX_ID) String targetId, @PositiveOrZero int x,
+                                  @PositiveOrZero int y, @NotNull Facing facing) { }
 
     /** {@code target} picks an enemy for ATTACK and SKILL; {@code itemId} is needed for ITEM. */
     public record CombatRequest(@NotNull ActionType type, @PositiveOrZero int target,

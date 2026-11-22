@@ -1,0 +1,18 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "square_dawn",
+  "start": "p03",
+  "nodes": [
+    {
+      "id": "p03",
+      "title": "The Square at Dawn",
+      "text": "By morning the storm has blown itself out and Eldmere is picking up its roof tiles. You stand by the well in the square with the crystal hidden under your coat, still warm, still beating. Elder Maren's door is open across the square; she has kept the village's secrets for forty years. Corvin's wagon has survived the night, and he is already laying out his wares, watching you with merchant's eyes that miss nothing. Past the last houses, the dark line of the forest waits. People say the Sylvan Wardens can be found there, if they decide to be found. Nobody else has noticed the light. Not yet.",
+      "choices": [
+        {
+          "label": "Look around the square",
+          "end": true
+        }
+      ]
+    }
+  ]
+}

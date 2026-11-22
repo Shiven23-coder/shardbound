@@ -1,0 +1,20 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "brann",
+  "npc": "brann",
+  "start": "brann",
+  "nodes": [
+    {
+      "id": "brann",
+      "title": "Brann the Smith",
+      "speaker": "brann",
+      "text": "Brann works the bellows without looking up. \"Come back when you have something worth the fire,\" he says.",
+      "choices": [
+        {
+          "label": "Leave him to his work",
+          "end": true
+        }
+      ]
+    }
+  ]
+}

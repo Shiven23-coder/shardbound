@@ -3,7 +3,7 @@
   "$id": "https://shardbound.game/schema/world.schema.json",
   "title": "Shardbound world file (content/world.json)",
   "type": "object",
-  "required": ["factions", "locations", "npcs", "items", "enemies", "encounters", "quests", "achievements", "endings"],
+  "required": ["factions", "npcs", "affinityCues", "items", "enemies", "encounters", "quests", "achievements", "endings"],
   "additionalProperties": false,
   "properties": {
     "$schema": { "type": "string" },
@@ -19,19 +19,6 @@
         }
       }
     },
-    "locations": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["id", "name", "region"],
-        "additionalProperties": false,
-        "properties": {
-          "id": { "$ref": "common.schema.json#/$defs/id" },
-          "name": { "$ref": "common.schema.json#/$defs/text" },
-          "region": { "enum": ["VILLAGE", "FOREST", "DUNGEON", "KINGDOM", "SPIRE"] }
-        }
-      }
-    },
     "npcs": {
       "type": "array",
       "items": {
@@ -41,9 +28,19 @@
         "properties": {
           "id": { "$ref": "common.schema.json#/$defs/id" },
           "name": { "$ref": "common.schema.json#/$defs/text" },
-          "faction": { "$ref": "common.schema.json#/$defs/nullableId" },
-          "location": { "$ref": "common.schema.json#/$defs/nullableId" }
+          "shortName": { "description": "How the story cues name the NPC; defaults to name.", "$ref": "common.schema.json#/$defs/text" },
+          "faction": { "$ref": "common.schema.json#/$defs/nullableId" }
         }
+      }
+    },
+    "affinityCues": {
+      "description": "The toast when an NPC's affinity changes: a story cue instead of a number, which stays in the Bag. {name} is the NPC's shortName.",
+      "type": "object",
+      "required": ["warmer", "colder"],
+      "additionalProperties": false,
+      "properties": {
+        "warmer": { "type": "string", "pattern": "\\{name\\}" },
+        "colder": { "type": "string", "pattern": "\\{name\\}" }
       }
     },
     "items": {
@@ -144,6 +141,20 @@
           "title": { "$ref": "common.schema.json#/$defs/text" },
           "priority": { "type": "integer", "minimum": 1 },
           "viaResolver": { "type": "boolean" },
+          "conditions": { "$ref": "common.schema.json#/$defs/conditions" }
+        }
+      }
+    },
+    "objectives": {
+      "description": "The current objective (P-46): one short line; the first entry whose conditions hold is shown, so list the latest story step first and end with one without conditions.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "text"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/id" },
+          "text": { "type": "string", "minLength": 1, "maxLength": 80 },
           "conditions": { "$ref": "common.schema.json#/$defs/conditions" }
         }
       }

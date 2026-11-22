@@ -11,6 +11,8 @@ import com.shardbound.exception.RunConflictException;
 import com.shardbound.exception.SaveIncompatibleException;
 import com.shardbound.exception.SaveNotFoundException;
 import com.shardbound.exception.RunNotFoundException;
+import com.shardbound.exception.WorldEventRejectedException;
+import com.shardbound.world.WorldPosition;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.jspecify.annotations.Nullable;
@@ -60,7 +62,13 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         if (status.is5xxServerError()) {
             LOG.error("Game error", e);
         }
-        return problem(status, e.code(), e.getMessage());
+        ResponseEntity<ProblemDetail> response = problem(status, e.code(), e.getMessage());
+        if (e instanceof WorldEventRejectedException rejected) {
+            WorldPosition last = rejected.lastPosition();
+            response.getBody().setProperty("lastPosition", Map.of("areaId", last.areaId(), "x", last.x(),
+                    "y", last.y(), "facing", last.facing().name()));
+        }
+        return response;
     }
 
     @ExceptionHandler({IllegalArgumentException.class, ConstraintViolationException.class})
@@ -111,6 +119,7 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
             case InventoryFullException ignored -> HttpStatus.CONFLICT;
             case RunConflictException ignored -> HttpStatus.CONFLICT;
             case SaveIncompatibleException ignored -> HttpStatus.CONFLICT;
+            case WorldEventRejectedException ignored -> HttpStatus.CONFLICT;
             default -> HttpStatus.INTERNAL_SERVER_ERROR;
         };
     }

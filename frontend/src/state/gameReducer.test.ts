@@ -17,7 +17,7 @@ describe('reducer', () => {
 
   it('bumps viewSeq on every new view and leaves the old state untouched', () => {
     const first = reducer(base, { type: 'SET_VIEW', view: makeView() });
-    const second = reducer(first, { type: 'SET_VIEW', view: makeView({ chapter: 2 }) });
+    const second = reducer(first, { type: 'SET_VIEW', view: makeView({ mode: 'WORLD' }) });
     expect(second.viewSeq).toBe(2);
     expect(first.viewSeq).toBe(1);
     expect(base.view).toBeNull();

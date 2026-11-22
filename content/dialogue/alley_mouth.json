@@ -1,0 +1,129 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "alley_mouth",
+  "start": "p06m",
+  "nodes": [
+    {
+      "id": "p06m",
+      "title": "The Mouth of the Alley",
+      "text": "Tanner's Alley stinks of lye and old hides, and it is darker than it has any right to be. Halfway down, a lantern swings. You can hear Corvin's voice, low and quick, and another voice answering him, deeper and in no hurry at all. A broad shape steps into the lantern light: a hired blade with a scarred jaw and a hand already resting on the hilt of his sword. He has not seen you yet. This is the moment to steady yourself, to take stock of what you carry and what you might lose. Whatever happens in that alley, there will be no walking it back.",
+      "choices": [
+        {
+          "label": "Step into the lantern light",
+          "to": "p07m"
+        },
+        {
+          "label": "Climb the tannery roof and drop down behind them",
+          "to": "p07m"
+        }
+      ]
+    },
+    {
+      "id": "p07m",
+      "type": "COMBAT",
+      "title": "Corvin's Bodyguard",
+      "text": "The hired blade sees you and grins as if you are the best thing to happen to his evening. Corvin backs away toward the far end of the alley, clutching the bundle to his chest. Steel whispers out of its scabbard.",
+      "encounter": "enc_corvin_guard",
+      "win": "p08m",
+      "lose": "p07l"
+    },
+    {
+      "id": "p07l",
+      "title": "In the Gutter",
+      "text": "You wake face down in the gutter with rainwater in your mouth and a ringing in your skull. Your purse is lighter. The lantern is gone, the alley is empty, and somewhere beyond the rooftops a horse is galloping hard toward the east road. Your ribs scream when you sit up. Every breath reminds you that you were lucky; the hired blade could have finished it and chose not to bother. The night is not over. Up in the square, people are running, and the bells of the shrine have begun to ring, ragged and urgent, the way they rang the year the river flooded.",
+      "choices": [
+        {
+          "label": "Limp toward the bells",
+          "to": "p11"
+        }
+      ]
+    },
+    {
+      "id": "p08m",
+      "title": "Spoils of the Alley",
+      "text": "The hired blade lies still among the barrels, breathing but finished with fighting for tonight. At his belt hangs a woodcutter's hatchet, short and heavy, its edge freshly ground; clearly he valued it more than the sword he dropped. Further down the alley, Corvin has stopped running. He stands with his back to a locked gate, the bundle clutched tight, his merchant's smile gone entirely. You can hear your own heartbeat. Beneath it, faint and impossible, you can hear the crystal's beat answering it from inside his arms.",
+      "choices": [
+        {
+          "label": "Take the hatchet",
+          "to": "p09m",
+          "effects": [
+            {
+              "type": "GIVE_ITEM",
+              "key": "woodcutter_hatchet",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "label": "Leave it and go after Corvin",
+          "to": "p09m"
+        }
+      ]
+    },
+    {
+      "id": "p09m",
+      "title": "Cornered",
+      "text": "\"You don't understand what it is,\" Corvin says. His voice shakes. \"The Circle will make it whole. No more kings, no more famines, no more storms. They promised.\" The bundle has begun to glow through the cloth, green light leaking between his fingers. He is sweating, though the night is cold. \"Let me go,\" he says, \"and I'll tell them you were never here. They'll leave Eldmere alone. I swear it.\" Behind you, from the direction of the square, comes the first scream, and then the smell of smoke.",
+      "choices": [
+        {
+          "label": "Take the crystal back by force",
+          "to": "p10m",
+          "effects": [
+            {
+              "type": "GIVE_ITEM",
+              "key": "heartshard",
+              "value": 1
+            },
+            {
+              "type": "REP",
+              "key": "ASHEN",
+              "value": -15
+            },
+            {
+              "type": "COMPLETE_QUEST",
+              "key": "q_strange_light",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "label": "Let him run",
+          "to": "p10m",
+          "effects": [
+            {
+              "type": "FAIL_QUEST",
+              "key": "q_strange_light",
+              "value": 0
+            },
+            {
+              "type": "SET_FLAG",
+              "key": "gave_shard_to_cult",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p10m",
+      "title": "Eldmere Burns",
+      "text": "You come out of the alley into firelight. The Ashen Circle did not wait for Corvin. Grey-robed figures move between the burning houses, and above the shrine roof the sky has turned the colour of the crystal: a sick, shimmering green. Wherever the heartshard is now, it is answering them. The thatch of the mill goes up with a roar. Somewhere Elder Maren is calling names. You understand, with sudden and total clarity, that this is what the crystal does. It does not choose sides. It only wakes up, and the world rearranges itself around it.",
+      "choices": [
+        {
+          "label": "Run for the forest road",
+          "to": "END_QUICK"
+        },
+        {
+          "label": "Turn back toward the fire",
+          "to": "END_QUICK"
+        }
+      ]
+    },
+    {
+      "id": "END_QUICK",
+      "type": "ENDING",
+      "title": "The Merchant's Bargain",
+      "text": "By sunrise Eldmere is ash and the Ashen Circle is gone, taking the road east toward the capital. You stand in the ruins of the square with soot in your hair and whatever the night left you. Some will say the village burned because of a merchant's greed. You will know it burned because of a bargain, and that you were the one who struck it. The heartshard is out in the world now, awake and beating. The story will go on without you. Perhaps, one day, you will be ready to follow it."
+    }
+  ]
+}

@@ -11,11 +11,13 @@ import java.util.Map;
  * {@link SaveFormat#CURRENT_VERSION}; older documents are upgraded by
  * {@link SaveUpgrader} before they are read into this record.
  *
- * @param quests  quest id → status name, e.g. "ACTIVE"
- * @param history oldest step first
+ * @param currentNode the dialogue node shown, or null when saved in the world
+ * @param quests      quest id → status name, e.g. "ACTIVE"
+ * @param history     oldest step first
  */
 public record SaveSnapshot(
-        String currentNode,
+        @Nullable String currentNode,
+        WorldEntry world,
         int hp,
         int energy,
         int level,
@@ -40,6 +42,12 @@ public record SaveSnapshot(
         quests = Map.copyOf(quests);
         history = List.copyOf(history);
     }
+
+    /**
+     * Where the player stands. A save upgraded from format 1 names a spawn
+     * point instead of a pixel position; the spawn wins when it is set.
+     */
+    public record WorldEntry(String area, @Nullable String spawn, int x, int y, String facing) { }
 
     /** One inventory stack. */
     public record ItemEntry(String itemId, int qty) { }

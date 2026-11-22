@@ -1,0 +1,102 @@
+// The typed event store between React and the Phaser world scene (§5).
+// React sends the server's world view and corrections; the scene reports
+// the world events the player causes. Neither side imports the other, and
+// this file imports no Phaser, so it stays in the small initial bundle.
+import type { Facing, LastPosition, WorldView } from '../api/types';
+import type { InputDevice } from '../input/inputMode';
+
+export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
+
+/** What the scene tells React: a world event at the player's position. */
+export interface SceneEvents {
+  exit: { exitId: string; x: number; y: number; facing: Facing };
+  interact: { targetId: string; x: number; y: number; facing: Facing };
+  /** Something the player can use came into reach (its kind), or nothing is in reach (null). */
+  reach: 'npc' | 'object' | null;
+  /** The player took their first step in this scene. */
+  moved: undefined;
+  /** The player walked under the HUD (true) or out from under it (false). */
+  hudCovered: boolean;
+}
+
+/** A rectangle in CSS pixels, relative to the game view's top-left corner. */
+export interface ScreenRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** What React tells the scene. */
+export interface ReactCommands {
+  /** The server's latest world (area, light, player, NPCs, hidden objects). */
+  view: WorldView;
+  /** The server rejected an event: put the player back here. */
+  snapBack: LastPosition;
+  /** Walking is paused (a dialogue, a fight, a request in flight). */
+  frozen: boolean;
+  /** The touch interact button was pressed. */
+  interact: undefined;
+  /** A touch D-pad button went down: one queued step or turn (P-51). */
+  press: Direction;
+  /** A dialogue opened, covering this share of the bottom of the view, or closed (null). */
+  dialogue: number | null;
+}
+
+type Listener<T> = (payload: T) => void;
+
+/** A minimal typed event emitter. */
+export class Channel<Events> {
+  private readonly listeners = new Map<keyof Events, Set<Listener<never>>>();
+
+  /** Subscribes; returns the function that unsubscribes. */
+  on<K extends keyof Events>(name: K, listener: Listener<Events[K]>): () => void {
+    const set = this.listeners.get(name) ?? new Set();
+    set.add(listener as Listener<never>);
+    this.listeners.set(name, set);
+    return () => set.delete(listener as Listener<never>);
+  }
+
+  emit<K extends keyof Events>(name: K, payload: Events[K]): void {
+    for (const listener of this.listeners.get(name) ?? []) {
+      (listener as Listener<Events[K]>)(payload);
+    }
+  }
+}
+
+/**
+ * One bridge per game screen. The scene reads {@link direction} every frame
+ * while it is held; each D-pad press is also sent as a `press` command, so a
+ * quick tap is never lost between frames (P-51).
+ */
+export class WorldBridge {
+  readonly toScene = new Channel<ReactCommands>();
+  readonly toReact = new Channel<SceneEvents>();
+  /** The direction held on the touch D-pad, or null. */
+  direction: Direction | null = null;
+  /** The last view sent, for a scene that starts after it was sent. */
+  latestView: WorldView | null = null;
+  frozen = true;
+  /** Where the HUD sits on the game view: the player must never be hidden under it (P-39). */
+  hudArea: ScreenRect | null = null;
+  /** The device in use, so the scene's interaction marker names its button (P-46). */
+  device: InputDevice = 'keyboard';
+  /** The share of the view a dialogue covers, or null while none is open. */
+  dialogueCover: number | null = null;
+
+  sendView(view: WorldView): void {
+    this.latestView = view;
+    this.toScene.emit('view', view);
+  }
+
+  setFrozen(frozen: boolean): void {
+    this.frozen = frozen;
+    this.toScene.emit('frozen', frozen);
+  }
+
+  setDialogue(cover: number | null): void {
+    if (cover === this.dialogueCover) return;
+    this.dialogueCover = cover;
+    this.toScene.emit('dialogue', cover);
+  }
+}

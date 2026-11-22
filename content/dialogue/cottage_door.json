@@ -1,0 +1,18 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "cottage_door",
+  "start": "cottage_door",
+  "nodes": [
+    {
+      "id": "cottage_door",
+      "title": "Your Door",
+      "text": "The door is barred against the storm. Whatever fell in the night will not wait for morning.",
+      "choices": [
+        {
+          "label": "Leave it",
+          "end": true
+        }
+      ]
+    }
+  ]
+}

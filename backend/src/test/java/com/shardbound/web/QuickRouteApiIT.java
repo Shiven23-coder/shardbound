@@ -2,6 +2,8 @@ package com.shardbound.web;
 
 import com.shardbound.content.GameContent;
 import com.shardbound.support.IntegrationTest;
+import com.shardbound.support.MutableClock;
+import com.shardbound.support.QuickRoute;
 import com.shardbound.support.QuickRouteDriver;
 import com.shardbound.support.TestApi;
 import com.shardbound.support.TestApi.Response;
@@ -16,13 +18,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The whole stack end to end over HTTP: profile, new game, the quick route
- * with real conditions, a save and a load, achievements, endings and the
- * leaderboard (replaces the old ConsoleRunner --auto-quick check).
+ * through the world with real conditions and server-validated world events,
+ * a save and a load, achievements, endings and the leaderboard.
  */
 class QuickRouteApiIT extends IntegrationTest {
 
     @Autowired
     private GameContent content;
+
+    @Autowired
+    private MutableClock clock;
+
+    private String newGame(String username, boolean demoMode) {
+        int player = api.profile(username);
+        Response created = api.post("/api/game/new", null, Map.of("playerId", player, "demoMode", demoMode));
+        TestApi.expect(200, created);
+        return created.body().get("sessionId").asString();
+    }
 
     @Test
     void theQuickRouteIsPlayableAndRecorded() {
@@ -30,10 +42,13 @@ class QuickRouteApiIT extends IntegrationTest {
         Response created = api.post("/api/game/new", null, Map.of("playerId", player, "demoMode", true));
         TestApi.expect(200, created);
         String session = created.body().get("sessionId").asString();
+        QuickRouteDriver driver = new QuickRouteDriver(api, content, clock, session);
 
-        // Play to the square (p03) and save there.
-        JsonNode atSquare = QuickRouteDriver.playUntil(api, content.graph(), session, created.body(),
-                view -> "p03".equals(view.get("node").get("id").asString()));
+        // Play to the Square at dawn and save there.
+        JsonNode atSquare = driver.playUntil(created.body(), QuickRoute.STEPS.subList(0, QuickRoute.AT_SQUARE),
+                view -> false);
+        assertEquals("WORLD", atSquare.get("mode").asString());
+        assertEquals("eldmere_square", atSquare.get("world").get("areaId").asString());
         TestApi.expect(204, api.post("/api/saves/1", session, null));
         JsonNode slots = api.get("/api/saves", session).body();
         assertTrue(slots.get(1).get("exists").asBoolean());
@@ -41,7 +56,8 @@ class QuickRouteApiIT extends IntegrationTest {
         assertTrue(slots.get(2).path("areaName").isMissingNode(), "empty slots leave out their null fields");
 
         // Finish the route.
-        JsonNode end = QuickRouteDriver.playUntil(api, content.graph(), session, atSquare, view -> false);
+        JsonNode end = driver.playUntil(atSquare, QuickRoute.STEPS.subList(QuickRoute.AT_SQUARE, QuickRoute.STEPS.size()),
+                view -> false);
         assertEquals("ENDED", end.get("mode").asString());
         assertEquals("END_QUICK", end.get("ending").get("id").asString());
 
@@ -56,9 +72,27 @@ class QuickRouteApiIT extends IntegrationTest {
         // Loading the slot brings the square back into the same session.
         Response loaded = api.post("/api/saves/1/load", session, null);
         TestApi.expect(200, loaded);
-        assertEquals("p03", loaded.body().get("node").get("id").asString());
+        assertEquals("WORLD", loaded.body().get("mode").asString());
+        assertEquals(atSquare.get("world"), loaded.body().get("world"));
         assertEquals(session, loaded.body().get("sessionId").asString());
-        assertEquals("STORY", api.get("/api/game", session).body().get("mode").asString());
+    }
+
+    @Test
+    void aRejectedWorldEventReportsTheLastValidatedPosition() {
+        String session = newGame("teleporter", false);
+        JsonNode view = new QuickRouteDriver(api, content, clock, session).playUntil(
+                api.get("/api/game", session).body(), QuickRoute.STEPS.subList(0, 1), v -> false);
+        JsonNode player = view.get("world").get("player");
+
+        // Straight to the ruins exit with no time passed: faster than anyone can walk.
+        Response teleport = api.post("/api/world/exit", session,
+                Map.of("exitId", "to_ruins", "x", 19 * 16 + 8, "y", 8, "facing", "UP"));
+        assertEquals(409, teleport.status());
+        assertEquals("WORLD_EVENT_REJECTED", teleport.code());
+        JsonNode last = teleport.body().get("lastPosition");
+        assertEquals("eldmere_cottage_lane", last.get("areaId").asString());
+        assertEquals(player.get("x").asInt(), last.get("x").asInt());
+        assertEquals(player.get("y").asInt(), last.get("y").asInt());
     }
 
     @Test
@@ -78,21 +112,21 @@ class QuickRouteApiIT extends IntegrationTest {
         assertEquals("PLAYER_NOT_FOUND", noPlayer.code());
 
         // A real session, so the request gets as far as reading its body.
-        int player = api.profile("bad-json");
-        String session = api.post("/api/game/new", null, Map.of("playerId", player, "demoMode", false))
-                .body().get("sessionId").asString();
+        String session = newGame("bad-json", false);
         Response badJson = api.post("/api/combat/action", session, Map.of("type", "DANCE"));
         assertEquals(400, badJson.status());
         assertTrue(badJson.code().startsWith("HTTP_400"), badJson.body().toString());
+
+        Response noFacing = api.post("/api/world/exit", session, Map.of("exitId", "to_ruins", "x", 8, "y", 8));
+        assertEquals(400, noFacing.status());
+        assertEquals("VALIDATION_FAILED", noFacing.code());
     }
 
     @Test
     void savingMidFightIsRefused() {
-        int player = api.profile("save-mid-fight");
-        Response created = api.post("/api/game/new", null, Map.of("playerId", player, "demoMode", false));
-        String session = created.body().get("sessionId").asString();
-        QuickRouteDriver.playUntil(api, content.graph(), session, created.body(),
-                view -> "COMBAT".equals(view.get("mode").asString()));
+        String session = newGame("save-mid-fight", false);
+        new QuickRouteDriver(api, content, clock, session).playUntil(api.get("/api/game", session).body(),
+                QuickRoute.STEPS, view -> "COMBAT".equals(view.get("mode").asString()));
         Response save = api.post("/api/saves/1", session, null);
         assertEquals(409, save.status());
         assertEquals("ACTION_NOT_ALLOWED", save.code());
