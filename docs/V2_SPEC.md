@@ -479,8 +479,11 @@ There is no v1 → v2 conversion: v1 never ran in production, so no v1 saves exi
 | Region load | < 1.5 s | mark from the `/api/world/exit` response to the first World frame |
 | Battle start | < 300 ms | mark from the `/api/world/encounter` response to the first Battle frame |
 | Initial JS (title) | ≤ 200 KB gzip | CI bundle check from **V3** |
-| Phaser chunk (lazy) | ≤ 450 KB gzip | CI bundle check from **V3** |
+| Phaser chunk (lazy) | ≤ 450 KB gzip | CI bundle check from **V3**; Shardbound's own Phaser build with only the modules it uses (P-60) |
 | Region asset pack | ≤ 1.5 MB | CI asset check |
+| Audio, initial pack | ≤ 64 KB | CI bundle check: interface sounds loaded with the first page (P-59) |
+| Audio, region pack | ≤ 1,280 KB per region | CI bundle check: the region's music (larger of OGG and AAC) and ambience, loaded on entering it (P-59) |
+| Audio, battle pack | ≤ 1,024 KB | CI bundle check: the battle track and effects, loaded only when a creep is near (P-57, P-59) |
 
 **Mobile performance budget (P-24, from V3).** Target device class: mid-range Android, about 4 GB RAM, Snapdragon 6-series class. The automated measurements run **nightly and before releases**, not as PR gates (P-36).
 
@@ -491,7 +494,7 @@ There is no v1 → v2 conversion: v1 never ran in production, so no v1 saves exi
 | Texture memory | ≤ 64 MB per region | atlas sizes summed per region (CI asset check) |
 | Real device | one check per region | manual run on a device of the target class, recorded in the phase report |
 
-- Phaser is `import()`ed after the title screen.
+- Phaser is `import()`ed after the title screen, built from its source with only the modules the game uses (P-60).
 - Each region has one texture atlas, and the next region's pack is preloaded in the background when the player is one area away (Dijkstra distance on the area graph).
 - **Chapter select (dev only):** the `/api/dev/chapter-select` controller exists only in the Spring `dev` profile (`@Profile("dev")`); in any other profile the route does not exist (404). The frontend button is behind `import.meta.env.DEV` (dead-code-eliminated). CI greps the production bundle and fails if `chapter-select` appears.
 

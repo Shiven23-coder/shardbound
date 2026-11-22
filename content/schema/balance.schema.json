@@ -532,7 +532,7 @@
         "phaserChunkGzipKb",
         "regionAssetsKb",
         "textureMemoryMb",
-        "audioKb",
+        "audio",
         "performance"
       ],
       "additionalProperties": false,
@@ -557,10 +557,28 @@
           "type": "number",
           "exclusiveMinimum": 0
         },
-        "audioKb": {
-          "description": "Sound effects plus the larger version of one region's music and of the battle track, as one player downloads them (P-42, P-48, P-57).",
-          "type": "number",
-          "exclusiveMinimum": 0
+        "audio": {
+          "description": "Audio by when it downloads (P-59): the larger version (OGG or AAC) of each track counts.",
+          "type": "object",
+          "required": ["initialKb", "regionPackKb", "battlePackKb"],
+          "additionalProperties": false,
+          "properties": {
+            "initialKb": {
+              "description": "The initial pack, loaded with the first page: interface sounds.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "regionPackKb": {
+              "description": "Each region's pack, loaded on entering it: its music and ambience.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "battlePackKb": {
+              "description": "The battle pack, loaded when a creep is near: the battle track and effects.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
         },
         "performance": {
           "type": "object",

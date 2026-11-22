@@ -111,6 +111,10 @@ export default function WorldScreen() {
     audio.setMusic(music ?? null);
   }, [music]);
   useEffect(() => () => audio.setMusic(null), []);
+  const regionId = view?.world.regionId;
+  useEffect(() => {
+    if (regionId) audio.loadRegion(regionId);
+  }, [regionId]);
 
   // World events from the scene go to the server; a rejection puts the player back (§4.11).
   // An event lost to an outage is sent again with its key once the game reconnects (P-56).
@@ -123,7 +127,7 @@ export default function WorldScreen() {
         void run((key) => api.worldInteract(targetId, x, y, facing, key), snapBack)),
       bridge.toReact.on('encounter', ({ creepId, x, y, facing }) =>
         void run((key) => api.worldEncounter(creepId, x, y, facing, key), snapBack)),
-      bridge.toReact.on('creepNear', () => audio.prefetchMusic('battle')),
+      bridge.toReact.on('creepNear', () => audio.loadBattle()),
       bridge.toReact.on('hudCovered', setHudCovered),
     ];
     return () => offs.forEach((off) => off());

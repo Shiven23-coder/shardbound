@@ -3,7 +3,7 @@
   "$id": "https://shardbound.game/schema/audio.schema.json",
   "title": "Shardbound sounds and music (content/audio/audio.json, P-42)",
   "type": "object",
-  "required": ["effects", "music", "footstepIntervalMs", "footstepPitchJitter", "blipEveryChars", "musicFadeMs"],
+  "required": ["effects", "music", "packs", "footstepIntervalMs", "footstepPitchJitter", "blipEveryChars", "musicFadeMs"],
   "additionalProperties": false,
   "properties": {
     "$schema": { "type": "string" },
@@ -19,12 +19,52 @@
       "type": "object",
       "additionalProperties": { "$ref": "#/$defs/track" }
     },
+    "packs": {
+      "description": "When each sound downloads (P-59). Each effect belongs to exactly one pack.",
+      "type": "object",
+      "required": ["initial", "regions", "battle"],
+      "additionalProperties": false,
+      "properties": {
+        "description": { "type": "string" },
+        "initial": {
+          "description": "Loaded with the first page: the interface sounds the title and menus play.",
+          "type": "object",
+          "required": ["effects"],
+          "additionalProperties": false,
+          "properties": { "effects": { "$ref": "#/$defs/effectNames" } }
+        },
+        "regions": {
+          "description": "One pack per region id (regions.json), loaded on entering the region: its music and ambience.",
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "$ref": "#/$defs/pack" }
+        },
+        "battle": {
+          "description": "Loaded only when a creep is near (P-57): the battle track and the battle effects.",
+          "$ref": "#/$defs/pack"
+        }
+      }
+    },
     "footstepIntervalMs": { "description": "Time between footsteps while walking.", "type": "integer", "minimum": 50 },
     "footstepPitchJitter": { "description": "Each step's playback rate varies by up to this share either way.", "type": "number", "minimum": 0, "maximum": 0.5 },
     "blipEveryChars": { "description": "The dialogue typewriter blips once per this many characters.", "type": "integer", "minimum": 1 },
     "musicFadeMs": { "description": "Fade in and out of a region's music.", "type": "integer", "minimum": 0 }
   },
   "$defs": {
+    "effectNames": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-zA-Z]+$" },
+      "uniqueItems": true
+    },
+    "pack": {
+      "type": "object",
+      "required": ["music", "effects"],
+      "additionalProperties": false,
+      "properties": {
+        "music": { "description": "A track name in `music`.", "type": "string" },
+        "effects": { "$ref": "#/$defs/effectNames" }
+      }
+    },
     "track": {
       "description": "A music track: the OGG, and an AAC fallback for browsers that cannot play OGG (P-48).",
       "type": "object",

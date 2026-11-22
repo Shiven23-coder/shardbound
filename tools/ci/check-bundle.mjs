@@ -3,7 +3,8 @@
 //    their gzip budgets;
 //  - the region's maps and art stay within the asset budget, and their decoded
 //    images within the texture-memory budget;
-//  - the sound effects, the region's music and the battle music stay within the audio budget (P-42, P-48, P-57);
+//  - each audio pack stays within its own budget: the initial pack, every region's pack and the
+//    battle pack, as content/audio/audio.json defines them (P-42, P-48, P-57, P-59);
 //  - no dev-only code reached the bundle (the inspector, chapter select, /api/debug).
 // Budgets come from content/balance.json.
 //
@@ -16,11 +17,10 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const dist = path.resolve(process.argv[2] ?? path.join(ROOT, 'frontend', 'dist'));
 const budgets = JSON.parse(readFileSync(path.join(ROOT, 'content', 'balance.json'), 'utf8')).budgets;
+const sounds = JSON.parse(readFileSync(path.join(ROOT, 'content', 'audio', 'audio.json'), 'utf8'));
 const DEV_ONLY = ['/api/debug', 'chapter-select', '"Inspector"'];
 const PHASER_CHUNK = /^startWorld-.*\.js$/;
 const ART_OR_MAP = /\.(png|tmj)$/;
-const EFFECT = /\.wav$/;
-const MUSIC = /\.(ogg|m4a)$/;
 
 const assetsDir = path.join(dist, 'assets');
 const assets = readdirSync(assetsDir);
@@ -55,21 +55,35 @@ const textureBytes = pack.filter((file) => file.endsWith('.png')).reduce((sum, f
 }, 0);
 check('Texture memory (Eldmere)', textureBytes / (1024 * 1024), budgets.textureMemoryMb, 'MB');
 
-// What one player downloads: every effect, plus each track in the larger of its two versions (OGG, or the
-// AAC fallback, P-48): Eldmere's music and the battle track (P-57). Built files are named <track>-<hash>.<ext>,
-// where Vite's hash is 8 characters that may include - and _ (battle-C75rI3V-.ogg).
+// Audio by when it downloads (P-59): the initial pack with the first page, each region's pack on entering
+// it, the battle pack when a creep is near. A track counts in the larger of its two versions (OGG, or the AAC
+// fallback, P-48). Built files are named <name>-<hash>.<ext>, where Vite's hash is 8 characters that may
+// include - and _ (battle-C75rI3V-.ogg).
 const sizeOf = (file) => statSync(path.join(assetsDir, file)).size;
-const effectFiles = assets.filter((file) => EFFECT.test(file));
-const musicFiles = assets.filter((file) => MUSIC.test(file));
-const trackOf = (file) => file.replace(/-[A-Za-z0-9_-]{8}\.(ogg|m4a)$/, '');
-const largestPerTrack = new Map();
-for (const file of musicFiles) largestPerTrack.set(trackOf(file), Math.max(largestPerTrack.get(trackOf(file)) ?? 0, sizeOf(file)));
-if (effectFiles.length === 0 || !largestPerTrack.has('eldmere') || !largestPerTrack.has('battle')) {
-  problems.push('the build is missing its sound effects, the Eldmere music or the battle music');
+const audioFiles = new Set(assets.filter((file) => /\.(wav|ogg|m4a)$/.test(file)));
+function builtSize(source) {
+  const name = path.basename(source).replace(/\.[a-z0-9]+$/, '');
+  const ext = path.extname(source);
+  const hashed = (f) => f.startsWith(`${name}-`) && f.endsWith(ext) && f.length === name.length + 1 + 8 + ext.length;
+  const file = [...audioFiles].find(hashed);
+  if (!file) {
+    problems.push(`${source} is not in the build`);
+    return 0;
+  }
+  audioFiles.delete(file);
+  return sizeOf(file);
 }
-check('Audio (effects + Eldmere music + battle music)',
-  kb(effectFiles.reduce((sum, file) => sum + sizeOf(file), 0) + [...largestPerTrack.values()].reduce((a, b) => a + b, 0)),
-  budgets.audioKb, 'KB');
+const effectsSize = (names) => names.reduce((sum, name) => sum + builtSize(sounds.effects[name].file), 0);
+const trackSize = (name) => Math.max(builtSize(sounds.music[name].file), builtSize(sounds.music[name].fallback));
+const { initial: initialPack, regions, battle } = sounds.packs;
+check('Audio, initial pack (first page)', kb(effectsSize(initialPack.effects)), budgets.audio.initialKb, 'KB');
+for (const [region, pack] of Object.entries(regions)) {
+  check(`Audio, ${region} pack (entering the region)`, kb(effectsSize(pack.effects) + trackSize(pack.music)),
+    budgets.audio.regionPackKb, 'KB');
+}
+check('Audio, battle pack (a creep near)', kb(effectsSize(battle.effects) + trackSize(battle.music)),
+  budgets.audio.battlePackKb, 'KB');
+if (audioFiles.size > 0) problems.push(`audio in the build that no pack loads: ${[...audioFiles].join(', ')}`);
 
 for (const file of assets.filter((f) => f.endsWith('.js'))) {
   const code = readFileSync(path.join(assetsDir, file), 'utf8');

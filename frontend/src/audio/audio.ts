@@ -4,7 +4,9 @@
 // before that (the rain, the region's music) start then. Effects are decoded
 // once and kept; music streams through a media element so a long track is
 // never held decoded in memory. File names and levels come from
-// content/audio/audio.json.
+// content/audio/audio.json, whose packs say when each file downloads (P-59):
+// the interface sounds with the first page, a region's music and ambience on
+// entering it, the battle track and effects only when a creep is near.
 import manifest from '../../../content/audio/audio.json';
 import { getSettings, subscribeSettings } from '../settings/settings';
 import type { Settings } from '../settings/settings';
@@ -32,6 +34,19 @@ interface Track {
 
 const effects: Record<Effect, Sound> = manifest.effects;
 const music: Record<string, Track> = manifest.music;
+
+/** A region's or the battle's sounds: a music track and the effects that go with it. */
+interface Pack {
+  music: string;
+  effects: Effect[];
+}
+
+/** When each sound downloads (P-59). */
+export const audioPacks = manifest.packs as unknown as {
+  initial: { effects: Effect[] };
+  regions: Record<string, Pack>;
+  battle: Pack;
+};
 
 export const audioTiming = {
   footstepIntervalMs: manifest.footstepIntervalMs,
@@ -70,6 +85,8 @@ class AudioEngine {
   private master!: GainNode;
   private musicBus!: GainNode;
   private effectsBus!: GainNode;
+  /** Effect files as downloaded; they are decoded once sound is unlocked. */
+  private readonly files = new Map<Effect, Promise<ArrayBuffer | null>>();
   private readonly buffers = new Map<Effect, Promise<AudioBuffer | null>>();
   private readonly loops = new Map<Effect, AudioBufferSourceNode>();
   /** What should be playing once sound is unlocked, and while it is. */
@@ -131,11 +148,29 @@ class AudioEngine {
     }
   }
 
-  /**
-   * Starts loading a track so it can play at once later; nothing is fetched until this
-   * is called (the battle music is never part of the first page load, P-57).
-   */
-  prefetchMusic(name: string): void {
+  /** Downloads the interface sounds with the first page (P-59). */
+  loadInitial(): void {
+    audioPacks.initial.effects.forEach((name) => void this.file(name));
+  }
+
+  /** Downloads a region's music and ambience on entering it (P-59). */
+  loadRegion(region: string): void {
+    const pack = audioPacks.regions[region];
+    if (pack) this.loadPack(pack);
+  }
+
+  /** Downloads the battle track and effects when a creep is near; never with the first page (P-57). */
+  loadBattle(): void {
+    this.loadPack(audioPacks.battle);
+  }
+
+  private loadPack(pack: Pack): void {
+    pack.effects.forEach((name) => void this.file(name));
+    this.prefetchMusic(pack.music);
+  }
+
+  /** Starts loading a track so it can play at once later. */
+  private prefetchMusic(name: string): void {
     if (this.prefetched.has(name) || this.track?.region === name || !music[name]) return;
     const element = new Audio(this.trackUrl(music[name]!));
     element.preload = 'auto';
@@ -170,16 +205,26 @@ class AudioEngine {
     return gain;
   }
 
-  private buffer(name: Effect): Promise<AudioBuffer | null> {
-    let loading = this.buffers.get(name);
+  private file(name: Effect): Promise<ArrayBuffer | null> {
+    let loading = this.files.get(name);
     if (!loading) {
       loading = fetch(urlOf(effects[name].file))
         .then((response) => response.arrayBuffer())
-        .then((bytes) => this.context!.decodeAudioData(bytes))
         .catch(() => null); // a sound that cannot load stays silent; the game goes on
-      this.buffers.set(name, loading);
+      this.files.set(name, loading);
     }
     return loading;
+  }
+
+  private buffer(name: Effect): Promise<AudioBuffer | null> {
+    let decoding = this.buffers.get(name);
+    if (!decoding) {
+      decoding = this.file(name)
+        .then((bytes) => (bytes && this.context ? this.context.decodeAudioData(bytes) : null))
+        .catch(() => null);
+      this.buffers.set(name, decoding);
+    }
+    return decoding;
   }
 
   private async startLoop(name: Effect): Promise<void> {
@@ -229,6 +274,7 @@ export const audio = new AudioEngine();
  * The touch controls are the game's own input and stay silent.
  */
 export function installAudio(): void {
+  audio.loadInitial();
   const gestures = ['pointerdown', 'pointerup', 'keydown', 'touchend', 'click'] as const;
   const onGesture = () => {
     void audio.unlock().then(() => {

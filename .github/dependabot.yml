@@ -39,3 +39,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # The database's major version is chosen with the hosting at deploy time (P-21, P-58);
+    # until then only minor and patch images of PostgreSQL 17 arrive.
+    ignore:
+      - dependency-name: postgres
+        update-types: ["version-update:semver-major"]

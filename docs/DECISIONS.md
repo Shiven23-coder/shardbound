@@ -1371,4 +1371,75 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 
 **Why.** It is the layout the vision promises, it reads well on a phone, and it stays inside the performance budgets.
 
+**Revised by** P-59 (the audio budget is split by when sounds download).
+
 **Spec.** §1, §4.7, §4.9, §4.13, §4.16.
+
+---
+
+## P-58 — Dependency upkeep before V5
+
+**Problem.** Dependabot had eight PRs open after V4: two grouped updates, four major frontend updates, a major PostgreSQL image and framer-motion 14. Some failed CI on their own.
+
+**Decision.**
+- **Grouped updates** go in as they are: the Maven wrapper 3.3.4 with Maven 3.10.1, and the GitHub Actions group (checkout v7, setup-node v7, setup-java v6, upload-artifact v7, release-please-action v5, gitleaks-action v3).
+- **Majors one at a time**, each with green CI:
+  - **Vite 8** with **@vitejs/plugin-react 6** together, since plugin-react 6 requires Vite 8. No code changes.
+  - **TypeScript 7** type-checks the frontend with no code changes, about 7 times faster. It ships no JavaScript compiler API, which openapi-typescript (latest 7.13) needs from a TypeScript 5 peer to generate the API client. So `typescript` stays at **5.9.3** for the generator, and TypeScript 7 is installed as **`typescript7`** (an npm alias), which the `typecheck` and `build` scripts run by path. The alias goes once openapi-typescript supports TypeScript 7.
+  - **Vitest 5**: no code or configuration changes.
+- **PostgreSQL stays on 17** (P-21) until the hosting is chosen. Dependabot ignores major `postgres` image updates; minor and patch images still arrive. The PostgreSQL 18 PR is closed.
+- **framer-motion 14** is not part of this round; it waits for its own review.
+
+**Why.** Small, reviewed steps keep the trunk green, and the database's major version belongs to the deploy decision.
+
+**Spec.** §2.
+
+---
+
+## P-59 — Audio budgets by download
+
+**Problem.** One audio budget (2,048 KB for every effect, the region's music and the battle track) said nothing about what a player waits for: effects were fetched on first play, music when a region started, and the total was never downloaded at once.
+
+**Decision.** `content/audio/audio.json` declares **packs**, and each sound belongs to exactly one:
+- the **initial pack** (interface sounds: blip, click) loads with the first page;
+- each **region pack** (the region's music and ambience: Eldmere's track, rain, footsteps) loads on entering the region;
+- the **battle pack** (the battle track and the nine battle effects) loads only when a creep is near (P-57).
+
+The audio engine fetches a pack's files when its moment comes and decodes each effect on first play. CI checks each pack against its own budget in `balance.json`, counting the larger of a track's OGG and AAC files, and fails a build with audio that no pack loads:
+
+| Pack | Budget | Now | Why this limit |
+|---|---|---|---|
+| Initial | **64 KB** | 22 KB | The first page must stay light; room for a few more interface sounds. |
+| Each region | **1,280 KB** | Eldmere 1,067 KB | V3's original audio budget (effects and one region track), downloaded behind the area title; room for one more ambience loop. |
+| Battle | **1,024 KB** | 944 KB | Must arrive between "a creep is near" and the battle; boss themes will need their own pack. |
+
+**Why.** A budget per moment of download matches what a player on a phone actually waits for, and a new region or sound cannot hide inside one big number.
+
+**Revises** P-57 (audio budget).
+
+**Spec.** §4.13.
+
+---
+
+## P-60 — Shardbound's own Phaser build
+
+**Problem.** The lazy Phaser chunk was 383 KB gzip (budget 450), almost all of it Phaser's prebuilt bundle, which includes Matter and Arcade physics, Phaser's sound system, video, DOM elements, meshes and other features the game never uses. The prebuilt ES module cannot be tree-shaken.
+
+**Options measured** (the chunk in KB gzip, prebuilt bundle = 381):
+
+| Option | Chunk | Saves |
+|---|---|---|
+| Phaser from source, everything | 377 | 4 |
+| Phaser's no-physics entry | 333 | 48 |
+| … without Phaser's sound system | 326 | 55 |
+| … and without the Canvas renderer | 319 | 62 |
+| **Own entry: Phaser core plus the modules we use, no Phaser sound** | **275** | **106** |
+| A separate on-demand battle chunk | about 380 | about 3 (the battle scene's code), plus a fetch at battle start |
+
+**Decision.** `frontend/src/world/phaserBuild.cjs` builds Phaser from its source: Phaser's own core entry plus tilemaps, particles, tile sprites, containers, ellipse and rectangle shapes, `Display.Color` and `Math.Clamp`. `vite.config.ts` points `phaser` at it and sets Phaser's build flags: both renderers (Canvas stays as the fallback), no WebGL debug, no Phaser sound (the game's sound is its own Web Audio engine), no 3D camera or Facebook plugins. Types still come from the `phaser` package. The battle code stays in the world chunk.
+
+**Why.** It saves 28 % of the chunk with one file and a few lines of configuration, and no new dependency. A separate battle chunk would save almost nothing, because both scenes need the whole engine, and it would add a download to the 300 ms battle start. Dropping Canvas would save 7 KB more but remove the fallback for phones without WebGL.
+
+**Consequence.** A Phaser class or factory used for the first time must be added to `phaserBuild.cjs`. The e2e suite (world, battle and every layout) is the check, since a missing module only fails at runtime.
+
+**Spec.** §4.13.

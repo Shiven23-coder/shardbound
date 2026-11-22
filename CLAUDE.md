@@ -7,12 +7,12 @@ Souls-like progression: rest at Lanterns, spend Shards on six attributes and wea
 It is a public, mobile-first web game and a flagship portfolio piece: guest and Google accounts, anonymous telemetry, a balance simulator and a playtest bot.
 
 **Specs:** `docs/V2_SPEC.md` is the source of truth. `docs/PROJECT_SPEC.md` is the historical v1 spec; its engine rules (conditions, ConditionGroup, effects, quest state machine, combat, endings) still apply where V2_SPEC does not override them. Read the sections for the current phase before writing code. If a spec and a request conflict, ask before acting.
-Decision history: `docs/DECISIONS.md` (P-01 … P-57 win over older entries).
+Decision history: `docs/DECISIONS.md` (P-01 … P-60 win over older entries).
 
 ## Tech
 - Backend: **Spring Boot 4.1** on **Java 25**; **JdbcClient** with hand-written SQL; **Flyway via Spring**; springdoc-openapi; JUnit 5, **Testcontainers**, ArchUnit.
 - Database: **PostgreSQL 17**, player data only (JSONB saves, `active_run`). Content is JSON in `content/`, validated against `content/schema/` and loaded at startup.
-- Frontend: **TypeScript**, React (HUD, menus, dialogue, auth), Phaser 3 (world and battle, lazy-loaded), Vite, Vitest, Playwright. The API client is **generated from `api/openapi.json`** (openapi-typescript + openapi-fetch).
+- Frontend: **TypeScript**, React (HUD, menus, dialogue, auth), Phaser 4 (world and battle, lazy-loaded; own build, P-60), Vite, Vitest, Playwright. The API client is **generated from `api/openapi.json`** (openapi-typescript + openapi-fetch).
 - Ops: **Docker Compose** (postgres + mailpit for dev), GitHub Actions, Dependabot, gitleaks, release-please, Cloudflare Turnstile, Sentry.
 
 ## Why the rules below exist
@@ -66,4 +66,4 @@ docker compose up -d
 - End each phase with the rule 12 report.
 
 ## Current phase
-**V4 — Battles** (V3 World merged via PR #12; start V4 in plan mode when I say so) (update this line as we progress)
+**V5 — next** (V4 Battles merged via PR #18 and released as 0.4.0; maintenance round on `chore/maintenance`; start V5 in plan mode when I say so) (update this line as we progress)

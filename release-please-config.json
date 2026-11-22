@@ -18,9 +18,13 @@
           "type": "json",
           "path": "package.json",
           "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "api/openapi.json",
+          "jsonpath": "$.info.version"
         }
-      ],
-      "release-as": "0.4.0"
+      ]
     }
   }
 }

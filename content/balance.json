@@ -34,7 +34,11 @@
     "phaserChunkGzipKb": 450,
     "regionAssetsKb": 1536,
     "textureMemoryMb": 64,
-    "audioKb": 2048,
+    "audio": {
+      "initialKb": 64,
+      "regionPackKb": 1280,
+      "battlePackKb": 1024
+    },
     "performance": {
       "cpuThrottle": 4,
       "p95FrameCpuMs": 33,
