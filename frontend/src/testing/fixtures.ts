@@ -16,6 +16,7 @@ export function makeView(overrides: Partial<SessionView> = {}): SessionView {
       lightState: 'dawn',
       player: { x: 24, y: 184, facing: 'DOWN' },
       npcs: [{ id: 'maren', npcId: 'maren', x: 120, y: 104 }],
+      creeps: [],
       hiddenObjects: [],
     },
     dialogue: {
@@ -26,8 +27,7 @@ export function makeView(overrides: Partial<SessionView> = {}): SessionView {
       message: false,
     },
     hud: {
-      hp: 30, maxHp: 30, energy: 3, maxEnergy: 5, gold: 10, level: 1, xp: 0, xpToNext: 100,
-      atk: 4, def: 2,
+      hp: 30, maxHp: 30, fp: 3, maxFp: 5, gold: 10, shards: 0, level: 1, attack: 20, defence: 10,
     },
     inventory: { usedSlots: 0, capacity: 12, items: [] },
     quests: [],

@@ -1,0 +1,33 @@
+{
+  "$schema": "./schema/skills.schema.json",
+  "description": "Skills and creep moves (V2_SPEC §4.6, P-54, P-55). 'scaling' says what powers the move: WEAPON uses the attack rating, MIND and ARCANE the spell powers; creeps always use their atk. 'unlock': START (in the opening loadout), DIALOGUE (taught by a LEARN_SKILL effect), LOCKED (a later region), CREEP (enemies only). A telegraphed move is announced one enemy turn before it lands.",
+  "skills": [
+    { "id": "rending_cut", "name": "Rending Cut", "element": "PHYSICAL", "power": 1.2, "fpCost": 5, "scaling": "WEAPON",
+      "status": "BLEED", "statusChance": 40, "unlock": "START",
+      "description": "A dragging cut that opens a wound." },
+    { "id": "crystal_pulse", "name": "Crystal Pulse", "element": "CRYSTAL", "power": 1.6, "fpCost": 6, "scaling": "ARCANE",
+      "unlock": "START",
+      "description": "The Heartshard's light, thrown like a stone." },
+    { "id": "ember", "name": "Ember", "element": "FIRE", "power": 1.6, "fpCost": 6, "scaling": "MIND",
+      "status": "BURN", "statusChance": 30, "unlock": "DIALOGUE",
+      "description": "Forge heat called into an open hand." },
+    { "id": "frost_shard", "name": "Frost Shard", "element": "FROST", "power": 1.6, "fpCost": 7, "scaling": "MIND",
+      "status": "FROST", "statusChance": 30, "unlock": "LOCKED",
+      "description": "A splinter of winter. Nobody in Eldmere knows the words." },
+
+    { "id": "slime_slam", "name": "Slam", "element": "PHYSICAL", "power": 1.0, "fpCost": 0, "scaling": "WEAPON",
+      "unlock": "CREEP", "description": "The slime throws its weight." },
+    { "id": "mire_spit", "name": "Mire Spit", "element": "PHYSICAL", "power": 0.7, "fpCost": 0, "scaling": "WEAPON",
+      "status": "POISON", "statusChance": 45, "unlock": "CREEP", "description": "A gob of black marsh water." },
+    { "id": "rat_bite", "name": "Bite", "element": "PHYSICAL", "power": 1.0, "fpCost": 0, "scaling": "WEAPON",
+      "status": "BLEED", "statusChance": 20, "unlock": "CREEP", "description": "Ash-grey teeth." },
+    { "id": "rat_frenzy", "name": "Frenzy", "element": "PHYSICAL", "power": 2.0, "fpCost": 0, "scaling": "WEAPON",
+      "telegraph": true, "telegraphLine": "The {name} bristles, sparks crawling over its fur!",
+      "unlock": "CREEP", "description": "A storm of teeth and claws." },
+    { "id": "blade_cut", "name": "Cut", "element": "PHYSICAL", "power": 1.0, "fpCost": 0, "scaling": "WEAPON",
+      "unlock": "CREEP", "description": "A practised cut." },
+    { "id": "heavy_swing", "name": "Heavy Swing", "element": "PHYSICAL", "power": 2.0, "fpCost": 0, "scaling": "WEAPON",
+      "telegraph": true, "telegraphLine": "The {name} draws his blade back over his shoulder!",
+      "unlock": "CREEP", "description": "Everything behind one swing." }
+  ]
+}

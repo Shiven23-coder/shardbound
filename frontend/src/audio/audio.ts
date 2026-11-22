@@ -76,6 +76,8 @@ class AudioEngine {
   private readonly wantedLoops = new Set<Effect>();
   private wantedMusic: string | null = null;
   private track: Playing | null = null;
+  /** Tracks asked for ahead of time (the battle music when a creep is near, P-57), loading but not playing. */
+  private readonly prefetched = new Map<string, HTMLAudioElement>();
 
   /** True once the browser lets sound play. */
   get unlocked(): boolean {
@@ -127,6 +129,23 @@ class AudioEngine {
       this.loops.get(name)?.stop();
       this.loops.delete(name);
     }
+  }
+
+  /**
+   * Starts loading a track so it can play at once later; nothing is fetched until this
+   * is called (the battle music is never part of the first page load, P-57).
+   */
+  prefetchMusic(name: string): void {
+    if (this.prefetched.has(name) || this.track?.region === name || !music[name]) return;
+    const element = new Audio(this.trackUrl(music[name]!));
+    element.preload = 'auto';
+    element.loop = true;
+    this.prefetched.set(name, element);
+  }
+
+  private trackUrl(track: Track): string {
+    const probe = document.createElement('audio');
+    return urlOf(playableFile(track, (type) => probe.canPlayType(type) !== ''));
   }
 
   /** The music of a region, or silence (null). Changing region fades one track out and the next in. */
@@ -190,10 +209,11 @@ class AudioEngine {
     this.track = null;
     if (!this.wantedMusic || !this.context) return;
     const sound = music[this.wantedMusic]!;
-    const probe = document.createElement('audio');
-    const element = new Audio(urlOf(playableFile(sound, (type) => probe.canPlayType(type) !== '')));
+    const element = this.prefetched.get(this.wantedMusic) ?? new Audio(this.trackUrl(sound));
+    this.prefetched.delete(this.wantedMusic);
     element.loop = true;
     element.preload = 'auto';
+    element.currentTime = 0;
     const gain = this.gainFor(0, this.musicBus);
     this.context.createMediaElementSource(element).connect(gain);
     gain.gain.setTargetAtTime(sound.volume, this.context.currentTime, fade / 3);

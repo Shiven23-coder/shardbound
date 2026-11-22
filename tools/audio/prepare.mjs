@@ -9,7 +9,7 @@
 //
 //   node tools/audio/prepare.mjs <folder with the pack's files>
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,9 +26,20 @@ const EFFECTS = {
   'Grass.wav': 'sfx/footstep-grass.wav',
   'Move1.wav': 'sfx/blip.wav',
   'Accept3.wav': 'sfx/click.wav',
+  // battle (P-57)
+  'Alert2.wav': 'sfx/battle-start.wav',
+  'Hit1.wav': 'sfx/hit.wav',
+  'Impact.wav': 'sfx/crit.wav',
+  'Slash.wav': 'sfx/slash.wav',
+  'Magic1.wav': 'sfx/magic.wav',
+  'Fireball.wav': 'sfx/fire.wav',
+  'Heal.wav': 'sfx/heal.wav',
+  'Success1.wav': 'sfx/victory.wav',
+  'GameOver2.wav': 'sfx/defeat.wav',
 };
 const MUSIC = {
   '26 - Lost Village.ogg': 'music/eldmere.ogg',
+  '17 - Fight.ogg': 'music/battle.ogg',
 };
 
 const source = process.argv[2];
@@ -44,6 +55,10 @@ for (const [from, to] of Object.entries(EFFECTS)) {
   console.log(`${from} → ${to}: ${(out.length / 1024).toFixed(1)} KB, ${(out.length / 2 / RATE).toFixed(2)} s`);
 }
 for (const [from, to] of Object.entries(MUSIC)) {
+  if (!process.argv.includes('--force') && existsSync(join(OUT, to)) && existsSync(join(OUT, to.replace(/\.ogg$/, '.m4a')))) {
+    console.log(`${to}: already prepared (--force to redo)`);   // the AAC encoder is not byte-stable
+    continue;
+  }
   mkdirSync(dirname(join(OUT, to)), { recursive: true });
   copyFileSync(join(source, from), join(OUT, to));
   console.log(`${from} → ${to}: copied`);

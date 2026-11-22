@@ -5,9 +5,9 @@ import { makeView } from '../testing/fixtures';
 const hud = makeView().hud;
 
 describe('compact HUD', () => {
-  it('wakes on damage, energy use and level-up, not on healing', () => {
+  it('wakes on damage, FP use and level-up, not on healing', () => {
     expect(wakes(hud, { ...hud, hp: hud.hp - 3 })).toBe(true);
-    expect(wakes(hud, { ...hud, energy: hud.energy - 1 })).toBe(true);
+    expect(wakes(hud, { ...hud, fp: hud.fp - 1 })).toBe(true);
     expect(wakes(hud, { ...hud, level: hud.level + 1 })).toBe(true);
     expect(wakes({ ...hud, hp: 10 }, hud)).toBe(false);
     expect(wakes(null, hud)).toBe(false);

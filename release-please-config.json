@@ -9,9 +9,18 @@
       "bump-minor-pre-major": true,
       "extra-files": [
         "backend/pom.xml",
-        { "type": "json", "path": "frontend/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "package.json", "jsonpath": "$.version" }
-      ]
+        {
+          "type": "json",
+          "path": "frontend/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "package.json",
+          "jsonpath": "$.version"
+        }
+      ],
+      "release-as": "0.4.0"
     }
   }
 }

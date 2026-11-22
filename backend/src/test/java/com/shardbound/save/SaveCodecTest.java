@@ -25,7 +25,8 @@ class SaveCodecTest {
     void theV1FixtureStillReads() throws IOException {
         SaveSnapshot s = SaveCodec.standard().readSave(fixture("v1/prologue-square.json"), 1);
         assertEquals("p03", s.currentNode());
-        assertEquals(34, s.hp());
+        assertTrue(s.hp() > 600, "format 3 fills HP above any maximum; the stats clamp it (P-55)");
+        assertEquals(List.of("rending_cut", "crystal_pulse"), s.skills());
         assertEquals("rusty_shortsword", s.equipped());
         assertEquals(List.of(new SaveSnapshot.StepEntry("p01", 1), new SaveSnapshot.StepEntry("p02", 3)), s.history());
         assertEquals("ACTIVE", s.quests().get("q_strange_light"));
@@ -48,7 +49,10 @@ class SaveCodecTest {
         };
         SaveUpgrade doubleCoins = new SaveUpgrade() {
             public int fromVersion() { return 2; }
-            public ObjectNode apply(ObjectNode d) { d.put("gold", d.remove("coins").asInt() * 2); return d; }
+            public ObjectNode apply(ObjectNode d) {
+                d.put("gold", d.remove("coins").asInt() * 2);
+                return new BattleStatsUpgrade().apply(d);       // the real 2→3 shape, so the document reads
+            }
         };
         SaveCodec codec = new SaveCodec(new SaveUpgrader(3, List.of(doubleCoins, renameGold)));
         SaveSnapshot upgraded = codec.readSave(fixture("v1/prologue-square.json"), 1);
@@ -92,7 +96,8 @@ class SaveCodecTest {
     void runsRoundTripWithTheirGame() throws IOException {
         SaveCodec codec = SaveCodec.standard();
         SaveSnapshot game = codec.readSave(fixture("v1/prologue-square.json"), 1);
-        RunSnapshot run = new RunSnapshot(game, "STORY", null, false, 0, 0);
+        RunSnapshot run = new RunSnapshot(game, "STORY", null, false, 0, 0,
+                List.of(new RunSnapshot.ActionEntry("key-1", "hash", 4L)));
         assertEquals(run, codec.readRun(codec.writeRun(run), codec.currentVersion()));
         assertEquals(Map.of("corvin", 10), codec.readRun(codec.writeRun(run), 1).game().affinity());
     }

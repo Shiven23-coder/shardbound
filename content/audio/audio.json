@@ -1,14 +1,72 @@
 {
   "$schema": "../schema/audio.schema.json",
-  "description": "Sounds and music (P-42). Paths are relative to content/audio; files come from tools/audio/prepare.mjs. Volumes are 0-1 before the player's settings.",
+  "description": "Sounds and music (P-42, P-57). Paths are relative to content/audio; files come from tools/audio/prepare.mjs. Volumes are 0-1 before the player's settings. The battle track loads only when a creep is near.",
   "effects": {
-    "rain": { "file": "sfx/rain.wav", "volume": 0.35, "loop": true },
-    "footstep": { "file": "sfx/footstep-grass.wav", "volume": 1 },
-    "blip": { "file": "sfx/blip.wav", "volume": 0.18 },
-    "click": { "file": "sfx/click.wav", "volume": 0.35 }
+    "rain": {
+      "file": "sfx/rain.wav",
+      "volume": 0.35,
+      "loop": true
+    },
+    "footstep": {
+      "file": "sfx/footstep-grass.wav",
+      "volume": 1
+    },
+    "blip": {
+      "file": "sfx/blip.wav",
+      "volume": 0.18
+    },
+    "click": {
+      "file": "sfx/click.wav",
+      "volume": 0.35
+    },
+    "battleStart": {
+      "file": "sfx/battle-start.wav",
+      "volume": 0.45
+    },
+    "hit": {
+      "file": "sfx/hit.wav",
+      "volume": 0.55
+    },
+    "crit": {
+      "file": "sfx/crit.wav",
+      "volume": 0.6
+    },
+    "slash": {
+      "file": "sfx/slash.wav",
+      "volume": 0.45
+    },
+    "magic": {
+      "file": "sfx/magic.wav",
+      "volume": 0.45
+    },
+    "fire": {
+      "file": "sfx/fire.wav",
+      "volume": 0.45
+    },
+    "heal": {
+      "file": "sfx/heal.wav",
+      "volume": 0.45
+    },
+    "victory": {
+      "file": "sfx/victory.wav",
+      "volume": 0.5
+    },
+    "defeat": {
+      "file": "sfx/defeat.wav",
+      "volume": 0.5
+    }
   },
   "music": {
-    "eldmere": { "file": "music/eldmere.ogg", "fallback": "music/eldmere.m4a", "volume": 0.3 }
+    "eldmere": {
+      "file": "music/eldmere.ogg",
+      "fallback": "music/eldmere.m4a",
+      "volume": 0.3
+    },
+    "battle": {
+      "file": "music/battle.ogg",
+      "fallback": "music/battle.m4a",
+      "volume": 0.3
+    }
   },
   "footstepIntervalMs": 300,
   "footstepPitchJitter": 0.08,

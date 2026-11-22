@@ -19,16 +19,23 @@ public class MapValidator {
     private final World world;
     private final Set<String> dialogues;
     private final Set<String> npcs;
+    private final Set<String> creeps;
     private final List<String> errors = new ArrayList<>();
+
+    /** The aggro radius a creep spawn may have, in tiles (V2_SPEC §4.2). */
+    public static final int MIN_AGGRO = 1;
+    public static final int MAX_AGGRO = 3;
 
     /**
      * @param dialogues every dialogue id in the content
      * @param npcs      every NPC id in world.json
+     * @param creeps    every enemy id in creeps.json
      */
-    public MapValidator(World world, Set<String> dialogues, Set<String> npcs) {
+    public MapValidator(World world, Set<String> dialogues, Set<String> npcs, Set<String> creeps) {
         this.world = world;
         this.dialogues = dialogues;
         this.npcs = npcs;
+        this.creeps = creeps;
     }
 
     /** Runs every check; returns the errors (empty when valid). Time O(areas · tiles). */
@@ -56,6 +63,11 @@ public class MapValidator {
 
     private void checkAreasAndEdges() {
         for (World.Region region : world.regions().values()) {
+            AreaMap respawnMap = world.maps().get(region.respawn().area());
+            if (respawnMap == null || respawnMap.spawn(region.respawn().spawn()).isEmpty()) {
+                errors.add("Region " + region.id() + ": respawn " + region.respawn().area() + "/"
+                        + region.respawn().spawn() + " is not a spawn point of a built area");
+            }
             List<World.LightState> states = region.lightStates();
             if (states.getLast().flag() != null) {
                 errors.add("Region " + region.id() + ": the last light state must have no flag (it is the default)");
@@ -95,7 +107,8 @@ public class MapValidator {
         MapObject main = mains.getFirst();
         BitSet reachable = map.collisionWith(o -> false).reachableFrom(main.x(), main.y());
         for (MapObject o : map.objects()) {
-            boolean mustReach = o.type() == ObjectType.SPAWN_POINT || o.type() == ObjectType.EXIT || o.type().interactive();
+            boolean mustReach = o.type() == ObjectType.SPAWN_POINT || o.type() == ObjectType.EXIT
+                    || o.type() == ObjectType.CREEP_SPAWN || o.type().interactive();
             if (mustReach && !reachesAny(map, reachable, o)) {
                 errors.add(where + ": " + o.type() + " " + o.name() + " cannot be reached from " + main.name());
             }
@@ -112,7 +125,35 @@ public class MapValidator {
                 checkDialogue(where, o);
             }
             case INTERACT, TRIGGER, OBSTACLE -> checkDialogue(where, o);
+            case CREEP_SPAWN -> checkCreep(where, o);
             default -> { }
+        }
+    }
+
+    /** A creep spawn names a known enemy, a level range 1 ≤ min ≤ max ≤ 99 and an aggro radius of 1–3 tiles. */
+    private void checkCreep(String where, MapObject o) {
+        if (!creeps.contains(String.valueOf(o.property("template")))) {
+            errors.add(where + ": creep " + o.name() + " names unknown template " + o.property("template"));
+        }
+        Integer min = integer(o, "levelMin");
+        Integer max = integer(o, "levelMax");
+        if (min == null || max == null || min < 1 || max < min || max > 99) {
+            errors.add(where + ": creep " + o.name() + " needs levelMin and levelMax with 1 ≤ min ≤ max ≤ 99");
+        }
+        Integer aggro = integer(o, "aggroRadius");
+        if (aggro == null || aggro < MIN_AGGRO || aggro > MAX_AGGRO) {
+            errors.add(where + ": creep " + o.name() + " needs an aggroRadius of " + MIN_AGGRO + "–" + MAX_AGGRO);
+        }
+        if (o.width() != 1 || o.height() != 1) {
+            errors.add(where + ": creep " + o.name() + " must be one tile");
+        }
+    }
+
+    private static Integer integer(MapObject o, String key) {
+        try {
+            return Integer.valueOf(o.property(key));
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 

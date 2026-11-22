@@ -1,128 +1,106 @@
 package com.shardbound.model;
 
+import com.shardbound.progression.Attributes;
+import com.shardbound.progression.PlayerStats;
+import com.shardbound.progression.ProgressionRules;
+
 /**
- * The player's numeric state.
- *
- * <p>Only five numbers are stored (and saved): hp, energy, level, xp, gold.
- * Everything else is DERIVED from {@code level} (D6, D28), so a save can never
- * hold an atk or max hp that disagrees with its level.
- *
- * <p>{@code xp} is progress inside the current level and resets to the
- * leftover on level-up (D29), so level is not derivable from xp.
+ * The player's numbers. Stored (and saved): hp, fp, gold, Shards and the six
+ * attributes. Everything else (max HP, max FP, level, defence, speed) is
+ * derived from the attributes by {@link PlayerStats} (V2_SPEC §4.3), so a save
+ * can never hold a maximum that disagrees with them.
  */
 public class Stats {
 
-    public static final int BASE_HP = 40;
-    public static final int HP_PER_LEVEL = 5;
-    public static final int BASE_ATK = 6;
-    public static final int ATK_PER_LEVEL = 1;
-    public static final int BASE_DEF = 2;
-    public static final int BASE_SPD = 5;
-    public static final int MAX_ENERGY = 3;
-    public static final int XP_PER_LEVEL_STEP = 100;
-
+    private final Attributes attributes;
+    private final PlayerStats derived;
     private int hp;
-    private int energy;
-    private int level;
-    private int xp;
+    private int fp;
     private int gold;
+    private int shards;
 
-    public Stats(int hp, int energy, int level, int xp, int gold) {
-        this.level = Math.max(1, level);
+    public Stats(Attributes attributes, ProgressionRules rules, int hp, int fp, int gold, int shards) {
+        this.attributes = attributes;
+        this.derived = new PlayerStats(attributes, rules);
         this.hp = clamp(hp, 0, maxHp());
-        this.energy = clamp(energy, 0, maxEnergy());
-        this.xp = Math.max(0, xp);
+        this.fp = clamp(fp, 0, maxFp());
         this.gold = Math.max(0, gold);
+        this.shards = Math.max(0, shards);
     }
 
-    /** Starting stats from spec §6.1. O(1). */
-    public static Stats starting() {
-        return new Stats(BASE_HP, MAX_ENERGY, 1, 0, 15);
+    /** A new character: every attribute at its start value, full HP and FP, the starting gold. */
+    public static Stats starting(ProgressionRules rules, int gold) {
+        Attributes attributes = Attributes.starting(rules.attributeStart());
+        PlayerStats derived = new PlayerStats(attributes, rules);
+        return new Stats(attributes, rules, derived.maxHp(), derived.maxFp(), gold, 0);
     }
 
-    /**
-     * Max hp for a level. The SAME expression appears in the save_slot CHECK
-     * constraint ({@code 40 + 5 * (level - 1)}); MaxHpFormulaTest compares them. O(1).
-     */
-    public static int maxHpForLevel(int level) {
-        return BASE_HP + HP_PER_LEVEL * (level - 1);
-    }
+    // ---- derived ----
+    public PlayerStats derived()  { return derived; }
+    public int maxHp()            { return derived.maxHp(); }
+    public int maxFp()            { return derived.maxFp(); }
+    public int level()            { return derived.level(); }
 
-    // ---- derived stats (O(1) each) ----
-    public int maxHp()     { return maxHpForLevel(level); }
-    public int atk()       { return BASE_ATK + ATK_PER_LEVEL * (level - 1); }
-    public int def()       { return BASE_DEF; }
-    public int spd()       { return BASE_SPD; }
-    public int maxEnergy() { return MAX_ENERGY; }
-    public int xpToNext()  { return XP_PER_LEVEL_STEP * level; }
+    // ---- stored ----
+    public Attributes attributes() { return attributes; }
+    public int hp()                { return hp; }
+    public int fp()                { return fp; }
+    public int gold()              { return gold; }
+    public int shards()            { return shards; }
+    public boolean isAlive()       { return hp > 0; }
 
-    // ---- stored stats ----
-    public int hp()     { return hp; }
-    public int energy() { return energy; }
-    public int level()  { return level; }
-    public int xp()     { return xp; }
-    public int gold()   { return gold; }
-
-    /**
-     * Adds xp and levels up while xp reaches the threshold, keeping the
-     * leftover each time (D29). Returns how many levels were gained.
-     * Time O(L) for L levels gained, space O(1).
-     */
-    public int addXp(int amount) {
-        xp += Math.max(0, amount);
-        int levelsGained = 0;
-        while (xp >= xpToNext()) {
-            xp -= xpToNext();
-            level++;
-            levelsGained++;
-            hp = Math.min(hp + HP_PER_LEVEL, maxHp());   // the new max hp is partly "filled"
-        }
-        return levelsGained;
-    }
-
-    /** Heals up to max hp; returns the amount actually healed. O(1). */
+    /** Heals up to max HP; returns the amount actually healed. O(1). */
     public int heal(int amount) {
         int before = hp;
         hp = clamp(hp + Math.max(0, amount), 0, maxHp());
         return hp - before;
     }
 
-    /** Sets hp, clamped to 0..maxHp. O(1). */
     public void setHp(int value) {
         hp = clamp(value, 0, maxHp());
     }
 
-    /** Adds (or with a negative amount, removes) gold; never goes below 0. Returns the real change. O(1). */
+    /** Loses HP, never below 0; returns the amount actually lost. O(1). */
+    public int damage(int amount) {
+        int before = hp;
+        hp = clamp(hp - Math.max(0, amount), 0, maxHp());
+        return before - hp;
+    }
+
+    /** Spends FP if enough is available. O(1). */
+    public boolean spendFp(int amount) {
+        if (fp < amount) {
+            return false;
+        }
+        fp -= amount;
+        return true;
+    }
+
+    /** Restores FP up to the maximum; returns the amount restored. O(1). */
+    public int restoreFp(int amount) {
+        int before = fp;
+        fp = clamp(fp + Math.max(0, amount), 0, maxFp());
+        return fp - before;
+    }
+
+    /** HP and FP to their maximums (the interim respawn, P-55). O(1). */
+    public void restoreAll() {
+        hp = maxHp();
+        fp = maxFp();
+    }
+
+    /** Adds (or with a negative amount removes) gold, never below 0. Returns the real change. O(1). */
     public int addGold(int amount) {
         int before = gold;
         gold = Math.max(0, gold + amount);
         return gold - before;
     }
 
-    /** Spends energy if enough is available. O(1). */
-    public boolean spendEnergy(int amount) {
-        if (energy < amount) {
-            return false;
-        }
-        energy -= amount;
-        return true;
-    }
-
-    /** Restores energy up to the maximum; returns the amount restored. O(1). */
-    public int restoreEnergy(int amount) {
-        int before = energy;
-        energy = clamp(energy + Math.max(0, amount), 0, maxEnergy());
-        return energy - before;
-    }
-
-    /** Fills energy to the maximum (start of every combat, S2). O(1). */
-    public void refillEnergy() {
-        energy = maxEnergy();
-    }
-
-    /** Independent copy (used by GameState.deepCopy). O(1). */
-    public Stats copy() {
-        return new Stats(hp, energy, level, xp, gold);
+    /** Adds Shards (V2_SPEC §4.3; spending arrives in V5). Returns the real change. O(1). */
+    public int addShards(int amount) {
+        int before = shards;
+        shards = Math.max(0, shards + amount);
+        return shards - before;
     }
 
     private static int clamp(int value, int min, int max) {

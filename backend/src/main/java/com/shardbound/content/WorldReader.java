@@ -53,8 +53,10 @@ public class WorldReader {
             for (JsonNode state : r.get("lightStates")) {
                 lightStates.add(new World.LightState(state.get("id").asString(), optText(state, "flag")));
             }
+            JsonNode respawn = r.get("respawn");
             regions.put(r.get("id").asString(), new World.Region(r.get("id").asString(), r.get("name").asString(),
-                    r.get("music").asString(), lightStates));
+                    r.get("music").asString(), new World.Place(respawn.get("area").asString(),
+                    respawn.get("spawn").asString()), lightStates));
         }
         Map<String, String> mapTexts = files.maps();
         Map<String, World.Area> areas = new LinkedHashMap<>();
@@ -78,8 +80,20 @@ public class WorldReader {
                     optText(e, "gateFlag")));
         }
         World.Start worldStart = new World.Start(start.get("area").asString(), start.get("spawn").asString(),
-                start.get("dialogue").asString(), startFlags);
+                start.get("dialogue").asString(), startFlags, readKit(start.get("kit")));
         return new World(worldStart, regions, areas, edges, maps);
+    }
+
+    private static World.Kit readKit(JsonNode kit) {
+        List<String> skills = new ArrayList<>();
+        for (JsonNode skill : kit.get("skills")) {
+            skills.add(skill.asString());
+        }
+        Map<String, Integer> bag = new LinkedHashMap<>();
+        for (JsonNode stack : kit.get("bag")) {
+            bag.merge(stack.get("item").asString(), stack.get("qty").asInt(), Integer::sum);
+        }
+        return new World.Kit(kit.get("weapon").asString(), skills, bag, kit.get("gold").asInt());
     }
 
     /** One Tiled map: its size, the collision layer (any non-empty tile blocks) and the objects, in tiles. */

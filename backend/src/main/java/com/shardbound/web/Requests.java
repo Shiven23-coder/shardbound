@@ -1,7 +1,9 @@
 package com.shardbound.web;
 
-import com.shardbound.combat.ActionType;
+import com.shardbound.battle.BattleAction;
 import com.shardbound.world.Facing;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -31,8 +33,12 @@ public final class Requests {
     public record InteractRequest(@NotBlank @Size(max = MAX_ID) String targetId, @PositiveOrZero int x,
                                   @PositiveOrZero int y, @NotNull Facing facing) { }
 
-    /** {@code target} picks an enemy for ATTACK and SKILL; {@code itemId} is needed for ITEM. */
-    public record CombatRequest(@NotNull ActionType type, @PositiveOrZero int target,
+    /** A creep came within its aggro radius: its object name and the player's position (V2_SPEC §4.2). */
+    public record EncounterRequest(@NotBlank @Size(max = MAX_ID) String creepId, @PositiveOrZero int x,
+                                   @PositiveOrZero int y, @NotNull Facing facing) { }
+
+    /** A battle round (V2_SPEC §7): {@code slot} (0–3) for SKILL, {@code itemId} for ITEM. */
+    public record BattleRequest(@NotNull BattleAction.Kind kind, @Min(0) @Max(3) int slot,
                                 @Nullable @Size(max = MAX_ID) String itemId) { }
 
     public record ItemRequest(@NotBlank @Size(max = MAX_ID) String itemId) { }

@@ -1,7 +1,6 @@
 package com.shardbound.engine;
 
-import com.shardbound.combat.Action;
-import com.shardbound.combat.ActionType;
+import com.shardbound.battle.BattleAction;
 import com.shardbound.exception.RunConflictException;
 import com.shardbound.support.MutableClock;
 import com.shardbound.support.QuickRoute;
@@ -34,10 +33,10 @@ class DurableRunTest {
         SessionView view = player.view();
         int choice = view.dialogue().choices().getFirst().id();
         view = engine.choose(s, choice);
-        assertEquals(Mode.COMBAT, view.mode());
-        view = engine.combatAction(s, Action.of(ActionType.ATTACK));
-        assertEquals(Mode.COMBAT, view.mode(), "the fight should still be going after one round");
-        assertTrue(view.combat().round() >= 1);
+        assertEquals(Mode.BATTLE, view.mode());
+        view = engine.battleAction(s, BattleAction.of(BattleAction.Kind.STRIKE));
+        assertEquals(Mode.BATTLE, view.mode(), "the battle should still be going after one round");
+        assertTrue(view.battle().round() >= 1);
         return s;
     }
 
@@ -52,10 +51,10 @@ class DurableRunTest {
         assertEquals(original.view(live), restarted.view(resumed));
 
         for (int round = 0; round < 3; round++) {
-            SessionView a = original.combatAction(live, Action.of(ActionType.ATTACK));
-            SessionView b = restarted.combatAction(resumed, Action.of(ActionType.ATTACK));
+            SessionView a = original.battleAction(live, BattleAction.of(BattleAction.Kind.STRIKE));
+            SessionView b = restarted.battleAction(resumed, BattleAction.of(BattleAction.Kind.STRIKE));
             assertEquals(a, b, "round " + round + " after the restart");
-            if (a.mode() != Mode.COMBAT) {
+            if (a.mode() != Mode.BATTLE) {
                 break;
             }
         }

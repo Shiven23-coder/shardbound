@@ -1,0 +1,559 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shardbound.game/schema/elements.schema.json",
+  "title": "Shardbound element chart (content/elements.json)",
+  "type": "object",
+  "required": [
+    "multipliers",
+    "chart"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "multipliers": {
+      "type": "object",
+      "required": [
+        "W",
+        "N",
+        "R",
+        "I"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "W": {
+          "type": "number",
+          "minimum": 0
+        },
+        "N": {
+          "type": "number",
+          "minimum": 0
+        },
+        "R": {
+          "type": "number",
+          "minimum": 0
+        },
+        "I": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "chart": {
+      "type": "object",
+      "required": [
+        "BEAST",
+        "HUMAN",
+        "UNDEAD",
+        "SYLVAN",
+        "CONSTRUCT",
+        "ASHEN",
+        "CRYSTALBORN",
+        "DRACONIC"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "BEAST": {
+          "type": "object",
+          "required": [
+            "PHYSICAL",
+            "FIRE",
+            "FROST",
+            "LIGHTNING",
+            "HOLY",
+            "CRYSTAL"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "PHYSICAL": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "FIRE": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "FROST": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "LIGHTNING": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "HOLY": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "CRYSTAL": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            }
+          }
+        },
+        "HUMAN": {
+          "type": "object",
+          "required": [
+            "PHYSICAL",
+            "FIRE",
+            "FROST",
+            "LIGHTNING",
+            "HOLY",
+            "CRYSTAL"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "PHYSICAL": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "FIRE": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "FROST": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "LIGHTNING": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "HOLY": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "CRYSTAL": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            }
+          }
+        },
+        "UNDEAD": {
+          "type": "object",
+          "required": [
+            "PHYSICAL",
+            "FIRE",
+            "FROST",
+            "LIGHTNING",
+            "HOLY",
+            "CRYSTAL"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "PHYSICAL": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "FIRE": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "FROST": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "LIGHTNING": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "HOLY": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "CRYSTAL": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            }
+          }
+        },
+        "SYLVAN": {
+          "type": "object",
+          "required": [
+            "PHYSICAL",
+            "FIRE",
+            "FROST",
+            "LIGHTNING",
+            "HOLY",
+            "CRYSTAL"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "PHYSICAL": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "FIRE": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "FROST": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "LIGHTNING": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "HOLY": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "CRYSTAL": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            }
+          }
+        },
+        "CONSTRUCT": {
+          "type": "object",
+          "required": [
+            "PHYSICAL",
+            "FIRE",
+            "FROST",
+            "LIGHTNING",
+            "HOLY",
+            "CRYSTAL"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "PHYSICAL": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "FIRE": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "FROST": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "LIGHTNING": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "HOLY": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "CRYSTAL": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            }
+          }
+        },
+        "ASHEN": {
+          "type": "object",
+          "required": [
+            "PHYSICAL",
+            "FIRE",
+            "FROST",
+            "LIGHTNING",
+            "HOLY",
+            "CRYSTAL"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "PHYSICAL": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "FIRE": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "FROST": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "LIGHTNING": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "HOLY": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "CRYSTAL": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            }
+          }
+        },
+        "CRYSTALBORN": {
+          "type": "object",
+          "required": [
+            "PHYSICAL",
+            "FIRE",
+            "FROST",
+            "LIGHTNING",
+            "HOLY",
+            "CRYSTAL"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "PHYSICAL": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "FIRE": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "FROST": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "LIGHTNING": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "HOLY": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "CRYSTAL": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            }
+          }
+        },
+        "DRACONIC": {
+          "type": "object",
+          "required": [
+            "PHYSICAL",
+            "FIRE",
+            "FROST",
+            "LIGHTNING",
+            "HOLY",
+            "CRYSTAL"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "PHYSICAL": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "FIRE": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "FROST": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "LIGHTNING": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "HOLY": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            },
+            "CRYSTAL": {
+              "enum": [
+                "W",
+                "N",
+                "R",
+                "I"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

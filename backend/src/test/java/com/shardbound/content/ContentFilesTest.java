@@ -30,8 +30,11 @@ class ContentFilesTest {
     @BeforeAll
     static void load() {
         raw = new JsonContentReader(new File("../content")).read();
-        WorldReader world = new WorldReader(ContentFiles.fromDirectory(Path.of("../content")));
-        content = new ContentAssembler().assemble(raw, world.readWorld(), world.readRules());
+        ContentFiles files = ContentFiles.fromDirectory(Path.of("../content"));
+        WorldReader world = new WorldReader(files);
+        BattleContentReader battle = new BattleContentReader(files);
+        content = new ContentAssembler().assemble(raw, world.readWorld(), world.readRules(), battle.readBattle(),
+                battle.readProgression());
     }
 
     @Test
@@ -51,15 +54,15 @@ class ContentFilesTest {
 
     @Test
     void weaponLadderMatchesSpec() {                            // spec §6.4
-        String[][] ladder = {{"rusty_shortsword", "F", "3"}, {"woodcutter_hatchet", "E", "5"},
-                {"hunter_longbow", "D", "6"}, {"iron_longsword", "C", "8"}, {"thornwood_spear", "B", "10"},
-                {"moonsteel_blade", "A", "13"}, {"kingsguard_halberd", "S", "16"},
-                {"dragonbone_greatsword", "SS", "20"}, {"aetherion", "SSS", "26"}};
+        String[][] ladder = {{"rusty_shortsword", "F", "20"}, {"woodcutter_hatchet", "E", "28"},
+                {"hunter_longbow", "D", "30"}, {"iron_longsword", "C", "36"}, {"thornwood_spear", "B", "44"},
+                {"moonsteel_blade", "A", "52"}, {"kingsguard_halberd", "S", "60"},
+                {"dragonbone_greatsword", "SS", "70"}, {"aetherion", "SSS", "82"}};
         for (String[] row : ladder) {
             Weapon w = (Weapon) content.items().get(row[0]);
             assertNotNull(w, row[0]);
             assertEquals(Tier.valueOf(row[1]), w.tier());
-            assertEquals(Integer.parseInt(row[2]), w.attack());
+            assertEquals(Integer.parseInt(row[2]), w.base());
         }
     }
 

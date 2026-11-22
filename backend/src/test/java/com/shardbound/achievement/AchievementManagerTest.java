@@ -52,11 +52,11 @@ class AchievementManagerTest {
     void sRankNeedsAnSOrBetterWeaponEquipped() {
         GameState s = TestStates.fresh();
         AchievementManager m = manager(Set.of());
-        s.inventory().add(new Weapon("a", "A-blade", "", 0, Tier.A, 13, 12, null), 1);
+        s.inventory().add(new Weapon("a", "A-blade", "", 0, Tier.A, 52, 12, null, "B", "C", null), 1);
         s.inventory().equip("a");
         m.onEvent(GameEvent.of(EventType.ITEM_EQUIPPED, "x", "itemId", "a"), s);
         assertFalse(m.unlocked().contains("S_RANK"));
-        s.inventory().add(new Weapon("s", "S-halberd", "", 0, Tier.S, 16, 12, null), 1);
+        s.inventory().add(new Weapon("s", "S-halberd", "", 0, Tier.S, 60, 12, "B", null, null, null), 1);
         s.inventory().equip("s");
         m.onEvent(GameEvent.of(EventType.ITEM_EQUIPPED, "x", "itemId", "s"), s);
         assertTrue(m.unlocked().contains("S_RANK"));

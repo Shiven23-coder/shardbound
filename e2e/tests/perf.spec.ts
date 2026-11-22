@@ -100,3 +100,33 @@ test('walking every Eldmere area stays within the frame CPU and heap budgets', a
       .toBeLessThanOrEqual(baseline.p95FrameCpuMs * (1 + budget.maxRegression));
   }
 });
+
+test('a battle is on screen within the battle start budget of the encounter', async ({ page }) => {
+  await newGame(page, `perfb-${Date.now() % 1e9}`);
+  await choose(page, 'Ignore the shouting and follow the light');
+  await inArea(page, 'Cottage Lane');
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: budget.cpuThrottle });
+  // In the page: when the encounter's answer arrived, and when the battle box first showed.
+  await page.evaluate(() => {
+    const w = window as unknown as { battleShownAt?: number };
+    new MutationObserver((_, observer) => {
+      if (document.querySelector('.battle-box')) {
+        w.battleShownAt = performance.now();
+        observer.disconnect();
+      }
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+
+  await walkTo(page, 'keyboard', 'meadow_creep_b');
+  await expect(page.locator('.battle-box .battle-menu')).toBeVisible({ timeout: 30_000 });
+  const startMs = await page.evaluate(() => {
+    const answer = performance.getEntriesByType('resource')
+      .filter((e) => e.name.includes('/api/world/encounter'))
+      .at(-1) as PerformanceResourceTiming | undefined;
+    const shown = (window as unknown as { battleShownAt?: number }).battleShownAt;
+    return answer && shown ? shown - answer.responseEnd : Infinity;
+  });
+  test.info().annotations.push({ type: 'perf', description: `battle on screen ${startMs.toFixed(0)} ms after the encounter's answer` });
+  expect(startMs, 'battle start (ms)').toBeLessThanOrEqual(budget.battleStartMs);
+});

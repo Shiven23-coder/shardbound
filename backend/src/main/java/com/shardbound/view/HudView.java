@@ -2,9 +2,14 @@ package com.shardbound.view;
 
 import org.jspecify.annotations.Nullable;
 
-/** Top-bar numbers. weapon is null when nothing is equipped. */
-public record HudView(int hp, int maxHp, int energy, int maxEnergy, int gold, int level, int xp, int xpToNext,
-                      int atk, int def, @Nullable WeaponInfo weapon) {
+/**
+ * HUD and character-sheet numbers: HP, FP, gold, Shards (V2_SPEC §4.3), level,
+ * the attack rating with the equipped weapon and defence. weapon is null when
+ * nothing is equipped.
+ */
+public record HudView(int hp, int maxHp, int fp, int maxFp, int gold, int shards, int level, int attack, int defence,
+                      @Nullable WeaponInfo weapon) {
 
-    public record WeaponInfo(String id, String name, String tier, int attack) { }
+    /** {@code base} is the weapon's base attack. */
+    public record WeaponInfo(String id, String name, String tier, int base) { }
 }

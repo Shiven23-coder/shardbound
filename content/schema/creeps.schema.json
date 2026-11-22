@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shardbound.game/schema/creeps.schema.json",
+  "title": "Shardbound enemies (content/creeps.json)",
+  "type": "object",
+  "required": [
+    "creeps"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "creeps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "family",
+          "sprite",
+          "baseHp",
+          "baseAtk",
+          "baseDef",
+          "baseSpd",
+          "ai",
+          "moves",
+          "drops"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "name": {
+            "$ref": "common.schema.json#/$defs/text"
+          },
+          "family": {
+            "enum": [
+              "BEAST",
+              "HUMAN",
+              "UNDEAD",
+              "SYLVAN",
+              "CONSTRUCT",
+              "ASHEN",
+              "CRYSTALBORN",
+              "DRACONIC"
+            ]
+          },
+          "sprite": {
+            "type": "string",
+            "pattern": "^creep\\.[a-z0-9_]+$"
+          },
+          "baseHp": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "baseAtk": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "baseDef": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "baseSpd": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "ai": {
+            "enum": [
+              "AGGRESSIVE",
+              "DEFENSIVE",
+              "AFFLICTER"
+            ]
+          },
+          "moves": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "skill",
+                "weight"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "skill": {
+                  "$ref": "common.schema.json#/$defs/id"
+                },
+                "weight": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                }
+              }
+            }
+          },
+          "drops": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "item",
+                "pct"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "item": {
+                  "$ref": "common.schema.json#/$defs/id"
+                },
+                "pct": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

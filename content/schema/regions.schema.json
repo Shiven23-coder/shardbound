@@ -3,23 +3,95 @@
   "$id": "https://shardbound.game/schema/regions.schema.json",
   "title": "Shardbound regions, areas and the area graph (content/regions.json)",
   "type": "object",
-  "required": ["start", "regions", "areas", "edges"],
+  "required": [
+    "start",
+    "regions",
+    "areas",
+    "edges"
+  ],
   "additionalProperties": false,
   "properties": {
-    "$schema": { "type": "string" },
+    "$schema": {
+      "type": "string"
+    },
     "start": {
-      "description": "Where a new game begins: the area and spawn point, the opening dialogue, and the flags set first.",
+      "description": "Where a new game begins: the area and spawn point, the opening dialogue, the flags set first and the starting kit.",
       "type": "object",
-      "required": ["area", "spawn", "dialogue", "flags"],
+      "required": [
+        "area",
+        "spawn",
+        "dialogue",
+        "flags",
+        "kit"
+      ],
       "additionalProperties": false,
       "properties": {
-        "area": { "$ref": "common.schema.json#/$defs/id" },
-        "spawn": { "$ref": "common.schema.json#/$defs/id" },
-        "dialogue": { "$ref": "common.schema.json#/$defs/id" },
+        "area": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "spawn": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "dialogue": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
         "flags": {
           "type": "object",
-          "propertyNames": { "$ref": "common.schema.json#/$defs/id" },
-          "additionalProperties": { "type": "integer" }
+          "propertyNames": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "additionalProperties": {
+            "type": "integer"
+          }
+        },
+        "kit": {
+          "description": "What a new character carries (P-55): the equipped weapon, the skills in the loadout (at most 4), the bag and gold.",
+          "type": "object",
+          "required": [
+            "weapon",
+            "skills",
+            "bag",
+            "gold"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "weapon": {
+              "$ref": "common.schema.json#/$defs/id"
+            },
+            "skills": {
+              "type": "array",
+              "maxItems": 4,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "common.schema.json#/$defs/id"
+              }
+            },
+            "bag": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "item",
+                  "qty"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "item": {
+                    "$ref": "common.schema.json#/$defs/id"
+                  },
+                  "qty": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 99
+                  }
+                }
+              }
+            },
+            "gold": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
         }
       }
     },
@@ -28,23 +100,58 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "name", "music", "lightStates"],
+        "required": [
+          "id",
+          "name",
+          "music",
+          "lightStates",
+          "respawn"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "$ref": "common.schema.json#/$defs/id" },
-          "name": { "$ref": "common.schema.json#/$defs/text" },
-          "music": { "$ref": "common.schema.json#/$defs/id" },
+          "id": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "name": {
+            "$ref": "common.schema.json#/$defs/text"
+          },
+          "music": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
           "lightStates": {
             "description": "Lighting states in priority order (see content/art/grades.json): the first whose flag is set wins; the last has no flag.",
             "type": "array",
             "minItems": 1,
             "items": {
               "type": "object",
-              "required": ["id"],
+              "required": [
+                "id"
+              ],
               "additionalProperties": false,
               "properties": {
-                "id": { "$ref": "common.schema.json#/$defs/id" },
-                "flag": { "$ref": "common.schema.json#/$defs/id" }
+                "id": {
+                  "$ref": "common.schema.json#/$defs/id"
+                },
+                "flag": {
+                  "$ref": "common.schema.json#/$defs/id"
+                }
+              }
+            }
+          },
+          "respawn": {
+            "description": "Where a player defeated by a creep wakes until Lanterns exist (P-55).",
+            "type": "object",
+            "required": [
+              "area",
+              "spawn"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "area": {
+                "$ref": "common.schema.json#/$defs/id"
+              },
+              "spawn": {
+                "$ref": "common.schema.json#/$defs/id"
               }
             }
           }
@@ -56,12 +163,23 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "region", "name", "map"],
+        "required": [
+          "id",
+          "region",
+          "name",
+          "map"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "$ref": "common.schema.json#/$defs/id" },
-          "region": { "$ref": "common.schema.json#/$defs/id" },
-          "name": { "$ref": "common.schema.json#/$defs/text" },
+          "id": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "region": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "name": {
+            "$ref": "common.schema.json#/$defs/text"
+          },
           "map": {
             "description": "Map file name in content/maps without .tmj; null for an area not built yet (its edges must be gated).",
             "$ref": "common.schema.json#/$defs/nullableId"
@@ -74,13 +192,26 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["from", "to", "weight"],
+        "required": [
+          "from",
+          "to",
+          "weight"
+        ],
         "additionalProperties": false,
         "properties": {
-          "from": { "$ref": "common.schema.json#/$defs/id" },
-          "to": { "$ref": "common.schema.json#/$defs/id" },
-          "weight": { "type": "integer", "minimum": 1 },
-          "gateFlag": { "$ref": "common.schema.json#/$defs/id" }
+          "from": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "to": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "weight": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "gateFlag": {
+            "$ref": "common.schema.json#/$defs/id"
+          }
         }
       }
     }

@@ -3,6 +3,15 @@
   "id": "brann",
   "npc": "brann",
   "start": "brann",
+  "entries": [
+    {
+      "node": "brann_ember",
+      "conditions": [
+        { "type": "ITEM", "key": "heartshard", "op": ">=", "value": 1 },
+        { "type": "FLAG", "key": "brann_taught_ember", "op": "=", "value": 0 }
+      ]
+    }
+  ],
   "nodes": [
     {
       "id": "brann",
@@ -13,6 +22,22 @@
         {
           "label": "Leave him to his work",
           "end": true
+        }
+      ]
+    },
+    {
+      "id": "brann_ember",
+      "title": "Brann the Smith",
+      "speaker": "brann",
+      "text": "The bellows stop. Brann stares at the green glow under your coat, then at you. \"That,\" he says, \"is worth the fire.\" [page] He takes your hand and holds it over the coals until the heat stops hurting and starts listening. \"Forge-words. My father's. Call it and it comes.\"",
+      "choices": [
+        {
+          "label": "Learn Ember",
+          "end": true,
+          "effects": [
+            { "type": "LEARN_SKILL", "key": "ember" },
+            { "type": "SET_FLAG", "key": "brann_taught_ember", "value": 1 }
+          ]
         }
       ]
     }

@@ -147,3 +147,33 @@ test("on a slow device a quick tap of E talks, and Tanner's crates hold from bel
   expect(tileOf(await settle(page, square)), 'along the crates to the alley wall').toEqual([28, 8]);
   await expectNeverOverlapped(page, square);
 });
+
+// A battle on a slow CPU (P-57): walking up to the Mire Slime starts it, and
+// every key press lands: E opens Attack, E strikes (the menu gives way to the
+// round's text), E skips the text, until the battle is won.
+for (const rate of [4, 8]) {
+  test(`at ${rate}× CPU a battle starts, takes every press and is won`, async ({ page }) => {
+    await newGame(page, `slowb${rate}-${Date.now() % 1e9}`);
+    await throttle(page, rate);
+    await choose(page, 'Help Corvin lash down his wagon before the wind takes it');
+    await inArea(page, 'Cottage Lane');
+    await walkTo(page, 'keyboard', 'meadow_creep_b');
+    const box = page.locator('.battle-box');
+    const menu = box.locator('.battle-menu');
+    await expect(menu).toBeVisible({ timeout: 30_000 });
+    await page.mouse.move(1, 1);                                      // no hover: the keys alone move the highlight
+
+    for (let round = 0; round < 40 && (await box.isVisible()); round++) {
+      if (await menu.isVisible()) {
+        await page.keyboard.press('e');
+        await expect(menu, 'E opened Attack').toHaveAttribute('aria-label', 'attack');
+        await page.keyboard.press('e');
+        await expect(menu, 'E struck: the round plays').toBeHidden();
+      } else {
+        await page.keyboard.press('e');                                // skip the round's text (or Continue once it ended)
+        await page.waitForTimeout(150);
+      }
+    }
+    await expect(box).toBeHidden();
+  });
+}

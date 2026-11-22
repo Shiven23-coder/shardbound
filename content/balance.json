@@ -1,23 +1,46 @@
 {
   "$schema": "./schema/balance.schema.json",
-  "world": {
-    "stepMs": 160,
-    "turnMs": 100,
-    "speedTolerance": 1.25,
-    "speedSlackTiles": 4,
-    "interactRange": 1
+  "world": { "stepMs": 160, "turnMs": 100, "speedTolerance": 1.25, "speedSlackTiles": 4, "interactRange": 1 },
+  "battle": {
+    "creepScaling": { "hp": 0.12, "atk": 0.1, "def": 0.08 },
+    "creepShards": { "base": 35, "exponent": 1.45 },
+    "roll": { "min": 0.9, "max": 1.1 },
+    "critMultiplier": 1.5,
+    "enemyCritPct": 5,
+    "guard": { "normal": 0.5, "telegraphed": 0.25 },
+    "statusChanceCap": 90,
+    "flee": { "basePct": 50, "pctPerSpeed": 5, "minPct": 10, "maxPct": 90, "ignoreTiles": 3 },
+    "defensiveGuardBelowPct": 30,
+    "dialogueLossHpPct": 50
+  },
+  "progression": {
+    "attributeStart": 10,
+    "curves": {
+      "vigorHp": [[10, 100], [20, 180], [30, 280], [40, 380], [60, 500], [99, 600]],
+      "mindFp": [[10, 30], [20, 55], [30, 80], [50, 120], [99, 150]],
+      "enduranceDef": [[10, 10], [25, 25], [40, 40], [60, 50], [99, 60]],
+      "enduranceResistPct": [[10, 5], [40, 35], [99, 50]],
+      "scalingSat": [[10, 0.0], [20, 0.35], [40, 0.7], [60, 0.85], [99, 1.0]],
+      "arcaneStatusPct": [[10, 0], [40, 15], [99, 25]]
+    },
+    "speed": { "base": 5, "dexPerPoint": 10 },
+    "crit": { "dexPerPct": 5, "maxBonusPct": 10 },
+    "spellPower": { "base": 20, "range": 80 },
+    "gradeCoefficients": { "S": 1.5, "A": 1.2, "B": 0.9, "C": 0.6, "D": 0.35, "E": 0.15 },
+    "upgrade": { "base": 0.08, "scaling": 0.03 }
   },
   "budgets": {
     "initialJsGzipKb": 200,
     "phaserChunkGzipKb": 450,
     "regionAssetsKb": 1536,
     "textureMemoryMb": 64,
-    "audioKb": 1280,
+    "audioKb": 2048,
     "performance": {
       "cpuThrottle": 4,
       "p95FrameCpuMs": 33,
       "maxRegression": 0.25,
-      "jsHeapMb": 100
+      "jsHeapMb": 100,
+      "battleStartMs": 300
     }
   }
 }

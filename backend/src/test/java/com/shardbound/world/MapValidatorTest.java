@@ -38,13 +38,14 @@ class MapValidatorTest {
 
     private static List<String> validate(AreaMap map, World.Edge... edges) {
         World world = new World(
-                new World.Start("test_area", "home", "intro", Map.of()),
-                Map.of("test_region", new World.Region("test_region", "Test", "test", List.of(new World.LightState("day", null)))),
+                new World.Start("test_area", "home", "intro", Map.of(), new World.Kit("blade", List.of(), Map.of(), 0)),
+                Map.of("test_region", new World.Region("test_region", "Test", "test", new World.Place("test_area", "home"),
+                        List.of(new World.LightState("day", null)))),
                 Map.of("test_area", new World.Area("test_area", "test_region", "Test", "test_map"),
                         "unbuilt_area", new World.Area("unbuilt_area", "test_region", "Unbuilt", null)),
                 List.of(edges),
                 Map.of("test_area", map));
-        return new MapValidator(world, Set.of("intro", "flavour"), Set.of()).validate();
+        return new MapValidator(world, Set.of("intro", "flavour"), Set.of(), Set.of("storm_rat")).validate();
     }
 
     private static MapObject building(int x, int y, int w, int h) {

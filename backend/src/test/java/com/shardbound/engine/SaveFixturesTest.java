@@ -1,6 +1,6 @@
 package com.shardbound.engine;
 
-import com.shardbound.combat.CombatEngine;
+import com.shardbound.battle.BattleEngine;
 import com.shardbound.content.GameContent;
 import com.shardbound.exception.SaveIncompatibleException;
 import com.shardbound.model.Faction;
@@ -28,7 +28,7 @@ class SaveFixturesTest {
 
     private static GameSnapshots snapshots() {
         GameContent content = TestEngines.content();
-        return new GameSnapshots(content, new CombatEngine(content.enemies(), content.encounters()));
+        return new GameSnapshots(content, new BattleEngine(content.battle(), content.items()));
     }
 
     private static SaveSnapshot fixture(String name, int version) throws IOException {
@@ -43,7 +43,9 @@ class SaveFixturesTest {
         AreaMap square = TestEngines.content().world().mapOf("eldmere_square");
         assertEquals(WorldPosition.at("eldmere_square", square, square.spawn("from_lane").orElseThrow()), s.position());
         assertEquals(1, s.flag("dawn"), "the v1 square is after the storm night");
-        assertEquals(34, s.stats().hp());
+        assertEquals(s.stats().maxHp(), s.stats().hp(), "format 3 fills HP: v1's maximum was far lower (P-55)");
+        assertEquals(s.stats().maxFp(), s.stats().fp());
+        assertEquals(List.of("rending_cut", "crystal_pulse"), s.knownSkills());
         assertEquals("rusty_shortsword", s.inventory().equippedWeaponId());
         assertEquals(1, s.inventory().count("heartshard"));
         assertEquals(5, s.reputation(Faction.ELDMERE));
@@ -64,18 +66,19 @@ class SaveFixturesTest {
 
     /** playSeconds keeps ticking between the two restores; everything else must match exactly. */
     private static SaveSnapshot withoutTime(SaveSnapshot s) {
-        return new SaveSnapshot(s.currentNode(), s.world(), s.hp(), s.energy(), s.level(), s.xp(), s.gold(), s.inventory(),
-                s.equipped(), s.flags(), s.reputation(), s.affinity(), s.quests(), s.history(), s.rngSeed(),
-                s.demoMode(), 0);
+        return new SaveSnapshot(s.currentNode(), s.world(), s.hp(), s.fp(), s.gold(), s.shards(), s.level(),
+                s.attributes(), s.skills(), s.loadout(), s.creeps(), s.inventory(), s.equipped(), s.flags(),
+                s.reputation(), s.affinity(), s.quests(), s.history(), s.rngSeed(), s.demoMode(), 0);
     }
 
     @Test
     void unknownContentIsRefused() throws IOException {
         SaveSnapshot original = fixture("v1/prologue-square.json", 1);
-        SaveSnapshot gone = new SaveSnapshot("p999", original.world(), original.hp(), original.energy(), original.level(),
-                original.xp(), original.gold(), original.inventory(), original.equipped(), original.flags(),
-                original.reputation(), original.affinity(), original.quests(), original.history(),
-                original.rngSeed(), original.demoMode(), original.playSeconds());
+        SaveSnapshot gone = new SaveSnapshot("p999", original.world(), original.hp(), original.fp(), original.gold(),
+                original.shards(), original.level(), original.attributes(), original.skills(), original.loadout(),
+                original.creeps(), original.inventory(), original.equipped(), original.flags(), original.reputation(),
+                original.affinity(), original.quests(), original.history(), original.rngSeed(), original.demoMode(),
+                original.playSeconds());
         assertThrows(SaveIncompatibleException.class, () -> snapshots().restoreSave(gone, "s", 7));
     }
 
@@ -83,10 +86,11 @@ class SaveFixturesTest {
     void anUnknownAreaIsRefused() throws IOException {
         SaveSnapshot original = fixture("v1/prologue-square.json", 1);
         SaveSnapshot gone = new SaveSnapshot(original.currentNode(),
-                new SaveSnapshot.WorldEntry("atlantis", null, 8, 8, "DOWN"), original.hp(), original.energy(),
-                original.level(), original.xp(), original.gold(), original.inventory(), original.equipped(),
-                original.flags(), original.reputation(), original.affinity(), original.quests(), original.history(),
-                original.rngSeed(), original.demoMode(), original.playSeconds());
+                new SaveSnapshot.WorldEntry("atlantis", null, 8, 8, "DOWN"), original.hp(), original.fp(),
+                original.gold(), original.shards(), original.level(), original.attributes(), original.skills(),
+                original.loadout(), original.creeps(), original.inventory(), original.equipped(), original.flags(),
+                original.reputation(), original.affinity(), original.quests(), original.history(), original.rngSeed(),
+                original.demoMode(), original.playSeconds());
         assertThrows(SaveIncompatibleException.class, () -> snapshots().restoreSave(gone, "s", 7));
     }
 }

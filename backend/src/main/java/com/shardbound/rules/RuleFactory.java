@@ -1,5 +1,6 @@
 package com.shardbound.rules;
 
+import com.shardbound.battle.Skill;
 import com.shardbound.content.RawContent;
 import com.shardbound.content.RawContent.RuleDef;
 import com.shardbound.exception.ContentValidationException;
@@ -27,9 +28,11 @@ public class RuleFactory {
     private final Map<String, Quest> quests;
     private final QuestManager questManager;
     private final RawContent.AffinityCues cues;
+    private final Map<String, Skill> skills;
 
     public RuleFactory(Map<String, Item> items, Map<String, Npc> npcs, Map<String, Quest> quests,
-                       QuestManager questManager, RawContent.AffinityCues cues) {
+                       QuestManager questManager, RawContent.AffinityCues cues, Map<String, Skill> skills) {
+        this.skills = skills;
         this.items = items;
         this.npcs = npcs;
         this.quests = quests;
@@ -85,12 +88,25 @@ public class RuleFactory {
             case "FAIL_QUEST" -> new FailQuestEffect(questManager, quest(key).id());
             case "HEAL" -> new HealEffect(value);
             case "GOLD" -> new GoldEffect(value);
-            case "XP" -> new XpEffect(value);
+            case "SHARDS" -> new ShardsEffect(value);
+            case "LEARN_SKILL" -> new LearnSkillEffect(learnable(key));
             default -> throw new ContentValidationException("Unknown effect type: " + row.type());
         };
     }
 
     // ---- id resolution with readable errors ----
+
+    /** Only skills marked DIALOGUE can be taught by a dialogue effect (P-55). */
+    private Skill learnable(String key) {
+        Skill skill = skills.get(key);
+        if (skill == null) {
+            throw new ContentValidationException("Unknown skill: " + key);
+        }
+        if (skill.unlock() != Skill.Unlock.DIALOGUE) {
+            throw new ContentValidationException("Skill " + key + " is not taught in dialogue (unlock " + skill.unlock() + ")");
+        }
+        return skill;
+    }
 
     private Faction faction(String key) {
         try {

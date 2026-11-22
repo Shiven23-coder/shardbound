@@ -18,33 +18,36 @@ interface TypewriterProps {
   onProgress?: (shown: number) => void;
   /** Called once when the whole text shows, typed out or skipped. */
   onDone?: () => void;
+  /** Characters revealed per tick; Infinity shows the text at once (battle text speed, P-57). */
+  charsPerTick?: number;
 }
 
-export default function Typewriter({ text = '', className = '', complete = false, onProgress, onDone }: TypewriterProps) {
+export default function Typewriter({ text = '', className = '', complete = false, onProgress, onDone, charsPerTick = CHARS_PER_TICK }: TypewriterProps) {
   const reduceMotion = useReducedMotion();
   const [shown, setShown] = useState(0);
   const callbacks = useRef({ onProgress, onDone });
   callbacks.current = { onProgress, onDone };
-  const done = reduceMotion || complete || shown >= text.length;
+  const instant = !Number.isFinite(charsPerTick);
+  const done = reduceMotion || instant || complete || shown >= text.length;
   const finished = useRef(done);
   finished.current = done;
 
   useEffect(() => {
     setShown(0);
-    if (reduceMotion) return undefined;
+    if (reduceMotion || instant) return undefined;
     let count = 0;
     const timer = setInterval(() => {
       if (finished.current && count > 0) {      // skipped or completed: no more ticks, no more blips
         clearInterval(timer);
         return;
       }
-      count += CHARS_PER_TICK;
+      count += charsPerTick;
       if (count >= text.length) clearInterval(timer);
       setShown((current) => Math.max(current, count));    // a skip is never undone by a later tick
       callbacks.current.onProgress?.(Math.min(count, text.length));
     }, TICK_MS);
     return () => clearInterval(timer);
-  }, [text, reduceMotion]);
+  }, [text, reduceMotion, instant, charsPerTick]);
 
   useEffect(() => {
     if (done) callbacks.current.onDone?.();

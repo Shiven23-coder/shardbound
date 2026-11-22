@@ -56,7 +56,7 @@ class DialogueValidatorTest {
                 List.of(new RawContent.FactionDef("ELDMERE", "E"), new RawContent.FactionDef("SYLVAN", "S"),
                         new RawContent.FactionDef("CROWN", "C"), new RawContent.FactionDef("ASHEN", "A")),
                 List.of(), new RawContent.AffinityCues("{name} will remember that.", "{name} will not forget that."),
-                List.of(), List.of(), List.of(),
+                List.of(), List.of(),
                 List.of(new RawContent.QuestDef("q1", "Q1", "d", null, null, 0, 0, false, List.of()),
                         new RawContent.QuestDef("q2", "Q2", "d", null, null, 0, 0, false, List.of("q1"))),
                 List.of(), endings, List.of(), dialogues, nodes, choices);

@@ -67,3 +67,28 @@ test('dialogue pages and choices, calm exploration, a gated obstacle', async ({ 
   await page.waitForTimeout(800);   // the camera framing
   await shot('obstacle');
 });
+
+test('a battle: the menu, and a hit landing', async ({ page }, testInfo) => {
+  const controls: Controls = testInfo.project.use.hasTouch ? 'touch' : 'keyboard';
+  const shot = (name: string) => page.screenshot({ path: path.join(SHOTS_DIR!, `${testInfo.project.name}-${name}.png`) });
+  await newGame(page, `shotb-${testInfo.project.name.slice(0, 7)}-${Date.now() % 1e9}`);
+  for (let turns = 0; turns < 60 && !(await page.locator('.dialogue-body > .choice-list').isVisible()); turns++) await turnPage(page);
+  await choose(page, 'Help Corvin lash down his wagon before the wind takes it');
+  await inArea(page, 'Cottage Lane');
+
+  await walkTo(page, controls, 'meadow_creep_b');
+  const menu = page.locator('.battle-box .battle-menu');
+  await expect(menu).toBeVisible({ timeout: 20_000 });
+  if (controls === 'keyboard') await page.mouse.move(1, 1);
+  await page.waitForTimeout(600);
+  await shot('battle-menu');
+
+  await press(menu.getByRole('button', { name: /^Attack/ }));
+  await press(menu.getByRole('button', { name: /^Strike/ }));
+  await page.waitForTimeout(450);                                     // the first hit's effect and number
+  await shot('battle-hit');
+  await expect(menu).toBeVisible({ timeout: 20_000 });
+  await press(menu.getByRole('button', { name: /^Skills/ }));
+  await page.waitForTimeout(300);
+  await shot('battle-skills');
+});

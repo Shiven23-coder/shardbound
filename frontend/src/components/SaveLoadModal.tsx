@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { api, errorMessage, getSessionId } from '../api/client';
+import { newIdempotencyKey } from '../api/idempotency';
 import { useGame } from '../state/GameContext';
 import SaveSlot from './SaveSlot';
 import { runSlotAction } from './slotAction';
@@ -57,12 +58,12 @@ export default function SaveLoadModal() {
   }
 
   async function handleSave(slot: number) {
-    if ((await act(() => api.save(slot), `Saved to slot ${slot}.`)).ok) refresh();
+    if ((await act(() => api.save(slot, newIdempotencyKey()), `Saved to slot ${slot}.`)).ok) refresh();
   }
 
   async function handleLoad(slot: number) {
     if (playerId == null) return; // slots are only listed once a profile exists
-    const outcome = await act(() => api.load(slot, playerId));
+    const outcome = await act(() => api.load(slot, playerId, newIdempotencyKey()));
     if (outcome.ok) {
       dispatch({ type: 'SET_VIEW', view: outcome.value });
       close();
@@ -72,7 +73,7 @@ export default function SaveLoadModal() {
   async function handleDelete(slot: number) {
     if (playerId == null) return;
     if (!window.confirm(`Delete the save in slot ${slot}? This cannot be undone.`)) return;
-    if ((await act(() => api.deleteSave(slot, playerId), `Slot ${slot} deleted.`)).ok) refresh();
+    if ((await act(() => api.deleteSave(slot, playerId, newIdempotencyKey()), `Slot ${slot} deleted.`)).ok) refresh();
   }
 
   return (

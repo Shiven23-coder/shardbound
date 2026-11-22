@@ -118,8 +118,8 @@ class ContentSchemaTest {
     @Test
     void unknownFieldsAreRejectedSoTyposCannotHide() {
         ContentFiles broken = withEdit("world.json",
-                world -> ((ObjectNode) world.get("enemies").get(0)).put("attack", 5));
-        assertTrue(anyContains(problems(broken), "world.json", "/enemies/0"), problems(broken).toString());
+                world -> ((ObjectNode) world.get("encounters").get(0)).put("attack", 5));
+        assertTrue(anyContains(problems(broken), "world.json", "/encounters/0"), problems(broken).toString());
     }
 
     @Test

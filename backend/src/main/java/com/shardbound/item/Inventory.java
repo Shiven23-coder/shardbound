@@ -26,10 +26,10 @@ public class Inventory {
 
     public static final int CAPACITY = 20;
 
-    /** Tier descending, then attack descending (spec §6.4). */
+    /** Tier descending, then base attack descending (spec §6.4). */
     public static final Comparator<Weapon> BY_TIER_THEN_ATTACK =
             Comparator.comparing(Weapon::tier, Tier.BY_RANK_DESC)
-                      .thenComparing(Comparator.comparingInt(Weapon::attack).reversed());
+                      .thenComparing(Comparator.comparingInt(Weapon::base).reversed());
 
     private final LinkedHashMap<String, ItemStack<Item>> stacks = new LinkedHashMap<>();
     private String equippedWeaponId;   // null = nothing equipped

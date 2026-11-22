@@ -2,7 +2,7 @@
 // React sends the server's world view and corrections; the scene reports
 // the world events the player causes. Neither side imports the other, and
 // this file imports no Phaser, so it stays in the small initial bundle.
-import type { Facing, LastPosition, WorldView } from '../api/types';
+import type { BattleView, Facing, LastPosition, WorldView } from '../api/types';
 import type { InputDevice } from '../input/inputMode';
 
 export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
@@ -11,6 +11,10 @@ export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 export interface SceneEvents {
   exit: { exitId: string; x: number; y: number; facing: Facing };
   interact: { targetId: string; x: number; y: number; facing: Facing };
+  /** The player came within a creep's aggro radius (V2_SPEC §4.2). */
+  encounter: { creepId: string; x: number; y: number; facing: Facing };
+  /** A creep is close: a battle may start soon (the battle music starts loading, P-57). */
+  creepNear: undefined;
   /** Something the player can use came into reach (its kind), or nothing is in reach (null). */
   reach: 'npc' | 'object' | null;
   /** The player took their first step in this scene. */
@@ -41,6 +45,15 @@ export interface ReactCommands {
   press: Direction;
   /** A dialogue opened, covering this share of the bottom of the view, or closed (null). */
   dialogue: number | null;
+  /** A battle to show (each new round), or null once it is over; `cover` is the share of the view under the text box. */
+  battle: { battle: BattleView; cover: number } | null;
+  /** The round's text line now on screen (Infinity once read): the arena plays the hits up to it. */
+  battleLine: BattleLine;
+}
+
+export interface BattleLine {
+  round: number;
+  line: number;
 }
 
 type Listener<T> = (payload: T) => void;
@@ -83,6 +96,10 @@ export class WorldBridge {
   device: InputDevice = 'keyboard';
   /** The share of the view a dialogue covers, or null while none is open. */
   dialogueCover: number | null = null;
+  /** The battle on screen, for a scene that starts after it was sent. */
+  latestBattle: { battle: BattleView; cover: number } | null = null;
+  /** The battle text line on screen, for a scene that gets the round after the line was sent. */
+  latestBattleLine: BattleLine = { round: -1, line: 0 };
 
   sendView(view: WorldView): void {
     this.latestView = view;
@@ -92,6 +109,19 @@ export class WorldBridge {
   setFrozen(frozen: boolean): void {
     this.frozen = frozen;
     this.toScene.emit('frozen', frozen);
+  }
+
+  setBattle(battle: BattleView | null, cover: number): void {
+    const next = battle ? { battle, cover } : null;
+    if (next?.battle === this.latestBattle?.battle && next?.cover === this.latestBattle?.cover) return;
+    this.latestBattle = next;
+    this.toScene.emit('battle', next);
+  }
+
+  setBattleLine(round: number, line: number): void {
+    if (round === this.latestBattleLine.round && line === this.latestBattleLine.line) return;
+    this.latestBattleLine = { round, line };
+    this.toScene.emit('battleLine', this.latestBattleLine);
   }
 
   setDialogue(cover: number | null): void {

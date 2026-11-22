@@ -1,6 +1,6 @@
 package com.shardbound.web;
 
-import com.shardbound.combat.Action;
+import com.shardbound.battle.BattleAction;
 import com.shardbound.config.OpenApiConfig;
 import com.shardbound.engine.GameEngine;
 import com.shardbound.engine.GameState;
@@ -8,12 +8,17 @@ import com.shardbound.exception.PlayerNotFoundException;
 import com.shardbound.persistence.PlayerRepository;
 import com.shardbound.view.SessionView;
 import com.shardbound.web.Requests.ChooseRequest;
-import com.shardbound.web.Requests.CombatRequest;
+import com.shardbound.web.Requests.BattleRequest;
+import com.shardbound.web.Requests.EncounterRequest;
 import com.shardbound.web.Requests.ExitRequest;
 import com.shardbound.web.Requests.InteractRequest;
 import com.shardbound.web.Requests.ItemRequest;
 import com.shardbound.web.Requests.NewGameRequest;
 import io.swagger.v3.oas.annotations.Operation;
+import org.jspecify.annotations.Nullable;
+import org.springframework.web.bind.annotation.RequestHeader;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -60,43 +65,64 @@ public class GameController {
     @PostMapping("/dialogue/choose")
     @Operation(operationId = "choose", summary = "Take a dialogue choice")
     @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
-    public SessionView choose(@CurrentGame GameState state, @Valid @RequestBody ChooseRequest body) {
-        return engine.choose(state, body.choiceId());
+    public SessionView choose(@CurrentGame GameState state, @Valid @RequestBody ChooseRequest body,
+                              @Parameter(name = IdempotencyKeys.HEADER, in = ParameterIn.HEADER, required = true, description = "A new UUID per action (P-56)") @RequestHeader(name = IdempotencyKeys.HEADER, required = false) @Nullable String key) {
+        return engine.once(state, IdempotencyKeys.of("dialogue/choose", key, body),
+                () -> engine.choose(state, body.choiceId()));
     }
 
     @PostMapping("/world/exit")
     @Operation(operationId = "worldExit", summary = "Walk through an exit into the next area (§4.11)")
     @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
-    public SessionView exit(@CurrentGame GameState state, @Valid @RequestBody ExitRequest body) {
-        return engine.exit(state, body.exitId(), body.x(), body.y(), body.facing());
+    public SessionView exit(@CurrentGame GameState state, @Valid @RequestBody ExitRequest body,
+                            @Parameter(name = IdempotencyKeys.HEADER, in = ParameterIn.HEADER, required = true, description = "A new UUID per action (P-56)") @RequestHeader(name = IdempotencyKeys.HEADER, required = false) @Nullable String key) {
+        return engine.once(state, IdempotencyKeys.of("world/exit", key, body),
+                () -> engine.exit(state, body.exitId(), body.x(), body.y(), body.facing()));
     }
 
     @PostMapping("/world/interact")
     @Operation(operationId = "worldInteract",
             summary = "Talk to an NPC, use an object, or step into a trigger (§4.11)")
     @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
-    public SessionView interact(@CurrentGame GameState state, @Valid @RequestBody InteractRequest body) {
-        return engine.interact(state, body.targetId(), body.x(), body.y(), body.facing());
+    public SessionView interact(@CurrentGame GameState state, @Valid @RequestBody InteractRequest body,
+                                @Parameter(name = IdempotencyKeys.HEADER, in = ParameterIn.HEADER, required = true, description = "A new UUID per action (P-56)") @RequestHeader(name = IdempotencyKeys.HEADER, required = false) @Nullable String key) {
+        return engine.once(state, IdempotencyKeys.of("world/interact", key, body),
+                () -> engine.interact(state, body.targetId(), body.x(), body.y(), body.facing()));
     }
 
-    @PostMapping("/combat/action")
-    @Operation(operationId = "combatAction", summary = "Play one combat round")
+    @PostMapping("/world/encounter")
+    @Operation(operationId = "worldEncounter", summary = "A creep's aggro radius was entered: the battle starts (§4.2)")
     @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
-    public SessionView combatAction(@CurrentGame GameState state, @Valid @RequestBody CombatRequest body) {
-        return engine.combatAction(state, new Action(body.type(), body.target(), body.itemId()));
+    public SessionView encounter(@CurrentGame GameState state, @Valid @RequestBody EncounterRequest body,
+                                 @Parameter(name = IdempotencyKeys.HEADER, in = ParameterIn.HEADER, required = true, description = "A new UUID per action (P-56)") @RequestHeader(name = IdempotencyKeys.HEADER, required = false) @Nullable String key) {
+        return engine.once(state, IdempotencyKeys.of("world/encounter", key, body),
+                () -> engine.encounter(state, body.creepId(), body.x(), body.y(), body.facing()));
+    }
+
+    @PostMapping("/battle/action")
+    @Operation(operationId = "battleAction", summary = "Play one battle round (§4.7)")
+    @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
+    public SessionView battleAction(@CurrentGame GameState state, @Valid @RequestBody BattleRequest body,
+                                    @Parameter(name = IdempotencyKeys.HEADER, in = ParameterIn.HEADER, required = true, description = "A new UUID per action (P-56)") @RequestHeader(name = IdempotencyKeys.HEADER, required = false) @Nullable String key) {
+        return engine.once(state, IdempotencyKeys.of("battle/action", key, body),
+                () -> engine.battleAction(state, new BattleAction(body.kind(), body.slot(), body.itemId())));
     }
 
     @PostMapping("/inventory/equip")
-    @Operation(operationId = "equip", summary = "Equip a weapon outside combat")
+    @Operation(operationId = "equip", summary = "Equip a weapon outside battle")
     @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
-    public SessionView equip(@CurrentGame GameState state, @Valid @RequestBody ItemRequest body) {
-        return engine.equip(state, body.itemId());
+    public SessionView equip(@CurrentGame GameState state, @Valid @RequestBody ItemRequest body,
+                             @Parameter(name = IdempotencyKeys.HEADER, in = ParameterIn.HEADER, required = true, description = "A new UUID per action (P-56)") @RequestHeader(name = IdempotencyKeys.HEADER, required = false) @Nullable String key) {
+        return engine.once(state, IdempotencyKeys.of("inventory/equip", key, body),
+                () -> engine.equip(state, body.itemId()));
     }
 
     @PostMapping("/inventory/use")
-    @Operation(operationId = "useItem", summary = "Use a consumable outside combat")
+    @Operation(operationId = "useItem", summary = "Use a consumable outside battle")
     @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
-    public SessionView use(@CurrentGame GameState state, @Valid @RequestBody ItemRequest body) {
-        return engine.use(state, body.itemId());
+    public SessionView use(@CurrentGame GameState state, @Valid @RequestBody ItemRequest body,
+                           @Parameter(name = IdempotencyKeys.HEADER, in = ParameterIn.HEADER, required = true, description = "A new UUID per action (P-56)") @RequestHeader(name = IdempotencyKeys.HEADER, required = false) @Nullable String key) {
+        return engine.once(state, IdempotencyKeys.of("inventory/use", key, body),
+                () -> engine.use(state, body.itemId()));
     }
 }

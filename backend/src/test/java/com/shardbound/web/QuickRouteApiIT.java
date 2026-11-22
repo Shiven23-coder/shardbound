@@ -113,7 +113,7 @@ class QuickRouteApiIT extends IntegrationTest {
 
         // A real session, so the request gets as far as reading its body.
         String session = newGame("bad-json", false);
-        Response badJson = api.post("/api/combat/action", session, Map.of("type", "DANCE"));
+        Response badJson = api.post("/api/battle/action", session, Map.of("kind", "DANCE"));
         assertEquals(400, badJson.status());
         assertTrue(badJson.code().startsWith("HTTP_400"), badJson.body().toString());
 
@@ -126,7 +126,7 @@ class QuickRouteApiIT extends IntegrationTest {
     void savingMidFightIsRefused() {
         String session = newGame("save-mid-fight", false);
         new QuickRouteDriver(api, content, clock, session).playUntil(api.get("/api/game", session).body(),
-                QuickRoute.STEPS, view -> "COMBAT".equals(view.get("mode").asString()));
+                QuickRoute.STEPS, view -> "BATTLE".equals(view.get("mode").asString()));
         Response save = api.post("/api/saves/1", session, null);
         assertEquals(409, save.status());
         assertEquals("ACTION_NOT_ALLOWED", save.code());

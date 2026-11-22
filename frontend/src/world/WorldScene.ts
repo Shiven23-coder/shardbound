@@ -8,16 +8,17 @@
 // plays the footsteps and the rain (P-42).
 import Phaser from 'phaser';
 import { audio, audioTiming } from '../audio/audio';
-import type { Facing, LastPosition, NpcView, WorldView } from '../api/types';
+import type { CreepView, Facing, LastPosition, NpcView, WorldView } from '../api/types';
 import type { Direction, WorldBridge } from './bridge';
 import type { InputDevice } from '../input/inputMode';
 import { KeyboardInput } from './keyboardInput';
 import { nextTile, Stepper, type StepWorld, type Tile } from './stepper';
 import { zoomFor } from './zoom';
 import {
-  actorArt, actorKeys, actorShadow, artUrl, frameSize, interactRange, lightingFor, mapUrl, sheetLayout, stepTiming,
-  tilesetUrl,
+  actorArt, actorKeys, actorShadow, battleBackdrop, effectArt, frameSize, interactRange, lightingFor, mapUrl, sheetLayout, stepTiming,
 } from './content';
+import { artUrl, tilesetUrl } from './art';
+import { BACKDROP_KEY, BATTLE_SCENE, BattleScene } from './BattleScene';
 import type { LightState, RegionLighting } from './content';
 
 const TILE = 16;
@@ -29,6 +30,10 @@ const DEPTH = {
 const DRAWN_LAYERS = ['ground', 'detail', 'shadows', 'decor', 'obstacles', 'above'] as const;
 /** Object types the player can use: talk to, read, look at (P-45 obstacles included). */
 const USABLE = new Set(['npc', 'interact', 'obstacle']);
+/** Frames per second of a creep's idle loop. */
+const CREEP_IDLE_FPS = 3;
+/** A creep this many tiles beyond its aggro radius is near: the battle music starts loading (P-57). */
+const CREEP_NEAR_TILES = 3;
 /** The interaction marker's label per device (P-46). */
 const MARKER_LABEL: Record<InputDevice, string> = { keyboard: 'E', gamepad: 'A', touch: 'A' };
 const STICK_DEAD_ZONE = 0.4;
@@ -80,10 +85,15 @@ export class WorldScene extends Phaser.Scene {
   private stepper!: Stepper;
   private readonly stepWorld: StepWorld = {
     blocked: (tile) => this.blocked(tile),
-    arrived: (tile) => this.checkStandingOn(tile),
+    arrived: (tile) => this.checkStandingOn(tile) || this.checkAggro(tile),
     stepStarted: () => this.stepStarted(),
   };
   private npcs = new Map<string, Actor>();
+  private creeps = new Map<string, Actor & { view: CreepView }>();
+  /** Creeps the player fled from: they attack again only once the player has been far enough away (P-54). */
+  private disarmed = new Set<string>();
+  /** Creeps close enough that the battle music was asked for. */
+  private nearCreeps = new Set<string>();
   /** The tiles NPCs stand on: the player cannot step onto them. */
   private npcTiles = new Set<string>();
   private lighting: Phaser.GameObjects.GameObject[] = [];
@@ -132,6 +142,9 @@ export class WorldScene extends Phaser.Scene {
     this.interactQueued = false;
     this.padDirection = null;
     this.npcs = new Map();
+    this.creeps = new Map();
+    this.disarmed = new Set();
+    this.nearCreeps = new Set();
     this.npcTiles = new Set();
     this.lighting = [];
     this.props = [];
@@ -156,6 +169,13 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     if (!this.textures.exists('actor-shadow')) this.load.image('actor-shadow', artUrl(actorShadow));
+    // Battle effects load with the world, so a battle starts at once (V2_SPEC §4.13: < 300 ms).
+    for (const [key, fx] of Object.entries(effectArt)) {
+      if (!this.textures.exists(key)) {
+        this.load.spritesheet(key, artUrl(fx.sheet), { frameWidth: fx.frameWidth, frameHeight: fx.frameHeight });
+      }
+    }
+    if (!this.textures.exists(BACKDROP_KEY)) this.load.image(BACKDROP_KEY, artUrl(battleBackdrop.sheet));
   }
 
   create(): void {
@@ -164,6 +184,7 @@ export class WorldScene extends Phaser.Scene {
     this.buildMap();
     this.createPlayer();
     this.showNpcs(this.view.npcs);
+    this.showCreeps(this.view.creeps);
     this.showProps();
     this.showObstacles();
     this.buildLighting();
@@ -181,6 +202,7 @@ export class WorldScene extends Phaser.Scene {
       this.bridge.toScene.on('interact', () => this.tryInteract()),
       this.bridge.toScene.on('press', (direction) => this.press(direction)),
       this.bridge.toScene.on('dialogue', (cover) => this.frameDialogue(cover)),
+      this.bridge.toScene.on('battle', (battle) => this.showBattle(battle !== null)),
     );
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.unsubscribe.splice(0).forEach((off) => off());
@@ -192,6 +214,20 @@ export class WorldScene extends Phaser.Scene {
     this.frozen = this.bridge.frozen;
     if (this.bridge.latestView && this.bridge.latestView !== this.view) this.applyView(this.bridge.latestView);
     if (this.bridge.dialogueCover !== null) this.frameDialogue(this.bridge.dialogueCover);
+    if (this.bridge.latestBattle) this.showBattle(true);
+  }
+
+  /** A battle takes the whole canvas in its own scene; the world sleeps until it is over (P-57). */
+  private showBattle(on: boolean): void {
+    const running = this.scene.isActive(BATTLE_SCENE);
+    if (on && !running) {
+      if (!this.scene.get(BATTLE_SCENE)) this.scene.add(BATTLE_SCENE, BattleScene, false);
+      this.scene.launch(BATTLE_SCENE, { bridge: this.bridge });
+      this.scene.sleep();
+    } else if (!on && running) {
+      this.scene.stop(BATTLE_SCENE);
+      this.scene.wake();
+    }
   }
 
   override update(): void {
@@ -212,7 +248,7 @@ export class WorldScene extends Phaser.Scene {
     this.checkHudCover();
     this.updateMarker();
     if (!this.canWalk() || this.stepper.walking) return;
-    this.checkStandingOn(this.stepper.tile);
+    if (this.checkStandingOn(this.stepper.tile) || this.checkAggro(this.stepper.tile)) return;
     this.reportReach();
     if (this.interactQueued) {
       this.interactQueued = false;
@@ -287,7 +323,7 @@ export class WorldScene extends Phaser.Scene {
         this.npcs.delete(id);
       }
     }
-    this.npcTiles = new Set(npcs.map((npc) => tileKey(tileAt(npc.x, npc.y))));
+    this.npcTiles = new Set([...npcs, ...this.view.creeps].map((actor) => tileKey(tileAt(actor.x, actor.y))));
     for (const npc of npcs) {
       if (this.npcs.has(npc.id)) continue;
       const key = `npc.${npc.npcId}`;
@@ -296,6 +332,66 @@ export class WorldScene extends Phaser.Scene {
       const shadow = this.add.image(npc.x, npc.y + 1, 'actor-shadow').setDepth(DEPTH.shadows + 0.5);
       this.npcs.set(npc.id, { sprite, shadow });
     }
+  }
+
+  /**
+   * Creeps standing on their spawn (V2_SPEC §4.2), each with a slow idle loop.
+   * A creep the server marks wary (fled from) is disarmed until the player has
+   * been far enough away (P-54).
+   */
+  private showCreeps(creeps: CreepView[]): void {
+    const present = new Set(creeps.map((c) => c.id));
+    for (const [id, actor] of this.creeps) {
+      if (!present.has(id)) {
+        actor.sprite.destroy();
+        actor.shadow.destroy();
+        this.creeps.delete(id);
+        this.disarmed.delete(id);
+      }
+    }
+    for (const creep of creeps) {
+      if (!creep.wary) this.disarmed.delete(creep.id);
+      else if (!this.creeps.get(creep.id)?.view.wary) this.disarmed.add(creep.id);
+      const existing = this.creeps.get(creep.id);
+      if (existing) {
+        existing.view = creep;
+        continue;
+      }
+      const sprite = this.add.sprite(creep.x, creep.y, creep.sprite, idleFrame('DOWN')).setOrigin(0.5, 0.75)
+        .setDepth(DEPTH.actors + creep.y / 10000);
+      sprite.anims.play({ key: `${creep.sprite}:walk:DOWN`, frameRate: CREEP_IDLE_FPS });
+      const shadow = this.add.image(creep.x, creep.y + 1, 'actor-shadow').setDepth(DEPTH.shadows + 0.5);
+      this.creeps.set(creep.id, { sprite, shadow, view: creep });
+    }
+    this.npcTiles = new Set([...this.view.npcs, ...creeps].map((actor) => tileKey(tileAt(actor.x, actor.y))));
+  }
+
+  /**
+   * Coming within a creep's aggro radius starts a battle: the first such creep
+   * by name, as the server picks (P-54). A disarmed creep re-arms once the
+   * player is `aggroRadius + rearmTiles` away; one close by starts loading the
+   * battle music. Returns true when an encounter was sent (the walk stops).
+   */
+  private checkAggro(tile: Tile): boolean {
+    let engaged: CreepView | null = null;
+    for (const { view: creep } of [...this.creeps.values()].sort((a, b) => a.view.id.localeCompare(b.view.id))) {
+      const distance = chebyshev(tile, tileAt(creep.x, creep.y));
+      if (this.disarmed.has(creep.id)) {
+        if (distance >= creep.aggroRadius + creep.rearmTiles) this.disarmed.delete(creep.id);
+        continue;
+      }
+      if (distance <= creep.aggroRadius + CREEP_NEAR_TILES && !this.nearCreeps.has(creep.id)) {
+        this.nearCreeps.add(creep.id);
+        this.bridge.toReact.emit('creepNear', undefined);
+      }
+      if (distance <= creep.aggroRadius && !engaged) engaged = creep;
+    }
+    if (!engaged || !this.canWalk()) return false;
+    const { x, y } = this.position();
+    this.pending = true;
+    this.stepper.halt();
+    this.bridge.toReact.emit('encounter', { creepId: engaged.id, x, y, facing: this.stepper.facing });
+    return true;
   }
 
   // ---------------------------------------------------------------------
@@ -543,6 +639,7 @@ export class WorldScene extends Phaser.Scene {
 
   private applyView(view: WorldView): void {
     const areaChanged = view.areaId !== this.view.areaId;
+    const moved = view.player.x !== this.view.player.x || view.player.y !== this.view.player.y;
     const lightChanged = view.lightState !== this.view.lightState
       || view.hiddenObjects.join() !== this.view.hiddenObjects.join();
     this.view = view;
@@ -552,9 +649,15 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
     this.showNpcs(view.npcs);
+    this.showCreeps(view.creeps);
     this.showProps();
     this.showObstacles();
     if (lightChanged) this.buildLighting();
+    // The server moved the player (the respawn after a lost battle, P-55).
+    const serverTile = tileAt(view.player.x, view.player.y);
+    if (moved && !this.stepper.walking && tileKey(serverTile) !== tileKey(this.stepper.tile)) {
+      this.stepper.place(serverTile, view.player.facing);
+    }
   }
 
   /**
@@ -785,6 +888,11 @@ function distance(o: MapObject, tile: { x: number; y: number }): number {
   const dx = Math.max(o.x - tile.x, tile.x - (o.x + o.width - 1), 0);
   const dy = Math.max(o.y - tile.y, tile.y - (o.y + o.height - 1), 0);
   return Math.max(dx, dy);
+}
+
+/** Chebyshev distance between two tiles. */
+function chebyshev(a: Tile, b: Tile): number {
+  return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 }
 
 /** The facing from an object toward a tile (the way an NPC turns to look at the player). */

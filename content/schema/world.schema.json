@@ -3,19 +3,42 @@
   "$id": "https://shardbound.game/schema/world.schema.json",
   "title": "Shardbound world file (content/world.json)",
   "type": "object",
-  "required": ["factions", "npcs", "affinityCues", "items", "enemies", "encounters", "quests", "achievements", "endings"],
+  "required": [
+    "factions",
+    "npcs",
+    "affinityCues",
+    "items",
+    "encounters",
+    "quests",
+    "achievements",
+    "endings"
+  ],
   "additionalProperties": false,
   "properties": {
-    "$schema": { "type": "string" },
+    "$schema": {
+      "type": "string"
+    },
     "factions": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "name"],
+        "required": [
+          "id",
+          "name"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "enum": ["ELDMERE", "SYLVAN", "CROWN", "ASHEN"] },
-          "name": { "$ref": "common.schema.json#/$defs/text" }
+          "id": {
+            "enum": [
+              "ELDMERE",
+              "SYLVAN",
+              "CROWN",
+              "ASHEN"
+            ]
+          },
+          "name": {
+            "$ref": "common.schema.json#/$defs/text"
+          }
         }
       }
     },
@@ -23,71 +46,82 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "name"],
+        "required": [
+          "id",
+          "name"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "$ref": "common.schema.json#/$defs/id" },
-          "name": { "$ref": "common.schema.json#/$defs/text" },
-          "shortName": { "description": "How the story cues name the NPC; defaults to name.", "$ref": "common.schema.json#/$defs/text" },
-          "faction": { "$ref": "common.schema.json#/$defs/nullableId" }
+          "id": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "name": {
+            "$ref": "common.schema.json#/$defs/text"
+          },
+          "shortName": {
+            "description": "How the story cues name the NPC; defaults to name.",
+            "$ref": "common.schema.json#/$defs/text"
+          },
+          "faction": {
+            "$ref": "common.schema.json#/$defs/nullableId"
+          }
         }
       }
     },
     "affinityCues": {
       "description": "The toast when an NPC's affinity changes: a story cue instead of a number, which stays in the Bag. {name} is the NPC's shortName.",
       "type": "object",
-      "required": ["warmer", "colder"],
+      "required": [
+        "warmer",
+        "colder"
+      ],
       "additionalProperties": false,
       "properties": {
-        "warmer": { "type": "string", "pattern": "\\{name\\}" },
-        "colder": { "type": "string", "pattern": "\\{name\\}" }
+        "warmer": {
+          "type": "string",
+          "pattern": "\\{name\\}"
+        },
+        "colder": {
+          "type": "string",
+          "pattern": "\\{name\\}"
+        }
       }
     },
     "items": {
       "type": "array",
-      "items": { "$ref": "#/$defs/item" }
-    },
-    "enemies": {
-      "type": "array",
       "items": {
-        "type": "object",
-        "required": ["id", "name", "hp", "atk", "def", "spd", "xpReward", "goldReward", "ai"],
-        "additionalProperties": false,
-        "properties": {
-          "id": { "$ref": "common.schema.json#/$defs/id" },
-          "name": { "$ref": "common.schema.json#/$defs/text" },
-          "hp": { "type": "integer", "minimum": 1 },
-          "atk": { "type": "integer", "minimum": 0 },
-          "def": { "type": "integer", "minimum": 0 },
-          "spd": { "type": "integer", "minimum": 0 },
-          "xpReward": { "type": "integer", "minimum": 0 },
-          "goldReward": { "type": "integer", "minimum": 0 },
-          "ai": { "enum": ["AGGRESSIVE", "DEFENSIVE", "BOSS"] }
-        }
+        "$ref": "#/$defs/item"
       }
     },
     "encounters": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "name", "enemies"],
+        "required": [
+          "id",
+          "name",
+          "creep",
+          "level"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "$ref": "common.schema.json#/$defs/id" },
-          "name": { "$ref": "common.schema.json#/$defs/text" },
-          "canFlee": { "type": "boolean" },
-          "enemies": {
-            "type": "array",
-            "minItems": 1,
-            "items": {
-              "type": "object",
-              "required": ["id", "qty"],
-              "additionalProperties": false,
-              "properties": {
-                "id": { "$ref": "common.schema.json#/$defs/id" },
-                "qty": { "type": "integer", "minimum": 1, "maximum": 4 }
-              }
-            }
+          "id": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "name": {
+            "$ref": "common.schema.json#/$defs/text"
+          },
+          "canFlee": {
+            "type": "boolean"
+          },
+          "creep": {
+            "$ref": "common.schema.json#/$defs/id",
+            "description": "An enemy from creeps.json."
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 99
           }
         }
       }
@@ -96,21 +130,45 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "title", "description"],
+        "required": [
+          "id",
+          "title",
+          "description"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "$ref": "common.schema.json#/$defs/id" },
-          "title": { "$ref": "common.schema.json#/$defs/text" },
-          "description": { "$ref": "common.schema.json#/$defs/text" },
-          "isMain": { "type": "boolean" },
-          "giver": { "$ref": "common.schema.json#/$defs/nullableId" },
-          "rewardItem": { "$ref": "common.schema.json#/$defs/nullableId" },
-          "rewardXp": { "type": "integer", "minimum": 0 },
-          "rewardGold": { "type": "integer", "minimum": 0 },
+          "id": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "title": {
+            "$ref": "common.schema.json#/$defs/text"
+          },
+          "description": {
+            "$ref": "common.schema.json#/$defs/text"
+          },
+          "isMain": {
+            "type": "boolean"
+          },
+          "giver": {
+            "$ref": "common.schema.json#/$defs/nullableId"
+          },
+          "rewardItem": {
+            "$ref": "common.schema.json#/$defs/nullableId"
+          },
+          "rewardGold": {
+            "type": "integer",
+            "minimum": 0
+          },
           "prereqs": {
             "type": "array",
-            "items": { "$ref": "common.schema.json#/$defs/id" },
+            "items": {
+              "$ref": "common.schema.json#/$defs/id"
+            },
             "uniqueItems": true
+          },
+          "rewardShards": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       }
@@ -119,13 +177,25 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "title", "description"],
+        "required": [
+          "id",
+          "title",
+          "description"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "$ref": "common.schema.json#/$defs/id" },
-          "title": { "$ref": "common.schema.json#/$defs/text" },
-          "description": { "$ref": "common.schema.json#/$defs/text" },
-          "hidden": { "type": "boolean" }
+          "id": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "title": {
+            "$ref": "common.schema.json#/$defs/text"
+          },
+          "description": {
+            "$ref": "common.schema.json#/$defs/text"
+          },
+          "hidden": {
+            "type": "boolean"
+          }
         }
       }
     },
@@ -133,15 +203,33 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "node", "title", "priority"],
+        "required": [
+          "id",
+          "node",
+          "title",
+          "priority"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "$ref": "common.schema.json#/$defs/id" },
-          "node": { "$ref": "common.schema.json#/$defs/id" },
-          "title": { "$ref": "common.schema.json#/$defs/text" },
-          "priority": { "type": "integer", "minimum": 1 },
-          "viaResolver": { "type": "boolean" },
-          "conditions": { "$ref": "common.schema.json#/$defs/conditions" }
+          "id": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "node": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "title": {
+            "$ref": "common.schema.json#/$defs/text"
+          },
+          "priority": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "viaResolver": {
+            "type": "boolean"
+          },
+          "conditions": {
+            "$ref": "common.schema.json#/$defs/conditions"
+          }
         }
       }
     },
@@ -150,12 +238,23 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "text"],
+        "required": [
+          "id",
+          "text"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "$ref": "common.schema.json#/$defs/id" },
-          "text": { "type": "string", "minLength": 1, "maxLength": 80 },
-          "conditions": { "$ref": "common.schema.json#/$defs/conditions" }
+          "id": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "conditions": {
+            "$ref": "common.schema.json#/$defs/conditions"
+          }
         }
       }
     }
@@ -163,39 +262,135 @@
   "$defs": {
     "item": {
       "type": "object",
-      "required": ["id", "name", "type", "description"],
+      "required": [
+        "id",
+        "name",
+        "type",
+        "description"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "$ref": "common.schema.json#/$defs/id" },
-        "name": { "$ref": "common.schema.json#/$defs/text" },
-        "type": { "enum": ["WEAPON", "CONSUMABLE", "KEY"] },
-        "description": { "$ref": "common.schema.json#/$defs/text" },
-        "price": { "type": "integer", "minimum": 0 },
+        "id": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "type": {
+          "enum": [
+            "WEAPON",
+            "CONSUMABLE",
+            "KEY"
+          ]
+        },
+        "description": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "price": {
+          "type": "integer",
+          "minimum": 0
+        },
         "weapon": {
           "oneOf": [
-            { "type": "null" },
+            {
+              "type": "null"
+            },
             {
               "type": "object",
-              "required": ["tier", "attack", "critPct"],
+              "required": [
+                "tier",
+                "base",
+                "critPct"
+              ],
               "additionalProperties": false,
               "properties": {
-                "tier": { "enum": ["F", "E", "D", "C", "B", "A", "S", "SS", "SSS"] },
-                "attack": { "type": "integer", "minimum": 0 },
-                "critPct": { "type": "integer", "minimum": 0, "maximum": 100 },
-                "ability": { "type": ["string", "null"] }
+                "tier": {
+                  "enum": [
+                    "F",
+                    "E",
+                    "D",
+                    "C",
+                    "B",
+                    "A",
+                    "S",
+                    "SS",
+                    "SSS"
+                  ]
+                },
+                "base": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Base attack (V2_SPEC §4.6)."
+                },
+                "scaling": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "Scaling grades; an attribute not listed does not scale.",
+                  "properties": {
+                    "STR": {
+                      "enum": [
+                        "S",
+                        "A",
+                        "B",
+                        "C",
+                        "D",
+                        "E"
+                      ]
+                    },
+                    "DEX": {
+                      "enum": [
+                        "S",
+                        "A",
+                        "B",
+                        "C",
+                        "D",
+                        "E"
+                      ]
+                    },
+                    "ARC": {
+                      "enum": [
+                        "S",
+                        "A",
+                        "B",
+                        "C",
+                        "D",
+                        "E"
+                      ]
+                    }
+                  }
+                },
+                "critPct": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "ability": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
               }
             }
           ]
         },
         "consumable": {
           "oneOf": [
-            { "type": "null" },
+            {
+              "type": "null"
+            },
             {
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "heal": { "type": "integer", "minimum": 0 },
-                "energy": { "type": "integer", "minimum": 0 }
+                "heal": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "fp": {
+                  "type": "integer",
+                  "minimum": 0
+                }
               }
             }
           ]
@@ -203,12 +398,42 @@
       },
       "allOf": [
         {
-          "if": { "properties": { "type": { "const": "WEAPON" } } },
-          "then": { "required": ["weapon"], "properties": { "weapon": { "type": "object" } } }
+          "if": {
+            "properties": {
+              "type": {
+                "const": "WEAPON"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "weapon"
+            ],
+            "properties": {
+              "weapon": {
+                "type": "object"
+              }
+            }
+          }
         },
         {
-          "if": { "properties": { "type": { "const": "CONSUMABLE" } } },
-          "then": { "required": ["consumable"], "properties": { "consumable": { "type": "object" } } }
+          "if": {
+            "properties": {
+              "type": {
+                "const": "CONSUMABLE"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "consumable"
+            ],
+            "properties": {
+              "consumable": {
+                "type": "object"
+              }
+            }
+          }
         }
       ]
     }

@@ -228,7 +228,7 @@ public class QuestManager {
     }
 
     private void grantRewards(GameState state, EventBus bus, Quest quest) {
-        Rewards.grantXp(state, bus, quest.rewardXp());
+        Rewards.grantShards(state, bus, quest.rewardShards());
         if (quest.rewardGold() > 0) {
             Rewards.grantGold(state, bus, quest.rewardGold());
         }

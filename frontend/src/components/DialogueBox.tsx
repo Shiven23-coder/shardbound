@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { CSSProperties } from 'react';
 import Typewriter from './Typewriter';
 import ChoiceList from './ChoiceList';
-import { actorArt, artUrl } from '../world/content';
+import { actorArt, facesetUrl } from '../world/content';
 import { useGamepadIntents } from './gamepadChoices';
 import { audio, audioTiming } from '../audio/audio';
 import { useGame } from '../state/GameContext';
@@ -130,7 +130,7 @@ export default function DialogueBox({ dialogue, onChoose, busy, placement }: Dia
       if (event.ctrlKey || event.metaKey || event.altKey || inTextField(event.target)) return;
       if (document.querySelector('[aria-modal="true"]')) return;   // a menu panel is on top
       const intent = keyIntent(event.key);
-      if (!intent) return;
+      if (!intent || intent.kind === 'back') return;      // Esc opens the menu, as everywhere
       event.preventDefault();    // no native button click or page scroll, and the world scene ignores it
       latest.current(intent, event.repeat);
     };
@@ -152,7 +152,7 @@ export default function DialogueBox({ dialogue, onChoose, busy, placement }: Dia
       className={`dialogue-box dialogue-${placement} panel${message ? ' dialogue-message' : ''}`}
       aria-labelledby="dialogue-title"
     >
-      {faceset && <img className="dialogue-portrait" src={artUrl(faceset)} alt="" />}
+      {faceset && <img className="dialogue-portrait" src={facesetUrl(faceset)} alt="" />}
       <div ref={body} className="dialogue-body">
         <h2 ref={titleRef} id="dialogue-title" className="dialogue-title">{dialogue.title}</h2>
         <div

@@ -7,7 +7,7 @@ import java.util.List;
  * COMPLETED before this quest becomes AVAILABLE. giverNpc and rewardItem may be null.
  */
 public record Quest(String id, String title, String description, String giverNpc,
-                    String rewardItem, int rewardXp, int rewardGold, boolean isMain,
+                    String rewardItem, int rewardShards, int rewardGold, boolean isMain,
                     List<String> prereqs) {
 
     public Quest {

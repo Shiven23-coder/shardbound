@@ -1,7 +1,6 @@
 package com.shardbound.engine;
 
-import com.shardbound.combat.Action;
-import com.shardbound.combat.ActionType;
+import com.shardbound.battle.BattleAction;
 import com.shardbound.support.MutableClock;
 import com.shardbound.support.QuickRoute;
 import com.shardbound.view.ChoiceView;
@@ -16,9 +15,11 @@ import java.util.function.Predicate;
 /**
  * Plays route steps through an engine the way a client would: dialogue
  * choices by label, walking up to exits and objects (with the clock moved
- * on, so the speed check sees real walking time), and attacking in fights.
+ * on, so the speed check sees real walking time), and winning battles.
  */
 public final class RoutePlayer {
+
+    private static final String DRAUGHT = "healing_draught";
 
     /** Long enough to walk anywhere in an area. */
     public static final Duration WALK = Duration.ofMinutes(1);
@@ -109,9 +110,12 @@ public final class RoutePlayer {
                 engine.content().worldRules().interactRange());
     }
 
+    /** Wins any battle the way a careful player would: a draught below 40 % HP, otherwise Strike. */
     private SessionView fight() {
-        while (view.mode() == Mode.COMBAT) {
-            view = engine.combatAction(state, Action.of(ActionType.ATTACK));
+        while (view.mode() == Mode.BATTLE) {
+            boolean low = state.stats().hp() * 100 < state.stats().maxHp() * 40;
+            view = engine.battleAction(state, low && state.inventory().count(DRAUGHT) > 0
+                    ? BattleAction.item(DRAUGHT) : BattleAction.of(BattleAction.Kind.STRIKE));
         }
         return view;
     }

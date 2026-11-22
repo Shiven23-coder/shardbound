@@ -18,7 +18,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 class ArchitectureTest {
 
     private static final String[] ENGINE_PACKAGES = {
-            "com.shardbound.engine..", "com.shardbound.combat..", "com.shardbound.quest..",
+            "com.shardbound.engine..", "com.shardbound.battle..", "com.shardbound.progression..", "com.shardbound.quest..",
             "com.shardbound.rules..", "com.shardbound.dialogue..", "com.shardbound.item..",
             "com.shardbound.model..", "com.shardbound.ds..", "com.shardbound.event..",
             "com.shardbound.achievement..", "com.shardbound.content..", "com.shardbound.exception..",

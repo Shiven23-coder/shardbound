@@ -3,43 +3,601 @@
   "$id": "https://shardbound.game/schema/balance.schema.json",
   "title": "Shardbound balance constants (content/balance.json)",
   "type": "object",
-  "required": ["world", "budgets"],
+  "required": [
+    "world",
+    "battle",
+    "progression",
+    "budgets"
+  ],
   "additionalProperties": false,
   "properties": {
-    "$schema": { "type": "string" },
+    "$schema": {
+      "type": "string"
+    },
     "world": {
       "description": "Walking and the server's world-event checks (V2_SPEC §4.11).",
       "type": "object",
-      "required": ["stepMs", "turnMs", "speedTolerance", "speedSlackTiles", "interactRange"],
+      "required": [
+        "stepMs",
+        "turnMs",
+        "speedTolerance",
+        "speedSlackTiles",
+        "interactRange"
+      ],
       "additionalProperties": false,
       "properties": {
-        "stepMs": { "description": "Milliseconds per one-tile step (P-51); the walking speed is 1000 / stepMs tiles per second.", "type": "integer", "minimum": 50, "maximum": 1000 },
-        "turnMs": { "description": "How long a new direction must be held, standing still, before the player walks; a shorter tap only turns (P-51). Client only.", "type": "integer", "minimum": 0, "maximum": 500 },
-        "speedTolerance": { "description": "Multiplier on the distance the player could have walked.", "type": "number", "minimum": 1 },
-        "speedSlackTiles": { "description": "Extra tiles allowed for network latency.", "type": "number", "minimum": 0 },
-        "interactRange": { "description": "Chebyshev distance in tiles for interactions.", "type": "integer", "minimum": 1 }
+        "stepMs": {
+          "description": "Milliseconds per one-tile step (P-51); the walking speed is 1000 / stepMs tiles per second.",
+          "type": "integer",
+          "minimum": 50,
+          "maximum": 1000
+        },
+        "turnMs": {
+          "description": "How long a new direction must be held, standing still, before the player walks; a shorter tap only turns (P-51). Client only.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 500
+        },
+        "speedTolerance": {
+          "description": "Multiplier on the distance the player could have walked.",
+          "type": "number",
+          "minimum": 1
+        },
+        "speedSlackTiles": {
+          "description": "Extra tiles allowed for network latency.",
+          "type": "number",
+          "minimum": 0
+        },
+        "interactRange": {
+          "description": "Chebyshev distance in tiles for interactions.",
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "battle": {
+      "description": "Battle rules (V2_SPEC §4.2, §4.7, P-54).",
+      "type": "object",
+      "required": [
+        "creepScaling",
+        "creepShards",
+        "roll",
+        "critMultiplier",
+        "enemyCritPct",
+        "guard",
+        "statusChanceCap",
+        "flee",
+        "defensiveGuardBelowPct",
+        "dialogueLossHpPct"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "creepScaling": {
+          "description": "Per level above 1, stats grow by these shares of their base value.",
+          "type": "object",
+          "required": [
+            "hp",
+            "atk",
+            "def"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "hp": {
+              "description": "HP growth per level.",
+              "type": "number",
+              "minimum": 0
+            },
+            "atk": {
+              "description": "Attack growth per level.",
+              "type": "number",
+              "minimum": 0
+            },
+            "def": {
+              "description": "Defence growth per level.",
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "creepShards": {
+          "description": "Shards for a defeated creep: round(base · level^exponent).",
+          "type": "object",
+          "required": [
+            "base",
+            "exponent"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "base": {
+              "description": "Shards at level 1.",
+              "type": "number",
+              "minimum": 0
+            },
+            "exponent": {
+              "description": "Growth exponent.",
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "roll": {
+          "description": "Damage roll range.",
+          "type": "object",
+          "required": [
+            "min",
+            "max"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "min": {
+              "description": "Lowest roll.",
+              "type": "number",
+              "minimum": 0
+            },
+            "max": {
+              "description": "Highest roll.",
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "critMultiplier": {
+          "description": "Damage multiplier of a critical hit.",
+          "type": "number",
+          "minimum": 1
+        },
+        "enemyCritPct": {
+          "description": "Critical chance of enemies, %.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "guard": {
+          "description": "Damage multipliers while guarding.",
+          "type": "object",
+          "required": [
+            "normal",
+            "telegraphed"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "normal": {
+              "description": "Against an ordinary move.",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "telegraphed": {
+              "description": "Against a telegraphed move.",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "statusChanceCap": {
+          "description": "Highest status chance, %.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "flee": {
+          "description": "Flee chance = basePct + (player speed − enemy speed) · pctPerSpeed, clamped; a creep fled from ignores the player until they are ignoreTiles beyond its aggro radius.",
+          "type": "object",
+          "required": [
+            "basePct",
+            "pctPerSpeed",
+            "minPct",
+            "maxPct",
+            "ignoreTiles"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "basePct": {
+              "description": "Base chance, %.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "pctPerSpeed": {
+              "description": "Change per point of speed difference, %.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "minPct": {
+              "description": "Lowest chance, %.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "maxPct": {
+              "description": "Highest chance, %.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "ignoreTiles": {
+              "description": "Tiles beyond the aggro radius.",
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "defensiveGuardBelowPct": {
+          "description": "A DEFENSIVE enemy guards once below this share of its HP, %.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "dialogueLossHpPct": {
+          "description": "HP left after losing a dialogue fight, % of max (P-55).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    },
+    "progression": {
+      "description": "Attributes and derived stats (V2_SPEC §4.3, §4.6, P-55).",
+      "type": "object",
+      "required": [
+        "attributeStart",
+        "curves",
+        "speed",
+        "crit",
+        "spellPower",
+        "gradeCoefficients",
+        "upgrade"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "attributeStart": {
+          "description": "Every attribute's starting value.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 99
+        },
+        "curves": {
+          "description": "Curves (level → value), interpolated between points.",
+          "type": "object",
+          "required": [
+            "vigorHp",
+            "mindFp",
+            "enduranceDef",
+            "enduranceResistPct",
+            "scalingSat",
+            "arcaneStatusPct"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "vigorHp": {
+              "description": "Vigor → max HP.",
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 99
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "mindFp": {
+              "description": "Mind → max FP.",
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 99
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "enduranceDef": {
+              "description": "Endurance → defence.",
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 99
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "enduranceResistPct": {
+              "description": "Endurance → status resist, %.",
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 99
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "scalingSat": {
+              "description": "Strength, Dexterity or Arcane → scaling saturation 0..1.",
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 99
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "arcaneStatusPct": {
+              "description": "Arcane → bonus status chance, points.",
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 99
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          }
+        },
+        "speed": {
+          "description": "speed = base + floor(Dexterity / dexPerPoint).",
+          "type": "object",
+          "required": [
+            "base",
+            "dexPerPoint"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "base": {
+              "description": "Base speed.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "dexPerPoint": {
+              "description": "Dexterity per speed point.",
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "crit": {
+          "description": "crit % = weapon crit + min(maxBonusPct, floor((Dexterity − 10) / dexPerPct)).",
+          "type": "object",
+          "required": [
+            "dexPerPct",
+            "maxBonusPct"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "dexPerPct": {
+              "description": "Dexterity per crit point.",
+              "type": "integer",
+              "minimum": 1
+            },
+            "maxBonusPct": {
+              "description": "Most bonus crit, %.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "spellPower": {
+          "description": "spell power = base + range · saturation(Mind or Arcane).",
+          "type": "object",
+          "required": [
+            "base",
+            "range"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "base": {
+              "description": "At saturation 0.",
+              "type": "number",
+              "minimum": 0
+            },
+            "range": {
+              "description": "Added at saturation 1.",
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "gradeCoefficients": {
+          "description": "Weapon scaling grade → coefficient; a missing grade scales by 0.",
+          "type": "object",
+          "required": [
+            "S",
+            "A",
+            "B",
+            "C",
+            "D",
+            "E"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "S": {
+              "description": "Grade S.",
+              "type": "number",
+              "minimum": 0
+            },
+            "A": {
+              "description": "Grade A.",
+              "type": "number",
+              "minimum": 0
+            },
+            "B": {
+              "description": "Grade B.",
+              "type": "number",
+              "minimum": 0
+            },
+            "C": {
+              "description": "Grade C.",
+              "type": "number",
+              "minimum": 0
+            },
+            "D": {
+              "description": "Grade D.",
+              "type": "number",
+              "minimum": 0
+            },
+            "E": {
+              "description": "Grade E.",
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "upgrade": {
+          "description": "Upgrade level u (V6): base · tier · (1 + base·u); scaling · (1 + scaling·u).",
+          "type": "object",
+          "required": [
+            "base",
+            "scaling"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "base": {
+              "description": "Base growth per upgrade.",
+              "type": "number",
+              "minimum": 0
+            },
+            "scaling": {
+              "description": "Scaling growth per upgrade.",
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        }
       }
     },
     "budgets": {
       "description": "Performance budgets (V2_SPEC §4.13). The bundle and asset budgets gate PRs (tools/ci/check-bundle.mjs); the performance budget runs nightly (P-36).",
       "type": "object",
-      "required": ["initialJsGzipKb", "phaserChunkGzipKb", "regionAssetsKb", "textureMemoryMb", "audioKb", "performance"],
+      "required": [
+        "initialJsGzipKb",
+        "phaserChunkGzipKb",
+        "regionAssetsKb",
+        "textureMemoryMb",
+        "audioKb",
+        "performance"
+      ],
       "additionalProperties": false,
       "properties": {
-        "initialJsGzipKb": { "description": "JavaScript the title screen loads, gzipped.", "type": "number", "exclusiveMinimum": 0 },
-        "phaserChunkGzipKb": { "description": "The lazy Phaser chunk, gzipped.", "type": "number", "exclusiveMinimum": 0 },
-        "regionAssetsKb": { "description": "Maps and art files of one region.", "type": "number", "exclusiveMinimum": 0 },
-        "textureMemoryMb": { "description": "Decoded size (width × height × 4) of one region's images.", "type": "number", "exclusiveMinimum": 0 },
-        "audioKb": { "description": "Sound effects plus one region's music in its larger version, as one player downloads them (P-42, P-48).", "type": "number", "exclusiveMinimum": 0 },
+        "initialJsGzipKb": {
+          "description": "JavaScript the title screen loads, gzipped.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "phaserChunkGzipKb": {
+          "description": "The lazy Phaser chunk, gzipped.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "regionAssetsKb": {
+          "description": "Maps and art files of one region.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "textureMemoryMb": {
+          "description": "Decoded size (width × height × 4) of one region's images.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "audioKb": {
+          "description": "Sound effects plus the larger version of one region's music and of the battle track, as one player downloads them (P-42, P-48, P-57).",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
         "performance": {
           "type": "object",
-          "required": ["cpuThrottle", "p95FrameCpuMs", "maxRegression", "jsHeapMb"],
+          "required": [
+            "cpuThrottle",
+            "p95FrameCpuMs",
+            "maxRegression",
+            "jsHeapMb",
+            "battleStartMs"
+          ],
           "additionalProperties": false,
           "properties": {
-            "cpuThrottle": { "description": "Chrome DevTools CPU slowdown factor.", "type": "number", "minimum": 1 },
-            "p95FrameCpuMs": { "description": "95th percentile main-thread CPU time per frame while walking (animation-frame callbacks: Phaser update and render), P-38.", "type": "number", "exclusiveMinimum": 0 },
-            "maxRegression": { "description": "The nightly fails when its p95 CPU time per frame is worse than the last good nightly by more than this share (P-38).", "type": "number", "exclusiveMinimum": 0 },
-            "jsHeapMb": { "description": "Used JS heap after walking every area.", "type": "number", "exclusiveMinimum": 0 }
+            "battleStartMs": {
+              "description": "From the encounter's answer to the battle on screen, on the throttled CPU (§4.13).",
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "cpuThrottle": {
+              "description": "Chrome DevTools CPU slowdown factor.",
+              "type": "number",
+              "minimum": 1
+            },
+            "p95FrameCpuMs": {
+              "description": "95th percentile main-thread CPU time per frame while walking (animation-frame callbacks: Phaser update and render), P-38.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "maxRegression": {
+              "description": "The nightly fails when its p95 CPU time per frame is worse than the last good nightly by more than this share (P-38).",
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "jsHeapMb": {
+              "description": "Used JS heap after walking every area.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
           }
         }
       }

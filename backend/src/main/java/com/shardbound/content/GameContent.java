@@ -1,14 +1,15 @@
 package com.shardbound.content;
 
 import com.shardbound.achievement.Achievement;
-import com.shardbound.combat.Encounter;
-import com.shardbound.combat.EnemyTemplate;
+import com.shardbound.battle.BattleContent;
+import com.shardbound.battle.Encounter;
 import com.shardbound.dialogue.DialogueGraph;
 import com.shardbound.engine.Ending;
 import com.shardbound.engine.Objective;
 import com.shardbound.item.Item;
 import com.shardbound.model.Npc;
 import com.shardbound.quest.QuestManager;
+import com.shardbound.progression.ProgressionRules;
 import com.shardbound.world.World;
 import com.shardbound.world.WorldRules;
 
@@ -24,7 +25,6 @@ import java.util.Map;
 public record GameContent(
         Map<String, Npc> npcs,
         Map<String, Item> items,
-        Map<String, EnemyTemplate> enemies,
         Map<String, Encounter> encounters,
         Map<String, Achievement> achievements,
         List<Ending> endings,
@@ -32,7 +32,9 @@ public record GameContent(
         QuestManager questManager,
         DialogueGraph graph,
         World world,
-        WorldRules worldRules) {
+        WorldRules worldRules,
+        BattleContent battle,
+        ProgressionRules progression) {
 
     /** Must run once at startup: computes the quest log order with Kahn's algorithm (spec §6.5). */
     public void prepareForPlay() {

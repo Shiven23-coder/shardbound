@@ -27,7 +27,8 @@ import java.util.Map;
 public class ContentSchemaValidator {
 
     public static final String SCHEMA_BASE = "https://shardbound.game/schema/";
-    private static final List<String> REQUIRED = List.of(ContentFiles.WORLD, ContentFiles.REGIONS, ContentFiles.BALANCE);
+    private static final List<String> REQUIRED = List.of(ContentFiles.WORLD, ContentFiles.REGIONS, ContentFiles.BALANCE,
+            ContentFiles.ELEMENTS, ContentFiles.STATUSES, ContentFiles.SKILLS, ContentFiles.CREEPS);
 
     private final JsonMapper mapper = JsonMapper.builder().build();
 

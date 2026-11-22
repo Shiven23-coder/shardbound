@@ -1,7 +1,15 @@
 package com.shardbound.engine;
 
-import com.shardbound.combat.CombatEngine;
-import com.shardbound.combat.CombatState;
+import com.shardbound.battle.BattleEngine;
+import com.shardbound.battle.BattleSnapshot;
+import com.shardbound.battle.BattleState;
+import com.shardbound.battle.Encounter;
+import com.shardbound.dialogue.DialogueNode;
+import com.shardbound.progression.Attribute;
+import com.shardbound.progression.Attributes;
+import com.shardbound.progression.ProgressionRules;
+import com.shardbound.save.SaveSnapshot.CreepsEntry;
+import org.jspecify.annotations.Nullable;
 import com.shardbound.content.GameContent;
 import com.shardbound.exception.SaveIncompatibleException;
 import com.shardbound.item.Inventory;
@@ -22,6 +30,8 @@ import com.shardbound.world.WorldPosition;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.Map;
 
 /**
@@ -35,11 +45,11 @@ import java.util.Map;
 final class GameSnapshots {
 
     private final GameContent content;
-    private final CombatEngine combatEngine;
+    private final BattleEngine battleEngine;
 
-    GameSnapshots(GameContent content, CombatEngine combatEngine) {
+    GameSnapshots(GameContent content, BattleEngine battleEngine) {
         this.content = content;
-        this.combatEngine = combatEngine;
+        this.battleEngine = battleEngine;
     }
 
     // ---------------------------------------------------------------------
@@ -66,15 +76,21 @@ final class GameSnapshots {
         }
         WorldPosition p = s.position();
         WorldEntry world = new WorldEntry(p.areaId(), null, p.x(), p.y(), p.facing().name());
-        return new SaveSnapshot(s.currentNode(), world, stats.hp(), stats.energy(), stats.level(), stats.xp(), stats.gold(),
-                inventory, s.inventory().equippedWeaponId(), s.flagsView(), reputation, s.affinityView(), quests,
-                history, s.rngSeed(), s.demoMode(), s.playSeconds());
+        Map<String, Integer> attributes = new HashMap<>();
+        stats.attributes().asMap().forEach((attribute, value) -> attributes.put(attribute.name(), value));
+        CreepRoster creeps = s.creeps();
+        CreepsEntry roster = new CreepsEntry(creeps.levelsView(), List.copyOf(creeps.defeatedView()), creeps.fledView());
+        return new SaveSnapshot(s.currentNode(), world, stats.hp(), stats.fp(), stats.gold(), stats.shards(), stats.level(), attributes,
+                s.knownSkills(), s.loadout(), roster, inventory, s.inventory().equippedWeaponId(), s.flagsView(),
+                reputation, s.affinityView(), quests, history, s.rngSeed(), s.demoMode(), s.playSeconds());
     }
 
     RunSnapshot run(GameState s) {
-        CombatState combat = s.combat();
-        return new RunSnapshot(save(s), s.mode().name(), combat == null ? null : combat.snapshot(),
-                s.offerReload(), s.endingSeconds(), s.endingsFound());
+        BattleState battle = s.battle();
+        List<RunSnapshot.ActionEntry> actions = s.recentActions().entries().stream()
+                .map(e -> new RunSnapshot.ActionEntry(e.key(), e.requestHash(), e.runVersion())).toList();
+        return new RunSnapshot(save(s), s.mode().name(), battle == null ? null : BattleSnapshot.of(battle),
+                s.offerReload(), s.endingSeconds(), s.endingsFound(), actions);
     }
 
     /** The area shown for a save slot (the summary column {@code area_id}). */
@@ -91,7 +107,17 @@ final class GameSnapshots {
             throw incompatible("dialogue node", d.currentNode());
         }
         WorldPosition position = position(d.world());
-        Stats stats = new Stats(d.hp(), d.energy(), d.level(), d.xp(), d.gold());   // the rest is derived (D6, D28)
+        Map<Attribute, Integer> attributes = new EnumMap<>(Attribute.class);
+        for (Map.Entry<String, Integer> entry : d.attributes().entrySet()) {
+            try {
+                attributes.put(Attribute.valueOf(entry.getKey()), entry.getValue());
+            } catch (IllegalArgumentException e) {
+                throw incompatible("attribute", entry.getKey());
+            }
+        }
+        ProgressionRules rules = content.progression();
+        Stats stats = new Stats(Attributes.of(attributes, rules.attributeStart()), rules, d.hp(), d.fp(), d.gold(),
+                d.shards());                                    // maximums are derived from the attributes
         Inventory inventory = new Inventory();
         for (ItemEntry entry : d.inventory()) {
             Item item = content.items().get(entry.itemId());
@@ -105,6 +131,18 @@ final class GameSnapshots {
         }
         GameState s = new GameState(sessionId, playerId, d.currentNode(), position, stats, inventory, d.rngSeed(),
                 d.demoMode(), d.playSeconds());
+        for (String skill : d.skills()) {
+            if (!content.battle().skills().containsKey(skill)) {
+                throw incompatible("skill", skill);
+            }
+        }
+        for (String slot : d.loadout()) {
+            if (slot != null && !d.skills().contains(slot)) {
+                throw incompatible("skill in the loadout", slot);
+            }
+        }
+        s.restoreSkills(d.skills(), d.loadout());
+        restoreCreeps(s, d.creeps());
         content.questManager().initialStates(s);                // quests added to content since the save
         for (Map.Entry<String, String> quest : d.quests().entrySet()) {
             if (content.questManager().quest(quest.getKey()) == null) {
@@ -130,17 +168,44 @@ final class GameSnapshots {
     GameState restoreRun(RunSnapshot run, String sessionId, int playerId) {
         GameState s = restoreSave(run.game(), sessionId, playerId);
         s.setMode(Mode.valueOf(run.mode()));
-        if (run.combat() != null) {
-            try {
-                s.setCombat(combatEngine.restore(s, run.combat()));
-            } catch (IllegalStateException e) {
-                throw new SaveIncompatibleException("The fight in progress no longer matches the game content: "
-                        + e.getMessage());
-            }
+        if (s.mode() == Mode.BATTLE) {
+            s.setBattle(run.battle() != null ? restoreBattle(s, run.battle()) : restartDialogueBattle(s));
         }
+        s.recentActions().restore(run.recentActions().stream()
+                .map(e -> new RecentActions.Entry(e.key(), e.requestHash(), e.runVersion())).toList());
         s.setOfferReload(run.offerReload());
         s.recordEnding(run.endingSeconds(), run.endingsFound());
         return s;
+    }
+
+    private BattleState restoreBattle(GameState s, BattleSnapshot snapshot) {
+        try {
+            return battleEngine.restore(s, snapshot);
+        } catch (IllegalStateException e) {
+            throw new SaveIncompatibleException("The battle in progress no longer matches the game content: "
+                    + e.getMessage());
+        }
+    }
+
+    /** A v1 fight stored before format 3: the dialogue's fight starts again on the new battle screen. */
+    private BattleState restartDialogueBattle(GameState s) {
+        DialogueNode node = s.currentNode() == null ? null : content.graph().node(s.currentNode());
+        Encounter encounter = node == null || node.encounterId() == null ? null
+                : content.encounters().get(node.encounterId());
+        if (encounter == null) {
+            throw new SaveIncompatibleException("The stored fight cannot be found in the game content.");
+        }
+        return battleEngine.start(s, content.battle().creeps().get(encounter.creepId()), encounter.level(), null,
+                encounter.id(), encounter.canFlee());
+    }
+
+    /** The stored roster; an upgraded save has none, so the creeps are rolled anew. */
+    private void restoreCreeps(GameState s, SaveSnapshot.@Nullable CreepsEntry stored) {
+        if (stored == null) {
+            s.creeps().respawn(content.world(), s.rng());
+        } else {
+            s.creeps().restore(stored.levels(), new HashSet<>(stored.defeated()), stored.fled());
+        }
     }
 
     /** The stored position; a spawn point (saves upgraded from format 1) wins over pixels. */

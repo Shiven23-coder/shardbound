@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { useGame } from '../state/GameContext';
-import type { LastPosition, SessionView } from '../api/types';
+import type { BattleView, LastPosition, SessionView } from '../api/types';
 import { WorldBridge } from '../world/bridge';
 import WorldCanvas from '../world/WorldCanvas';
 import { useInputState } from '../input/inputMode';
@@ -24,13 +24,17 @@ import InventoryPanel from '../components/InventoryPanel';
 import QuestLog from '../components/QuestLog';
 import ReputationPanel from '../components/ReputationPanel';
 import Journal from '../components/Journal';
-import CombatScreen from './CombatScreen';
+import BattleBox from '../components/BattleBox';
+import BattleInfoBox from '../components/BattleInfoBox';
+import { hpShown } from '../battle/battleText';
 
 const TABS = ['Inventory', 'Quests', 'Reputation', 'Journal'] as const;
 type Tab = (typeof TABS)[number];
 
 /** The share of the game view an open dialogue covers, per layout: in portrait it sits in the deck. */
 const DIALOGUE_COVER: Record<Layout, number> = { desktop: 1 / 3, landscape: 1 / 3, portrait: 0 };
+/** The share of the game view the battle text box covers, per layout (P-57): in portrait it sits in the deck. */
+const BATTLE_COVER: Record<Layout, number> = { desktop: 0.3, landscape: 0.36, portrait: 0 };
 
 // The game, in the layout that suits the input in use (P-40):
 // - desktop (keyboard, mouse, gamepad): the world fills the screen, no touch controls;
@@ -49,13 +53,18 @@ export default function WorldScreen() {
   const viewRef = useRef<HTMLDivElement>(null);
   const fullscreen = useFullscreen();
   const fullscreenAsked = useRef(false);
-  const walking = view?.mode === 'WORLD';
+  // A battle stays on screen from its first round until the player has read the round that ended it.
+  const [battle, setBattle] = useState<BattleView | null>(null);
+  useEffect(() => {
+    if (view?.battle) setBattle(view.battle);
+  }, [view?.battle]);
+  const walking = view?.mode === 'WORLD' && battle === null;
   const hint = useHint(bridge, state.player?.playerId, walking);
   // One overlay at a time (P-49): the area title, then any opening dialogue, then the objective, then a hint.
   const titleShowing = useAreaTitle(view?.world.areaName ?? '');
   const dialogueOpen = view?.mode === 'DIALOGUE' && Boolean(view.dialogue);
   const objective = useObjectiveBanner(view?.objective, !titleShowing && !dialogueOpen);
-  const overlay = overlayNow({ title: titleShowing, dialogue: dialogueOpen, objective: objective.waiting, hint: hint.shown !== null });
+  const overlay = overlayNow({ battle: battle !== null, title: titleShowing, dialogue: dialogueOpen, objective: objective.waiting, hint: hint.shown !== null });
 
   useEffect(() => {
     bridge.device = device;
@@ -80,31 +89,41 @@ export default function WorldScreen() {
     if (view) bridge.sendView(view.world);
   }, [bridge, view]);
   useEffect(() => {
-    bridge.setFrozen(view?.mode !== 'WORLD' || busy);
-  }, [bridge, view?.mode, busy]);
+    bridge.setFrozen(view?.mode !== 'WORLD' || busy || battle !== null);
+  }, [bridge, view?.mode, busy, battle]);
+  useEffect(() => {
+    bridge.setBattle(battle, BATTLE_COVER[layout]);
+  }, [bridge, battle, layout]);
+  // The text line on screen: the arena plays its hits and the HP bars drain with them.
+  const [battleLine, setBattleLine] = useState({ round: -1, line: 0 });
+  const showBattleLine = useCallback((round: number, line: number) => {
+    bridge.setBattleLine(round, line);
+    setBattleLine({ round, line });
+  }, [bridge]);
+  const shownLine = battle && battleLine.round === battle.round ? battleLine.line : 0;
   useEffect(() => {
     bridge.setDialogue(view?.mode === 'DIALOGUE' ? DIALOGUE_COVER[layout] : null);
   }, [bridge, view?.mode, layout]);
 
-  // The region's music plays while the world is on screen (P-42).
-  const regionId = view?.world.regionId;
+  // The region's music plays while the world is on screen (P-42), the battle track during a battle (P-57).
+  const music = battle ? 'battle' : view?.world.regionId;
   useEffect(() => {
-    audio.setMusic(regionId ?? null);
-    return () => audio.setMusic(null);
-  }, [regionId]);
+    audio.setMusic(music ?? null);
+  }, [music]);
+  useEffect(() => () => audio.setMusic(null), []);
 
-  // World events from the scene go to the server; a rejection puts the player back (§4.11), and so
-  // does an event lost to an outage, once the game reconnects: where the server last saw them.
+  // World events from the scene go to the server; a rejection puts the player back (§4.11).
+  // An event lost to an outage is sent again with its key once the game reconnects (P-56).
   useEffect(() => {
-    const snapBack = {
-      onRejected: (position: LastPosition) => bridge.toScene.emit('snapBack', position),
-      onResumed: ({ world }: SessionView) => bridge.toScene.emit('snapBack', { areaId: world.areaId, ...world.player }),
-    };
+    const snapBack = { onRejected: (position: LastPosition) => bridge.toScene.emit('snapBack', position) };
     const offs = [
       bridge.toReact.on('exit', ({ exitId, x, y, facing }) =>
-        void run(() => api.worldExit(exitId, x, y, facing), snapBack)),
+        void run((key) => api.worldExit(exitId, x, y, facing, key), snapBack)),
       bridge.toReact.on('interact', ({ targetId, x, y, facing }) =>
-        void run(() => api.worldInteract(targetId, x, y, facing), snapBack)),
+        void run((key) => api.worldInteract(targetId, x, y, facing, key), snapBack)),
+      bridge.toReact.on('encounter', ({ creepId, x, y, facing }) =>
+        void run((key) => api.worldEncounter(creepId, x, y, facing, key), snapBack)),
+      bridge.toReact.on('creepNear', () => audio.prefetchMusic('battle')),
       bridge.toReact.on('hudCovered', setHudCovered),
     ];
     return () => offs.forEach((off) => off());
@@ -139,7 +158,7 @@ export default function WorldScreen() {
 
   const dialogue = overlay === 'dialogue' && view.dialogue
     ? (placement: 'overlay' | 'deck') => (
-      <DialogueBox dialogue={view.dialogue!} busy={busy} placement={placement} onChoose={(id) => run(() => api.choose(id))} />
+      <DialogueBox dialogue={view.dialogue!} busy={busy} placement={placement} onChoose={(id) => run((key) => api.choose(id, key))} />
     )
     : null;
   const actionVariant = layout === 'desktop' ? 'icon' : 'pill';
@@ -147,10 +166,20 @@ export default function WorldScreen() {
   const bagButton = (
     <ActionButton label="Bag" icon="bag" keyHint="I" variant={actionVariant} expanded={panelOpen} onClick={() => setPanelOpen(!panelOpen)} />
   );
+  const battleBox = battle
+    ? (placement: 'overlay' | 'deck') => (
+      <BattleBox
+        battle={battle} busy={busy} placement={placement}
+        onAction={(action) => run((key) => api.battleAction(action, key))}
+        onDone={() => setBattle(null)}
+        onLine={showBattleLine}
+      />
+    )
+    : null;
 
   return (
     <div
-      className={`screen world-screen layout-${layout}`}
+      className={`screen world-screen layout-${layout}${battle ? ' in-battle' : ''}`}
       data-layout={layout}
       data-area-name={view.world.areaName}
       onPointerDownCapture={autoFullscreen}
@@ -158,11 +187,21 @@ export default function WorldScreen() {
     >
       <div ref={viewRef} className="world-view">
         <WorldCanvas bridge={bridge} />
-        <HudCluster ref={hudRef} hud={view.hud} alwaysNumbers={layout === 'desktop'} dodge={hudCovered} />
+        {battle && (
+          <div className="battle-hud">
+            <BattleInfoBox fighter={{ ...battle.enemy, hp: hpShown(battle.enemy, false, battle.hits, shownLine) }} side="enemy" />
+            <BattleInfoBox
+              fighter={{ ...battle.player, hp: hpShown(battle.player, true, battle.hits, shownLine) }}
+              side="player" fp={battle.menu.fp} maxFp={battle.menu.maxFp}
+            />
+          </div>
+        )}
+        {battle && layout !== 'portrait' && battleBox?.('overlay')}
+        {!battle && <HudCluster ref={hudRef} hud={view.hud} alwaysNumbers={layout === 'desktop'} dodge={hudCovered} />}
         {overlay === 'title' && <AreaTitle name={view.world.areaName} />}
         {overlay === 'objective' && objective.shown && <ObjectiveLine objective={objective.shown} />}
         {layout === 'portrait' && fullscreenButton && <div className="world-actions">{fullscreenButton}</div>}
-        {layout !== 'portrait' && (
+        {layout !== 'portrait' && !battle && (
           <div className="world-actions">
             {fullscreenButton}
             {bagButton}
@@ -176,7 +215,7 @@ export default function WorldScreen() {
       </div>
       {layout === 'portrait' && (
         <div className="control-deck">
-          {dialogue?.('deck') ?? (
+          {battleBox?.('deck') ?? dialogue?.('deck') ?? (
             <>
               <Dpad bridge={bridge} />
               <div className="deck-buttons">
@@ -188,18 +227,13 @@ export default function WorldScreen() {
           )}
         </div>
       )}
-      {view.mode === 'COMBAT' && (
-        <div className="combat-overlay">
-          <CombatScreen />
-        </div>
-      )}
       {panelOpen && (
         <SidePanels
           view={view}
           busy={busy}
           onClose={() => setPanelOpen(false)}
-          onEquip={(id) => run(() => api.equip(id))}
-          onUse={(id) => run(() => api.useItem(id))}
+          onEquip={(id) => run((key) => api.equip(id, key))}
+          onUse={(id) => run((key) => api.useItem(id, key))}
         />
       )}
     </div>
@@ -214,7 +248,7 @@ interface SidePanelsProps {
   onUse: (itemId: string) => void;
 }
 
-// The Bag: the full character sheet (HP, XP, energy, gold, weapon) above the
+// The Bag: the full character sheet (HP, FP, Shards, gold, weapon) above the
 // inventory, quests, reputation and journal. Quick slots join it on touch (V4).
 function SidePanels({ view, busy, onClose, onEquip, onUse }: SidePanelsProps) {
   const [tab, setTab] = useState<Tab>(TABS[0]);

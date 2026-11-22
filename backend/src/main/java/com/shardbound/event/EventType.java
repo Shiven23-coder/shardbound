@@ -14,15 +14,15 @@ public enum EventType {
     QUEST_STARTED,
     QUEST_COMPLETED,
     QUEST_FAILED,
-    COMBAT_WON,
-    COMBAT_LOST,
+    BATTLE_WON,
+    BATTLE_LOST,
     LOCKED_CHOICE_PASSED,
     ENDING_REACHED,
-    LEVEL_UP,
     // added for effects that had no event type
     ITEM_LOST,
     FLAG_SET,
     GOLD_CHANGED,
     HEALED,
-    XP_GAINED
+    SHARDS_GAINED,
+    SKILL_LEARNED
 }

@@ -1,23 +1,26 @@
 import { useEffect, useRef } from 'react';
 import type { Intent } from '../dialogue/dialogueInput';
 
-// Gamepad control for dialogues: D-pad or left stick up/down move the choice
-// highlight, A completes or turns a page and takes the highlighted choice, and
-// holding A repeats (fast-forward through text already read, P-44). Walking
-// with a gamepad is handled by the Phaser scene.
+// Gamepad control for dialogues and battle menus: D-pad or left stick up/down
+// move the highlight, A completes or turns a page and takes the highlighted
+// choice, B goes back (battle submenus, P-57), and holding A repeats
+// (fast-forward through text already read, P-44). Walking with a gamepad is
+// handled by the Phaser scene.
 
-export type ChoiceIntent = 'up' | 'down' | 'confirm' | null;
+export type ChoiceIntent = 'up' | 'down' | 'confirm' | 'back' | null;
 
 /** The buttons and stick of a standard-mapping gamepad that matter here. */
 export interface PadState {
   up: boolean;
   down: boolean;
   confirm: boolean;
+  back: boolean;
 }
 
 const STICK_DEAD_ZONE = 0.5;
 // Standard mapping: button 0 is A, 12 and 13 are D-pad up and down; axis 1 is the left stick's y.
 const A = 0;
+const B = 1;
 const DPAD_UP = 12;
 const DPAD_DOWN = 13;
 /** A held A starts repeating after this long, then repeats this often. */
@@ -31,20 +34,22 @@ export function padState(pad: Pick<Gamepad, 'buttons' | 'axes'>): PadState {
     up: pressed(DPAD_UP) || stickY < -STICK_DEAD_ZONE,
     down: pressed(DPAD_DOWN) || stickY > STICK_DEAD_ZONE,
     confirm: pressed(A),
+    back: pressed(B),
   };
 }
 
 /** What a change between two polls means: only a fresh press counts. */
 export function choiceIntent(previous: PadState, current: PadState): ChoiceIntent {
   if (current.confirm && !previous.confirm) return 'confirm';
+  if (current.back && !previous.back) return 'back';
   if (current.up && !previous.up) return 'up';
   if (current.down && !previous.down) return 'down';
   return null;
 }
 
-const RELEASED: PadState = { up: false, down: false, confirm: true };   // a held A must be let go first
+const RELEASED: PadState = { up: false, down: false, confirm: true, back: true };   // a held A or B must be let go first
 const INTENTS: Record<NonNullable<ChoiceIntent>, Intent> = {
-  confirm: { kind: 'primary' }, up: { kind: 'up' }, down: { kind: 'down' },
+  confirm: { kind: 'primary' }, up: { kind: 'up' }, down: { kind: 'down' }, back: { kind: 'back' },
 };
 
 /** Polls the first gamepad while mounted and reports intents; `held` marks the repeats of a held A. */

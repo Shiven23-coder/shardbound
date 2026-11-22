@@ -18,19 +18,11 @@ public final class Rewards {
     private Rewards() {
     }
 
-    /**
-     * Adds xp, publishing XP_GAINED and one LEVEL_UP per level gained.
-     * Time O(L) for L levels gained, space O(1).
-     */
-    public static void grantXp(GameState state, EventBus bus, int amount) {
-        if (amount <= 0) {
-            return;
-        }
-        int levels = state.stats().addXp(amount);
-        bus.publish(GameEvent.of(EventType.XP_GAINED, "+" + amount + " XP", "amount", amount));
-        for (int i = 0; i < levels; i++) {
-            int reached = state.stats().level() - levels + i + 1;
-            bus.publish(GameEvent.of(EventType.LEVEL_UP, "Level up! You are now level " + reached, "level", reached));
+    /** Adds Shards and publishes SHARDS_GAINED (V2_SPEC §4.3). O(1). */
+    public static void grantShards(GameState state, EventBus bus, int amount) {
+        int change = state.stats().addShards(amount);
+        if (change > 0) {
+            bus.publish(GameEvent.of(EventType.SHARDS_GAINED, "+" + change + " Shards", "amount", change));
         }
     }
 
@@ -44,19 +36,19 @@ public final class Rewards {
     }
 
     /**
-     * Uses one consumable: heals, restores energy, removes it from the bag and
+     * Uses one consumable: heals, restores FP, removes it from the bag and
      * publishes HEALED with a summary toast. Time O(1) average.
      */
     public static void useConsumable(GameState state, EventBus bus, Consumable consumable) {
         int healed = state.stats().heal(consumable.heal());
-        int restored = state.stats().restoreEnergy(consumable.energy());
+        int restored = state.stats().restoreFp(consumable.fp());
         state.inventory().remove(consumable.id(), 1);
         StringBuilder text = new StringBuilder("Used " + consumable.name());
         if (healed > 0) {
             text.append(": +").append(healed).append(" HP");
         }
         if (restored > 0) {
-            text.append(healed > 0 ? ", +" : ": +").append(restored).append(" energy");
+            text.append(healed > 0 ? ", +" : ": +").append(restored).append(" FP");
         }
         bus.publish(GameEvent.of(EventType.HEALED, text.toString(), "itemId", consumable.id()));
     }

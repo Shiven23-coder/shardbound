@@ -3,9 +3,10 @@
 // what the server said.
 import createClient from 'openapi-fetch';
 import type { paths } from './schema.gen';
+import { IDEMPOTENCY_HEADER } from './idempotency';
 import type {
   AchievementView,
-  CombatActionType,
+  BattleRequest,
   EndingInfoView,
   Facing,
   LastPosition,
@@ -131,32 +132,38 @@ async function game(send: () => Promise<Result<SessionView>>): Promise<SessionVi
 
 const byPlayer = (playerId: number) => ({ params: { query: { playerId } } });
 
+/** The idempotency key header of a state-changing request (P-56). */
+const header = (key: string) => ({ [IDEMPOTENCY_HEADER]: key });
+const keyed = (key: string) => ({ params: { header: header(key) } });
+
 export const api = {
   createProfile: (username: string): Promise<ProfileResponse> =>
     call(() => client.POST('/api/profiles', { body: { username } })),
   newGame: (playerId: number, demoMode: boolean): Promise<SessionView> =>
     game(() => client.POST('/api/game/new', { body: { playerId, demoMode } })),
   getGame: (): Promise<SessionView> => game(() => client.GET('/api/game')),
-  choose: (choiceId: number): Promise<SessionView> =>
-    game(() => client.POST('/api/dialogue/choose', { body: { choiceId } })),
-  worldExit: (exitId: string, x: number, y: number, facing: Facing): Promise<SessionView> =>
-    game(() => client.POST('/api/world/exit', { body: { exitId, x, y, facing } })),
-  worldInteract: (targetId: string, x: number, y: number, facing: Facing): Promise<SessionView> =>
-    game(() => client.POST('/api/world/interact', { body: { targetId, x, y, facing } })),
-  combatAction: (type: CombatActionType, target: number, itemId?: string): Promise<SessionView> =>
-    game(() => client.POST('/api/combat/action', { body: { type, target, itemId } })),
-  equip: (itemId: string): Promise<SessionView> =>
-    game(() => client.POST('/api/inventory/equip', { body: { itemId } })),
-  useItem: (itemId: string): Promise<SessionView> =>
-    game(() => client.POST('/api/inventory/use', { body: { itemId } })),
+  choose: (choiceId: number, key: string): Promise<SessionView> =>
+    game(() => client.POST('/api/dialogue/choose', { body: { choiceId }, ...keyed(key) })),
+  worldExit: (exitId: string, x: number, y: number, facing: Facing, key: string): Promise<SessionView> =>
+    game(() => client.POST('/api/world/exit', { body: { exitId, x, y, facing }, ...keyed(key) })),
+  worldInteract: (targetId: string, x: number, y: number, facing: Facing, key: string): Promise<SessionView> =>
+    game(() => client.POST('/api/world/interact', { body: { targetId, x, y, facing }, ...keyed(key) })),
+  worldEncounter: (creepId: string, x: number, y: number, facing: Facing, key: string): Promise<SessionView> =>
+    game(() => client.POST('/api/world/encounter', { body: { creepId, x, y, facing }, ...keyed(key) })),
+  battleAction: (action: BattleRequest, key: string): Promise<SessionView> =>
+    game(() => client.POST('/api/battle/action', { body: action, ...keyed(key) })),
+  equip: (itemId: string, key: string): Promise<SessionView> =>
+    game(() => client.POST('/api/inventory/equip', { body: { itemId }, ...keyed(key) })),
+  useItem: (itemId: string, key: string): Promise<SessionView> =>
+    game(() => client.POST('/api/inventory/use', { body: { itemId }, ...keyed(key) })),
   listSaves: (playerId: number): Promise<SlotView[]> =>
     call(() => client.GET('/api/saves', byPlayer(playerId))),
-  save: (slot: number): Promise<void> =>
-    call(() => client.POST('/api/saves/{slot}', { params: { path: { slot } } })),
-  load: (slot: number, playerId: number): Promise<SessionView> =>
-    game(() => client.POST('/api/saves/{slot}/load', { params: { path: { slot }, query: { playerId } } })),
-  deleteSave: (slot: number, playerId: number): Promise<void> =>
-    call(() => client.DELETE('/api/saves/{slot}', { params: { path: { slot }, query: { playerId } } })),
+  save: (slot: number, key: string): Promise<void> =>
+    call(() => client.POST('/api/saves/{slot}', { params: { path: { slot }, header: header(key) } })),
+  load: (slot: number, playerId: number, key: string): Promise<SessionView> =>
+    game(() => client.POST('/api/saves/{slot}/load', { params: { path: { slot }, query: { playerId }, header: header(key) } })),
+  deleteSave: (slot: number, playerId: number, key: string): Promise<void> =>
+    call(() => client.DELETE('/api/saves/{slot}', { params: { path: { slot }, query: { playerId }, header: header(key) } })),
   achievements: (playerId: number): Promise<AchievementView[]> =>
     call(() => client.GET('/api/achievements', byPlayer(playerId))),
   endings: (playerId: number): Promise<EndingInfoView[]> =>

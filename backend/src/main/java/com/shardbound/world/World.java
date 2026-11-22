@@ -20,18 +20,33 @@ public record World(Start start, Map<String, Region> regions, Map<String, Area> 
         maps = Map.copyOf(maps);
     }
 
-    /** Where a new game begins. */
-    public record Start(String area, String spawn, String dialogue, Map<String, Integer> flags) {
+    /** Where a new game begins, and what the new character carries. */
+    public record Start(String area, String spawn, String dialogue, Map<String, Integer> flags, Kit kit) {
         public Start {
             flags = Map.copyOf(flags);
         }
     }
 
     /**
-     * A region and its light states in priority order: the first whose flag
-     * is set wins; the last has no flag and is the default.
+     * The starting kit (P-55): the equipped weapon, the skills in the loadout,
+     * the bag (item id → quantity, in file order) and gold.
      */
-    public record Region(String id, String name, String music, List<LightState> lightStates) {
+    public record Kit(String weapon, List<String> skills, Map<String, Integer> bag, int gold) {
+        public Kit {
+            skills = List.copyOf(skills);
+            bag = java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(bag));
+        }
+    }
+
+    /** A place to wake: an area and one of its spawn points. */
+    public record Place(String area, String spawn) { }
+
+    /**
+     * A region and its light states in priority order: the first whose flag
+     * is set wins; the last has no flag and is the default. {@code respawn} is
+     * where a player defeated by a creep wakes until Lanterns exist (P-55).
+     */
+    public record Region(String id, String name, String music, Place respawn, List<LightState> lightStates) {
         public Region {
             lightStates = List.copyOf(lightStates);
         }

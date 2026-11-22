@@ -8,6 +8,10 @@ import com.shardbound.view.SessionView;
 import com.shardbound.view.MetaViews.SlotView;
 import com.shardbound.world.World;
 import io.swagger.v3.oas.annotations.Operation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.RequestHeader;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
@@ -74,8 +78,10 @@ public class SaveController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(operationId = "saveGame", summary = "Save this session's game to slot 1, 2 or 3")
     @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
-    public void save(@CurrentGame GameState state, @PathVariable @Min(0) @Max(SLOT_COUNT - 1) int slot) {
-        engine.save(state, slot);
+    @Transactional
+    public void save(@CurrentGame GameState state, @PathVariable @Min(0) @Max(SLOT_COUNT - 1) int slot,
+                     @Parameter(name = IdempotencyKeys.HEADER, in = ParameterIn.HEADER, required = true, description = "A new UUID per action (P-56)") @RequestHeader(name = IdempotencyKeys.HEADER, required = false) @Nullable String key) {
+        engine.once(state, IdempotencyKeys.of("saves/" + slot, key, null), () -> engine.save(state, slot));
     }
 
     @PostMapping("/{slot}/load")
@@ -83,7 +89,9 @@ public class SaveController {
     @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
     public SessionView load(@CurrentGame(required = false) @Nullable GameState current,
                          @PathVariable @Min(0) @Max(SLOT_COUNT - 1) int slot,
-                         @RequestParam(required = false) @Nullable Integer playerId) {
+                         @RequestParam(required = false) @Nullable Integer playerId,
+                         @Parameter(name = IdempotencyKeys.HEADER, in = ParameterIn.HEADER, required = true, description = "A new UUID per action (P-56)") @RequestHeader(name = IdempotencyKeys.HEADER, required = false) @Nullable String key) {
+        IdempotencyKeys.require(key);                   // loading the same slot again gives the same game
         String sessionId = current == null ? null : current.sessionId();
         GameState loaded = engine.load(PlayerIds.resolve(current, playerId), slot, sessionId);
         sessions.put(loaded);
@@ -96,7 +104,9 @@ public class SaveController {
     @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
     public void delete(@CurrentGame(required = false) @Nullable GameState state,
                        @PathVariable @Min(0) @Max(SLOT_COUNT - 1) int slot,
-                       @RequestParam(required = false) @Nullable Integer playerId) {
+                       @RequestParam(required = false) @Nullable Integer playerId,
+                       @Parameter(name = IdempotencyKeys.HEADER, in = ParameterIn.HEADER, required = true, description = "A new UUID per action (P-56)") @RequestHeader(name = IdempotencyKeys.HEADER, required = false) @Nullable String key) {
+        IdempotencyKeys.require(key);                   // deleting an empty slot again changes nothing
         engine.deleteSave(PlayerIds.resolve(state, playerId), slot);
     }
 }

@@ -10,7 +10,8 @@ const idle = padState(pad([]));
 
 describe('gamepad choices', () => {
   it('reads A, the D-pad and the left stick', () => {
-    expect(padState(pad([0]))).toEqual({ up: false, down: false, confirm: true });
+    expect(padState(pad([0]))).toEqual({ up: false, down: false, confirm: true, back: false });
+    expect(padState(pad([1])).back).toBe(true);
     expect(padState(pad([12])).up).toBe(true);
     expect(padState(pad([13])).down).toBe(true);
     expect(padState(pad([], [0, -0.9])).up).toBe(true);
@@ -22,5 +23,6 @@ describe('gamepad choices', () => {
     expect(choiceIntent(idle, a)).toBe('confirm');
     expect(choiceIntent(a, a)).toBeNull();
     expect(choiceIntent(idle, padState(pad([13])))).toBe('down');
+    expect(choiceIntent(idle, padState(pad([1])))).toBe('back');
   });
 });

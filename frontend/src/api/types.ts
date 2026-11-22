@@ -15,10 +15,15 @@ export type DialogueView = Schemas['DialogueView'];
 export type ChoiceView = Schemas['ChoiceView'];
 export type HudView = Schemas['HudView'];
 export type WeaponInfo = Schemas['WeaponInfo'];
-export type CombatView = Schemas['CombatView'];
-export type EnemyView = Schemas['EnemyView'];
+export type CreepView = Schemas['CreepView'];
+export type BattleView = Schemas['BattleView'];
+export type FighterView = Schemas['FighterView'];
+export type StatusView = Schemas['StatusView'];
+export type MenuView = Schemas['MenuView'];
+export type SkillView = Schemas['SkillView'];
+export type BagItemView = Schemas['BagItemView'];
 export type HitView = Schemas['HitView'];
-export type UsableItem = Schemas['UsableItem'];
+export type RewardsView = Schemas['RewardsView'];
 export type ToastView = Schemas['ToastView'];
 export type InventoryView = Schemas['InventoryView'];
 export type ItemView = Schemas['ItemView'];
@@ -35,8 +40,8 @@ export type EndingInfoView = Schemas['EndingInfoView'];
 export type LeaderboardView = Schemas['LeaderboardView'];
 export type InspectorView = Schemas['InspectorView'];
 
-export type CombatRequest = Schemas['CombatRequest'];
-export type CombatActionType = CombatRequest['type'];
+export type BattleRequest = Schemas['BattleRequest'];
+export type BattleActionKind = BattleRequest['kind'];
 
 /** An RFC 9457 error body; `code` is stable and safe to switch on. */
 export type Problem = Schemas['Problem'];

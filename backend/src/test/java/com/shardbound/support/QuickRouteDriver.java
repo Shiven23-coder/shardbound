@@ -85,12 +85,23 @@ public final class QuickRouteDriver {
         throw new AssertionError("No unlocked choice '" + label + "' in " + view.get("dialogue"));
     }
 
+    /** Fights as the balance bot does (P-55): Strike, and a draught below 40 % HP while one is left. */
     private JsonNode fight(JsonNode view) {
         JsonNode current = view;
-        while ("COMBAT".equals(current.get("mode").asString())) {
-            Response hit = api.post("/api/combat/action", session, Map.of("type", "ATTACK", "target", 0));
-            TestApi.expect(200, hit);
-            current = hit.body();
+        while ("BATTLE".equals(current.get("mode").asString())) {
+            JsonNode battle = current.get("battle");
+            JsonNode player = battle.get("player");
+            boolean low = player.get("hp").asInt() * 100 < player.get("maxHp").asInt() * 40;
+            boolean draught = false;
+            for (JsonNode item : battle.get("menu").get("bag")) {
+                draught |= "healing_draught".equals(item.get("id").asString());
+            }
+            Map<String, Object> action = low && draught
+                    ? Map.of("kind", "ITEM", "slot", 0, "itemId", "healing_draught")
+                    : Map.of("kind", "STRIKE", "slot", 0);
+            Response round = api.post("/api/battle/action", session, action);
+            TestApi.expect(200, round);
+            current = round.body();
         }
         return current;
     }

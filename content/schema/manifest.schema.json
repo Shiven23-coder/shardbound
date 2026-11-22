@@ -1,51 +1,240 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://shardbound.game/schema/manifest.schema.json",
-  "title": "Shardbound art manifest (content/art/manifest.json, P-34)",
-  "type": "object",
-  "required": ["frameSize", "actors", "actorShadow", "sheetLayout"],
-  "additionalProperties": false,
-  "properties": {
-    "$schema": { "type": "string" },
-    "description": { "type": "string" },
-    "frameSize": { "type": "integer", "minimum": 8 },
-    "actors": {
-      "description": "Sprite keys: player and npc.<npcId>.",
-      "type": "object",
-      "propertyNames": { "pattern": "^(player|npc\\.[a-z0-9_]+)$" },
-      "additionalProperties": {
-        "type": "object",
-        "required": ["sheet", "faceset"],
-        "additionalProperties": false,
-        "properties": {
-          "sheet": { "$ref": "#/$defs/png" },
-          "faceset": { "$ref": "#/$defs/png" }
-        }
-      }
-    },
-    "actorShadow": { "$ref": "#/$defs/png" },
-    "sheetLayout": {
-      "type": "object",
-      "required": ["columns", "walkRows"],
-      "additionalProperties": false,
-      "properties": {
-        "description": { "type": "string" },
-        "columns": {
-          "type": "object",
-          "required": ["DOWN", "UP", "LEFT", "RIGHT"],
-          "additionalProperties": false,
-          "properties": {
-            "DOWN": { "type": "integer", "minimum": 0 },
-            "UP": { "type": "integer", "minimum": 0 },
-            "LEFT": { "type": "integer", "minimum": 0 },
-            "RIGHT": { "type": "integer", "minimum": 0 }
-          }
-        },
-        "walkRows": { "type": "array", "minItems": 1, "items": { "type": "integer", "minimum": 0 } }
-      }
-    }
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://shardbound.game/schema/manifest.schema.json",
+ "title": "Shardbound art manifest (content/art/manifest.json, P-34)",
+ "type": "object",
+ "required": [
+  "frameSize",
+  "actors",
+  "actorShadow",
+  "sheetLayout",
+  "effects",
+  "battleBackdrop",
+  "battleEffects"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "$schema": {
+   "type": "string"
   },
-  "$defs": {
-    "png": { "type": "string", "pattern": "^[A-Za-z0-9_./-]+\\.png$" }
+  "description": {
+   "type": "string"
+  },
+  "frameSize": {
+   "type": "integer",
+   "minimum": 8
+  },
+  "actors": {
+   "description": "Sprite keys: player, npc.<npcId> and creep.<creepId> (one sheet layout for all).",
+   "type": "object",
+   "propertyNames": {
+    "pattern": "^(player|npc\\.[a-z0-9_]+|creep\\.[a-z0-9_]+)$"
+   },
+   "additionalProperties": {
+    "type": "object",
+    "required": [
+     "sheet",
+     "faceset"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "sheet": {
+      "$ref": "#/$defs/png"
+     },
+     "faceset": {
+      "$ref": "#/$defs/png"
+     }
+    }
+   }
+  },
+  "actorShadow": {
+   "$ref": "#/$defs/png"
+  },
+  "sheetLayout": {
+   "type": "object",
+   "required": [
+    "columns",
+    "walkRows"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "description": {
+     "type": "string"
+    },
+    "columns": {
+     "type": "object",
+     "required": [
+      "DOWN",
+      "UP",
+      "LEFT",
+      "RIGHT"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "DOWN": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "UP": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "LEFT": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "RIGHT": {
+       "type": "integer",
+       "minimum": 0
+      }
+     }
+    },
+    "walkRows": {
+     "type": "array",
+     "minItems": 1,
+     "items": {
+      "type": "integer",
+      "minimum": 0
+     }
+    }
+   }
+  },
+  "effects": {
+   "description": "Effect strips: one row of frames each.",
+   "type": "object",
+   "propertyNames": {
+    "pattern": "^fx\\.[a-z0-9_]+$"
+   },
+   "additionalProperties": {
+    "type": "object",
+    "required": [
+     "sheet",
+     "frameWidth",
+     "frameHeight",
+     "frames",
+     "frameRate"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "sheet": {
+      "$ref": "#/$defs/png"
+     },
+     "frameWidth": {
+      "type": "integer",
+      "minimum": 1
+     },
+     "frameHeight": {
+      "type": "integer",
+      "minimum": 1
+     },
+     "frames": {
+      "type": "integer",
+      "minimum": 1
+     },
+     "frameRate": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 60
+     }
+    }
+   }
+  },
+  "battleBackdrop": {
+   "type": "object",
+   "required": [
+    "sheet",
+    "treelineHeight",
+    "groundHeight"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "description": {
+     "type": "string"
+    },
+    "sheet": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_./-]+\\.png$"
+    },
+    "treelineHeight": {
+     "type": "integer",
+     "minimum": 1
+    },
+    "groundHeight": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
+  },
+  "battleEffects": {
+   "type": "object",
+   "required": [
+    "playerMove",
+    "creepMove",
+    "heal",
+    "escape"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "description": {
+     "type": "string"
+    },
+    "playerMove": {
+     "type": "object",
+     "required": [
+      "PHYSICAL",
+      "FIRE",
+      "FROST",
+      "LIGHTNING",
+      "HOLY",
+      "CRYSTAL"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "PHYSICAL": {
+       "type": "string",
+       "pattern": "^fx\\.[a-z0-9_]+$"
+      },
+      "FIRE": {
+       "type": "string",
+       "pattern": "^fx\\.[a-z0-9_]+$"
+      },
+      "FROST": {
+       "type": "string",
+       "pattern": "^fx\\.[a-z0-9_]+$"
+      },
+      "LIGHTNING": {
+       "type": "string",
+       "pattern": "^fx\\.[a-z0-9_]+$"
+      },
+      "HOLY": {
+       "type": "string",
+       "pattern": "^fx\\.[a-z0-9_]+$"
+      },
+      "CRYSTAL": {
+       "type": "string",
+       "pattern": "^fx\\.[a-z0-9_]+$"
+      }
+     }
+    },
+    "creepMove": {
+     "type": "string",
+     "pattern": "^fx\\.[a-z0-9_]+$"
+    },
+    "heal": {
+     "type": "string",
+     "pattern": "^fx\\.[a-z0-9_]+$"
+    },
+    "escape": {
+     "type": "string",
+     "pattern": "^fx\\.[a-z0-9_]+$"
+    }
+   }
   }
+ },
+ "$defs": {
+  "png": {
+   "type": "string",
+   "pattern": "^[A-Za-z0-9_./-]+\\.png$"
+  }
+ }
 }

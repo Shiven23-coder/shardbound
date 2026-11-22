@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import type { Dispatch, ReactNode } from 'react';
 import { ApiError, api, errorMessage, getSessionId, setSessionId } from '../api/client';
 import { isRunGone, resumeRun } from '../api/resume';
+import { newIdempotencyKey } from '../api/idempotency';
 import type { LastPosition, SessionView } from '../api/types';
 import { initialState, reducer, storePlayer } from './gameReducer';
 import type { Action, State } from './gameReducer';
@@ -12,15 +13,16 @@ import type { Action, State } from './gameReducer';
 export interface RunOptions {
   /** A rejected world event: where the server last saw the player (§4.11). */
   onRejected?: (position: LastPosition) => void;
-  /** An outage cut the call short: the server's view once the game has reconnected (P-30). */
-  onResumed?: (view: SessionView) => void;
 }
+
+/** An API call that changes the game; it sends `key` as its Idempotency-Key (P-56). */
+export type GameAction = (key: string) => Promise<SessionView>;
 
 export interface GameContextValue {
   state: State;
   dispatch: Dispatch<Action>;
-  /** Runs an API call that returns a SessionView; resolves to true on success. */
-  run: (apiCall: () => Promise<SessionView>, options?: RunOptions) => Promise<boolean>;
+  /** Runs an action with a new idempotency key; resolves to true once it was applied. */
+  run: (action: GameAction, options?: RunOptions) => Promise<boolean>;
   /** Gets back into the current run, waiting out outages (P-30); resolves to the server's view, or null. */
   resume: () => Promise<SessionView | null>;
   /** Stops waiting for the server and shows the title; the session is kept. */
@@ -91,33 +93,44 @@ export function GameProvider({ children }: GameProviderProps) {
     dispatch({ type: 'GO', screen: 'title' });
   }, []);
 
-  // Runs an API call that returns a SessionView and stores the result. A rule
-  // the server refused becomes an error toast; an outage starts reconnecting.
-  const run = useCallback(async (apiCall: () => Promise<SessionView>, options: RunOptions = {}) => {
+  // A failed action: a rule the server refused becomes an error toast (a rejected
+  // world event also moves the player back); anything else is shown as it is.
+  const refused = useCallback((err: unknown, options: RunOptions) => {
+    if (isRunGone(err)) {
+      runGone();
+      return;
+    }
+    if (err instanceof ApiError && err.lastPosition && options.onRejected) options.onRejected(err.lastPosition);
+    dispatch({ type: 'SET_ERROR', message: errorMessage(err) });
+  }, [runGone]);
+
+  // Runs an action with a new idempotency key and stores the server's view. After an
+  // outage it waits for the game to reconnect, then sends the same request with the
+  // same key: the server applies it if it never arrived, and only answers if it did (P-56).
+  const run = useCallback(async (action: GameAction, options: RunOptions = {}) => {
+    const key = newIdempotencyKey();
     dispatch({ type: 'SET_BUSY', busy: true });
     try {
-      const view = await apiCall();
-      dispatch({ type: 'SET_VIEW', view });
+      dispatch({ type: 'SET_VIEW', view: await action(key) });
       return true;
     } catch (err) {
-      if (isRunGone(err)) {
-        runGone();
-      } else if (err instanceof ApiError && err.lastPosition && options.onRejected) {
-        options.onRejected(err.lastPosition);
-        dispatch({ type: 'SET_ERROR', message: errorMessage(err) });
-      } else if (isTransient(err)) {
-        // The action may or may not have happened: the server's view decides (idempotency keys in V4).
-        void resume().then((view) => {
-          if (view) options.onResumed?.(view);
-        });
-      } else {
-        dispatch({ type: 'SET_ERROR', message: errorMessage(err) });
+      if (!isTransient(err)) {
+        refused(err, options);
+        return false;
       }
-      return false;
+      if (!(await resume())) return false;
+      try {
+        dispatch({ type: 'SET_VIEW', view: await action(key) });
+        return true;
+      } catch (retryError) {
+        if (isTransient(retryError)) void resume();
+        else refused(retryError, options);
+        return false;
+      }
     } finally {
       dispatch({ type: 'SET_BUSY', busy: false });
     }
-  }, [resume, runGone]);
+  }, [resume, refused]);
 
   // Leaves the current game: forget the session and go back to the title.
   const quit = useCallback(() => {

@@ -4,10 +4,8 @@ import com.shardbound.content.RawContent.AchievementDef;
 import com.shardbound.content.RawContent.ChoiceDef;
 import com.shardbound.content.RawContent.ConsumableDef;
 import com.shardbound.content.RawContent.EncounterDef;
-import com.shardbound.content.RawContent.EncounterEnemyDef;
 import com.shardbound.content.RawContent.EndingDef;
 import com.shardbound.content.RawContent.ObjectiveDef;
-import com.shardbound.content.RawContent.EnemyDef;
 import com.shardbound.content.RawContent.FactionDef;
 import com.shardbound.content.RawContent.ItemDef;
 import com.shardbound.content.RawContent.DialogueDef;
@@ -63,7 +61,7 @@ public class JsonContentReader {
         }
         return new RawContent(
                 readFactions(world), readNpcs(world), readAffinityCues(world), readItems(world),
-                readEnemies(world), readEncounters(world), readQuests(world), readAchievements(world),
+                readEncounters(world), readQuests(world), readAchievements(world),
                 readEndings(world), readObjectives(world), dialogues, nodes, choices);
     }
 
@@ -116,11 +114,14 @@ public class JsonContentReader {
             ConsumableDef consumable = null;
             JsonNode w = n.get("weapon");
             if (w != null && !w.isNull()) {
-                weapon = new WeaponDef(text(w, "tier"), integer(w, "attack"), integer(w, "critPct"), optText(w, "ability"));
+                JsonNode scaling = w.get("scaling");
+                weapon = new WeaponDef(text(w, "tier"), integer(w, "base"), integer(w, "critPct"),
+                        scaling == null ? null : optText(scaling, "STR"), scaling == null ? null : optText(scaling, "DEX"),
+                        scaling == null ? null : optText(scaling, "ARC"), optText(w, "ability"));
             }
             JsonNode c = n.get("consumable");
             if (c != null && !c.isNull()) {
-                consumable = new ConsumableDef(optInt(c, "heal", 0), optInt(c, "energy", 0));
+                consumable = new ConsumableDef(optInt(c, "heal", 0), optInt(c, "fp", 0));
             }
             result.add(new ItemDef(text(n, "id"), text(n, "name"), text(n, "type"), text(n, "description"),
                     optInt(n, "price", 0), weapon, consumable));
@@ -128,25 +129,11 @@ public class JsonContentReader {
         return result;
     }
 
-    private List<EnemyDef> readEnemies(JsonNode world) {
-        List<EnemyDef> result = new ArrayList<>();
-        for (JsonNode n : array(world, "enemies")) {
-            result.add(new EnemyDef(text(n, "id"), text(n, "name"), integer(n, "hp"), integer(n, "atk"),
-                    integer(n, "def"), integer(n, "spd"), integer(n, "xpReward"), integer(n, "goldReward"),
-                    text(n, "ai")));
-        }
-        return result;
-    }
-
     private List<EncounterDef> readEncounters(JsonNode world) {
         List<EncounterDef> result = new ArrayList<>();
         for (JsonNode n : array(world, "encounters")) {
-            List<EncounterEnemyDef> enemies = new ArrayList<>();
-            for (JsonNode e : array(n, "enemies")) {
-                enemies.add(new EncounterEnemyDef(text(e, "id"), integer(e, "qty")));
-            }
             boolean canFlee = !n.has("canFlee") || n.get("canFlee").asBoolean();
-            result.add(new EncounterDef(text(n, "id"), text(n, "name"), canFlee, enemies));
+            result.add(new EncounterDef(text(n, "id"), text(n, "name"), canFlee, text(n, "creep"), integer(n, "level")));
         }
         return result;
     }
@@ -159,7 +146,7 @@ public class JsonContentReader {
                 prereqs.add(p.asString());
             }
             result.add(new QuestDef(text(n, "id"), text(n, "title"), text(n, "description"),
-                    optText(n, "giver"), optText(n, "rewardItem"), optInt(n, "rewardXp", 0),
+                    optText(n, "giver"), optText(n, "rewardItem"), optInt(n, "rewardShards", 0),
                     optInt(n, "rewardGold", 0), n.path("isMain").asBoolean(false), prereqs));
         }
         return result;

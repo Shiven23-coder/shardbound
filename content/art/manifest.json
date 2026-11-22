@@ -18,12 +18,105 @@
     "npc.brann": {
       "sheet": "ninja-adventure/eldmere/actors/Master/SpriteSheet.png",
       "faceset": "ninja-adventure/eldmere/actors/Master/Faceset.png"
+    },
+    "creep.mire_slime": {
+      "sheet": "ninja-adventure/eldmere/monsters/MireSlime/SpriteSheet.png",
+      "faceset": "ninja-adventure/eldmere/monsters/MireSlime/Faceset.png"
+    },
+    "creep.storm_rat": {
+      "sheet": "ninja-adventure/eldmere/monsters/StormRat/SpriteSheet.png",
+      "faceset": "ninja-adventure/eldmere/monsters/StormRat/Faceset.png"
+    },
+    "creep.hired_blade": {
+      "sheet": "ninja-adventure/eldmere/actors/FighterWhite/SpriteSheet.png",
+      "faceset": "ninja-adventure/eldmere/actors/FighterWhite/Faceset.png"
     }
   },
   "actorShadow": "ninja-adventure/eldmere/actors/Shadow.png",
   "sheetLayout": {
     "description": "Ninja Adventure character sheets: one column per facing; the first four rows are the walk cycle.",
-    "columns": { "DOWN": 0, "UP": 1, "LEFT": 2, "RIGHT": 3 },
-    "walkRows": [0, 1, 2, 3]
+    "columns": {
+      "DOWN": 0,
+      "UP": 1,
+      "LEFT": 2,
+      "RIGHT": 3
+    },
+    "walkRows": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "effects": {
+    "fx.cut": {
+      "sheet": "ninja-adventure/eldmere/fx/Cut.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frames": 4,
+      "frameRate": 14
+    },
+    "fx.claw": {
+      "sheet": "ninja-adventure/eldmere/fx/Claw.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frames": 4,
+      "frameRate": 14
+    },
+    "fx.flame": {
+      "sheet": "ninja-adventure/eldmere/fx/Flam.png",
+      "frameWidth": 25,
+      "frameHeight": 30,
+      "frames": 8,
+      "frameRate": 16
+    },
+    "fx.ice": {
+      "sheet": "ninja-adventure/eldmere/fx/Ice.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frames": 10,
+      "frameRate": 18
+    },
+    "fx.spark": {
+      "sheet": "ninja-adventure/eldmere/fx/Spark.png",
+      "frameWidth": 30,
+      "frameHeight": 35,
+      "frames": 9,
+      "frameRate": 16
+    },
+    "fx.smoke": {
+      "sheet": "ninja-adventure/eldmere/fx/Smoke.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frames": 6,
+      "frameRate": 12
+    },
+    "fx.heal": {
+      "sheet": "ninja-adventure/eldmere/fx/CircleSpark.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frames": 6,
+      "frameRate": 12
+    }
+  },
+  "battleBackdrop": {
+    "description": "The battle backdrop strip by tools/art/backdrop.mjs (P-57): a treeline above tileable grass, repeated across the arena.",
+    "sheet": "shardbound/battle-eldmere.png",
+    "treelineHeight": 48,
+    "groundHeight": 32
+  },
+  "battleEffects": {
+    "description": "Which effect plays for what in battle (P-57): a player's move by element, a creep's move, healing and escaping.",
+    "playerMove": {
+      "PHYSICAL": "fx.cut",
+      "FIRE": "fx.flame",
+      "FROST": "fx.ice",
+      "LIGHTNING": "fx.spark",
+      "HOLY": "fx.spark",
+      "CRYSTAL": "fx.spark"
+    },
+    "creepMove": "fx.claw",
+    "heal": "fx.heal",
+    "escape": "fx.smoke"
   }
 }

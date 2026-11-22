@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import * as backend from '../support/backend';
-import { choose, inArea, newGame, position, walkTo } from '../support/world';
+import { choose, inArea, newGame, walkTo } from '../support/world';
 
 // P-30: a reload must never lose the run. Each cycle stops the backend,
 // reloads the page while the API is down, then starts the backend again; the
@@ -42,13 +42,12 @@ test(`the run survives ${CYCLES} backend restarts with a reload during each`, as
 });
 
 // An exit stepped on while the network is down cannot reach the server. Once the
-// game reconnects, the player stands where the server last saw them, so walking
-// onto the exit again takes them through.
-test('an exit tried while offline works once the game reconnects', async ({ page, context }) => {
+// game reconnects, the client sends the same request again with the same
+// idempotency key (P-56), so the exit simply goes through, once.
+test('an exit tried while offline goes through once the game reconnects', async ({ page, context }) => {
   await newGame(page, `e2e-offline-${Date.now() % 1e9}`);
   await choose(page, 'Help Corvin lash down his wagon');
   await inArea(page, 'Cottage Lane');
-  const home = (await position(page))!;
 
   await context.setOffline(true);
   await walkTo(page, 'keyboard', 'to_ruins').catch(() => undefined);   // the exit is sent and fails: no next area
@@ -57,7 +56,5 @@ test('an exit tried while offline works once the game reconnects', async ({ page
   await context.setOffline(false);
   await expect(reconnecting).toBeHidden({ timeout: 30_000 });
 
-  await expect.poll(() => position(page), { message: 'back where the server last saw the player' }).toEqual(home);
-  await walkTo(page, 'keyboard', 'to_ruins');
   await inArea(page, 'The Old Ruins');
 });

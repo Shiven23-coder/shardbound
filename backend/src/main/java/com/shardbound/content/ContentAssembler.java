@@ -2,14 +2,14 @@ package com.shardbound.content;
 
 import com.shardbound.achievement.Achievement;
 import com.shardbound.achievement.AchievementManager;
-import com.shardbound.combat.Encounter;
-import com.shardbound.combat.EncounterSlot;
-import com.shardbound.combat.EnemyTemplate;
+import com.shardbound.battle.BattleContent;
+import com.shardbound.battle.CreepTemplate;
+import com.shardbound.battle.Encounter;
+import com.shardbound.battle.Skill;
 import com.shardbound.content.RawContent.ChoiceDef;
 import com.shardbound.content.RawContent.DialogueDef;
 import com.shardbound.content.RawContent.EntryDef;
 import com.shardbound.content.RawContent.EncounterDef;
-import com.shardbound.content.RawContent.EncounterEnemyDef;
 import com.shardbound.content.RawContent.EndingDef;
 import com.shardbound.content.RawContent.ItemDef;
 import com.shardbound.content.RawContent.NodeDef;
@@ -31,6 +31,7 @@ import com.shardbound.dialogue.Dialogue;
 import com.shardbound.dialogue.DialogueGraph;
 import com.shardbound.dialogue.DialogueNode;
 import com.shardbound.dialogue.NodeType;
+import com.shardbound.progression.ProgressionRules;
 import com.shardbound.world.World;
 import com.shardbound.world.WorldRules;
 
@@ -52,25 +53,28 @@ import java.util.Set;
  */
 public class ContentAssembler {
 
-    public GameContent assemble(RawContent raw, World world, WorldRules worldRules) {
+    public GameContent assemble(RawContent raw, World world, WorldRules worldRules, BattleContent battle,
+                                ProgressionRules progression) {
         checkFactions(raw);
         Map<String, Npc> npcs = buildNpcs(raw);
         Map<String, Item> items = buildItems(raw);
-        Map<String, EnemyTemplate> enemies = buildEnemies(raw);
-        Map<String, Encounter> encounters = buildEncounters(raw, enemies);
+        checkDrops(battle, items);
+        checkKit(world.start().kit(), items, battle);
+        Map<String, Encounter> encounters = buildEncounters(raw, battle);
         Map<String, Quest> quests = buildQuests(raw);
         Map<String, Achievement> achievements = buildAchievements(raw);
 
         QuestManager questManager = new QuestManager(quests, items);
-        RuleFactory rules = new RuleFactory(items, npcs, quests, questManager, raw.affinityCues());
+        RuleFactory rules = new RuleFactory(items, npcs, quests, questManager, raw.affinityCues(), battle.skills());
 
         Map<String, DialogueNode> nodes = buildNodes(raw);
         List<Choice> choices = buildChoices(raw, rules, nodes);
         List<Ending> endings = buildEndings(raw, rules, nodes);
         DialogueGraph graph = new DialogueGraph(nodes, choices, buildDialogues(raw, rules), resolverNodes(endings));
 
-        return new GameContent(freeze(npcs), freeze(items), freeze(enemies), freeze(encounters),
-                freeze(achievements), List.copyOf(endings), buildObjectives(raw, rules), questManager, graph, world, worldRules);
+        return new GameContent(freeze(npcs), freeze(items), freeze(encounters), freeze(achievements),
+                List.copyOf(endings), buildObjectives(raw, rules), questManager, graph, world, worldRules, battle,
+                progression);
     }
 
     // ---------------------------------------------------------------------
@@ -114,15 +118,16 @@ public class ContentAssembler {
                 if (d.weapon() == null) {
                     throw new ContentValidationException("Weapon " + d.id() + " has no weapon stats");
                 }
-                return new Weapon(d.id(), d.name(), d.description(), d.price(), Tier.valueOf(d.weapon().tier()),
-                        d.weapon().attack(), d.weapon().critPct(), d.weapon().ability());
+                RawContent.WeaponDef w = d.weapon();
+                return new Weapon(d.id(), d.name(), d.description(), d.price(), Tier.valueOf(w.tier()), w.base(),
+                        w.critPct(), w.strGrade(), w.dexGrade(), w.arcGrade(), w.ability());
             }
             case "CONSUMABLE" -> {
                 if (d.consumable() == null) {
-                    throw new ContentValidationException("Consumable " + d.id() + " has no heal/energy values");
+                    throw new ContentValidationException("Consumable " + d.id() + " has no heal/FP values");
                 }
                 return new Consumable(d.id(), d.name(), d.description(), d.price(),
-                        d.consumable().heal(), d.consumable().energy());
+                        d.consumable().heal(), d.consumable().fp());
             }
             case "KEY" -> {
                 return new KeyItem(d.id(), d.name(), d.description(), d.price());
@@ -131,26 +136,43 @@ public class ContentAssembler {
         }
     }
 
-    private Map<String, EnemyTemplate> buildEnemies(RawContent raw) {
-        Map<String, EnemyTemplate> result = new LinkedHashMap<>();
-        for (RawContent.EnemyDef e : raw.enemies()) {
-            result.put(e.id(), new EnemyTemplate(e.id(), e.name(), e.hp(), e.atk(), e.def(), e.spd(),
-                    e.xpReward(), e.goldReward(), e.ai()));
+    /** Every creep drop names a real item. O(drops). */
+    private void checkDrops(BattleContent battle, Map<String, Item> items) {
+        for (CreepTemplate creep : battle.creeps().values()) {
+            for (CreepTemplate.Drop drop : creep.drops()) {
+                if (!items.containsKey(drop.itemId())) {
+                    throw new ContentValidationException("Creep " + creep.id() + " drops unknown item " + drop.itemId());
+                }
+            }
         }
-        return result;
     }
 
-    private Map<String, Encounter> buildEncounters(RawContent raw, Map<String, EnemyTemplate> enemies) {
+    /** The starting kit: a weapon, skills marked START, consumables in the bag (P-55). */
+    private void checkKit(World.Kit kit, Map<String, Item> items, BattleContent battle) {
+        if (!(items.get(kit.weapon()) instanceof Weapon)) {
+            throw new ContentValidationException("Starting weapon " + kit.weapon() + " is not a weapon");
+        }
+        for (String skillId : kit.skills()) {
+            Skill skill = battle.skills().get(skillId);
+            if (skill == null || skill.unlock() != Skill.Unlock.START) {
+                throw new ContentValidationException("Starting skill " + skillId + " must be a skill marked START");
+            }
+        }
+        for (String itemId : kit.bag().keySet()) {
+            if (!(items.get(itemId) instanceof Consumable)) {
+                throw new ContentValidationException("Starting bag item " + itemId + " is not a consumable");
+            }
+        }
+    }
+
+    /** Each dialogue fight names a known enemy (P-54). */
+    private Map<String, Encounter> buildEncounters(RawContent raw, BattleContent battle) {
         Map<String, Encounter> result = new LinkedHashMap<>();
         for (EncounterDef e : raw.encounters()) {
-            List<EncounterSlot> slots = new ArrayList<>();
-            for (EncounterEnemyDef slot : e.enemies()) {
-                if (!enemies.containsKey(slot.enemyId())) {
-                    throw new ContentValidationException("Encounter " + e.id() + " uses unknown enemy " + slot.enemyId());
-                }
-                slots.add(new EncounterSlot(slot.enemyId(), slot.qty()));
+            if (!battle.creeps().containsKey(e.creepId())) {
+                throw new ContentValidationException("Encounter " + e.id() + " uses unknown enemy " + e.creepId());
             }
-            result.put(e.id(), new Encounter(e.id(), e.name(), e.canFlee(), slots));
+            result.put(e.id(), new Encounter(e.id(), e.name(), e.canFlee(), e.creepId(), e.level()));
         }
         return result;
     }
@@ -159,7 +181,7 @@ public class ContentAssembler {
         Map<String, Quest> result = new LinkedHashMap<>();
         for (RawContent.QuestDef q : raw.quests()) {
             result.put(q.id(), new Quest(q.id(), q.title(), q.description(), q.giverNpc(), q.rewardItem(),
-                    q.rewardXp(), q.rewardGold(), q.isMain(), q.prereqs()));
+                    q.rewardShards(), q.rewardGold(), q.isMain(), q.prereqs()));
         }
         for (Quest quest : result.values()) {
             for (String prereq : quest.prereqs()) {

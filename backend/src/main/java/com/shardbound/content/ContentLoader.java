@@ -1,5 +1,7 @@
 package com.shardbound.content;
 
+import com.shardbound.battle.BattleContent;
+import com.shardbound.progression.ProgressionRules;
 import com.shardbound.dialogue.DialogueValidator;
 import com.shardbound.exception.ContentValidationException;
 import com.shardbound.world.AreaMap;
@@ -44,6 +46,9 @@ public class ContentLoader {
         WorldReader worldReader = new WorldReader(files);
         World world = worldReader.readWorld();
         WorldRules rules = worldReader.readRules();
+        BattleContentReader battleReader = new BattleContentReader(files);
+        BattleContent battle = battleReader.readBattle();
+        ProgressionRules progression = battleReader.readProgression();
 
         DialogueValidator dialogues = new DialogueValidator(raw, flagsReadBy(world), world.start().flags().keySet(),
                 gateFlagsOf(world));
@@ -55,12 +60,12 @@ public class ContentLoader {
         }
         Set<String> dialogueIds = raw.dialogues().stream().map(RawContent.DialogueDef::id).collect(Collectors.toSet());
         Set<String> npcIds = raw.npcs().stream().map(RawContent.NpcDef::id).collect(Collectors.toSet());
-        List<String> mapErrors = new MapValidator(world, dialogueIds, npcIds).validate();
+        List<String> mapErrors = new MapValidator(world, dialogueIds, npcIds, battle.creeps().keySet()).validate();
         if (!mapErrors.isEmpty()) {
             throw new ContentValidationException("Maps failed validation", mapErrors);
         }
 
-        GameContent content = new ContentAssembler().assemble(raw, world, rules);
+        GameContent content = new ContentAssembler().assemble(raw, world, rules, battle, progression);
         content.prepareForPlay();
         LOG.info("Content loaded: {} areas, {} dialogues, {} nodes, {} items, {} quests", world.areas().size(),
                 dialogueIds.size(), content.graph().nodes().size(), content.items().size(),

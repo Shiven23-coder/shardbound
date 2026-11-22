@@ -67,15 +67,15 @@ class ActiveRunIT {
     }
 
     @Test
-    void aGameSurvivesARestartMidFight() {
+    void aGameSurvivesARestartMidBattle() {
         TestApi first = startServer();
         int player = first.profile("restart-mid-fight");
         Response created = first.post("/api/game/new", null, Map.of("playerId", player, "demoMode", false));
         String session = created.body().get("sessionId").asString();
         MutableClock clock = servers.get(0).getBean(MutableClock.class);
         JsonNode inFight = new QuickRouteDriver(first, content(), clock, session).playUntil(created.body(),
-                QuickRoute.STEPS, view -> "COMBAT".equals(view.get("mode").asString()));
-        Response hit = first.post("/api/combat/action", session, Map.of("type", "ATTACK", "target", 0));
+                QuickRoute.STEPS, view -> "BATTLE".equals(view.get("mode").asString()));
+        Response hit = first.post("/api/battle/action", session, Map.of("kind", "GUARD", "slot", 0));
         TestApi.expect(200, hit);
         servers.get(0).close();                                            // the deploy
 
@@ -83,8 +83,8 @@ class ActiveRunIT {
         Response resumed = second.get("/api/game", session);
         TestApi.expect(200, resumed);
         assertEquals(withoutToasts(hit.body()), withoutToasts(resumed.body()));
-        assertEquals("COMBAT", resumed.body().get("mode").asString(), "still in the fight: " + inFight.get("combat"));
-        TestApi.expect(200, second.post("/api/combat/action", session, Map.of("type", "ATTACK", "target", 0)));
+        assertEquals("BATTLE", resumed.body().get("mode").asString(), "still in the battle: " + inFight.get("battle"));
+        TestApi.expect(200, second.post("/api/battle/action", session, Map.of("kind", "STRIKE", "slot", 0)));
     }
 
     @Test

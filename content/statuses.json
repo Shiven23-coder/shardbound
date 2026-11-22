@@ -1,0 +1,16 @@
+{
+  "$schema": "./schema/statuses.schema.json",
+  "description": "Statuses (V2_SPEC §4.5). Turns count down at the start of the affected fighter's turn. Percentages are of the fighter's max HP; status damage ignores defence and is at least 1. 'icon' is the shape drawn beside the letter (never colour alone, §4.9).",
+  "statuses": {
+    "BLEED":  { "name": "Bleed",  "letter": "Bl", "icon": "drop",   "turns": 2, "burstPct": 12, "tickPct": 3,
+                "immuneFamilies": ["UNDEAD", "CONSTRUCT", "CRYSTALBORN"] },
+    "POISON": { "name": "Poison", "letter": "Po", "icon": "skull",  "turns": 5, "tickPct": 4,
+                "immuneFamilies": ["UNDEAD", "CONSTRUCT"] },
+    "BURN":   { "name": "Burn",   "letter": "Bu", "icon": "flame",  "turns": 3, "tickPct": 6, "removedBy": "FROST",
+                "immuneFamilies": ["ASHEN"] },
+    "FROST":  { "name": "Frost",  "letter": "Fr", "icon": "flake",  "turns": 2, "defencePct": -30, "speed": -3, "removedBy": "FIRE",
+                "immuneFamilies": [] },
+    "STUN":   { "name": "Stun",   "letter": "St", "icon": "star",   "turns": 1, "skipsTurn": true, "immuneTurnsAfter": 2,
+                "immuneFamilies": [] }
+  }
+}

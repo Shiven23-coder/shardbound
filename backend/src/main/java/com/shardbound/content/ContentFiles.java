@@ -30,6 +30,10 @@ public final class ContentFiles {
     public static final String WORLD = "world.json";
     public static final String REGIONS = "regions.json";
     public static final String BALANCE = "balance.json";
+    public static final String ELEMENTS = "elements.json";
+    public static final String STATUSES = "statuses.json";
+    public static final String SKILLS = "skills.json";
+    public static final String CREEPS = "creeps.json";
     public static final String SCHEMA_DIR = "schema/";
     public static final String DIALOGUE_DIR = "dialogue/";
     public static final String MAPS_DIR = "maps/";

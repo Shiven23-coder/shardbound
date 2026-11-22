@@ -4,11 +4,18 @@
     "area": "eldmere_cottage_lane",
     "spawn": "home",
     "dialogue": "storm_intro",
-    "flags": { "storm_night": 1 }
+    "flags": { "storm_night": 1 },
+    "kit": {
+      "weapon": "rusty_shortsword",
+      "skills": ["rending_cut", "crystal_pulse"],
+      "bag": [{ "item": "healing_draught", "qty": 3 }],
+      "gold": 15
+    }
   },
   "regions": [
     {
       "id": "eldmere", "name": "Eldmere", "music": "eldmere",
+      "respawn": { "area": "eldmere_cottage_lane", "spawn": "home" },
       "lightStates": [{ "id": "storm_night", "flag": "storm_night" }, { "id": "dawn" }]
     }
   ],

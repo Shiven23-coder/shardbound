@@ -87,7 +87,7 @@ public class AchievementManager implements GameListener {
         List<AchievementRule> all = List.of(
                 AchievementRule.of("FIRST_LIGHT", EventType.ITEM_GAINED,
                         (e, s) -> "heartshard".equals(e.text("itemId"))),
-                AchievementRule.of("FIRST_BLOOD", EventType.COMBAT_WON,
+                AchievementRule.of("FIRST_BLOOD", EventType.BATTLE_WON,
                         (e, s) -> true),
                 AchievementRule.of("SHORT_TALE", EventType.ENDING_REACHED,
                         (e, s) -> QUICK_ENDING.equals(e.text("endingId"))),

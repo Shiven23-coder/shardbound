@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class InventoryTest {
 
     private static Weapon weapon(String id, Tier tier, int attack) {
-        return new Weapon(id, id, "", 0, tier, attack, 5, null);
+        return new Weapon(id, id, "", 0, tier, attack, 5, null, null, null, null);
     }
 
     private static final Consumable POTION = new Consumable("potion", "Potion", "", 10, 15, 0);

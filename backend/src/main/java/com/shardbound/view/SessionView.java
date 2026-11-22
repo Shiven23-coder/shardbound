@@ -9,8 +9,8 @@ import java.util.List;
  * Everything the client needs to draw the current screen (V2_SPEC §8).
  * Built by engine.ViewBuilder; the client renders it as-is and never
  * computes game rules. The world is always present (it stays on screen
- * behind dialogues and fights). Nullable parts: dialogue (DIALOGUE),
- * combat (COMBAT), ending (ENDED).
+ * behind dialogues and battles). Nullable parts: dialogue (DIALOGUE),
+ * battle (BATTLE, and once more on the view where a battle ends), ending (ENDED).
  */
 public record SessionView(
         String sessionId,
@@ -25,7 +25,7 @@ public record SessionView(
         List<AffinityView> affinity,
         List<JournalView> journal,
         List<ToastView> toasts,
-        @Nullable CombatView combat,
+        @Nullable BattleView battle,
         @Nullable EndingView ending,
         @Nullable String objective,
         boolean offerReload) {
@@ -40,10 +40,10 @@ public record SessionView(
 
     public record InventoryView(int usedSlots, int capacity, List<ItemView> items) { }
 
-    /** tier/attack/critPct are null for non-weapons; heal/energy null for non-consumables. */
+    /** tier/base/critPct are null for non-weapons; heal/fp null for non-consumables. */
     public record ItemView(String id, String name, String type, String description, int qty, boolean equipped,
-                           @Nullable String tier, @Nullable Integer attack, @Nullable Integer critPct,
-                           @Nullable Integer heal, @Nullable Integer energy,
+                           @Nullable String tier, @Nullable Integer base, @Nullable Integer critPct,
+                           @Nullable Integer heal, @Nullable Integer fp,
                            boolean usable) { }
 
     public record QuestView(String id, String title, String description, String status, boolean main) { }

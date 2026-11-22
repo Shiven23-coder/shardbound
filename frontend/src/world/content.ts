@@ -1,7 +1,9 @@
 // Game data the client needs to draw and walk the world, imported from
 // ../content at build time: the art manifest (P-34), the per-region lighting
-// in grades.json, and the step timing from balance.json. Map and art files are
-// hashed into the build as URLs (P-35). No Phaser here.
+// in grades.json, and the step timing from balance.json. Map files and the
+// dialogue portraits are hashed into the build as URLs (P-35); every other art
+// file is reached through ./art, which only the Phaser chunk loads, so battle
+// art never weighs on the first page (P-57). No Phaser here.
 import manifest from '../../../content/art/manifest.json';
 import grades from '../../../content/art/grades.json';
 import balance from '../../../content/balance.json';
@@ -12,12 +14,13 @@ const mapUrls = import.meta.glob('../../../content/maps/*.tmj', {
   eager: true,
 }) as Record<string, string>;
 
-const artUrls = import.meta.glob(
-  ['../../../content/art/ninja-adventure/eldmere/**/*.png', '../../../content/art/shardbound/*.png'],
-  { query: '?url', import: 'default', eager: true },
-) as Record<string, string>;
+const facesetUrls = import.meta.glob('../../../content/art/ninja-adventure/eldmere/**/Faceset.png', {
+  query: '?url',
+  import: 'default',
+  eager: true,
+}) as Record<string, string>;
 
-const ART_PREFIX = '../../../content/art/';
+export const ART_PREFIX = '../../../content/art/';
 
 /** The URL of a map file in the build, by map key (the file name without .tmj). */
 export function mapUrl(mapKey: string): string {
@@ -26,16 +29,11 @@ export function mapUrl(mapKey: string): string {
   return url;
 }
 
-/** The URL of an art file in the build, by its path inside content/art. */
-export function artUrl(pathInArt: string): string {
-  const url = artUrls[ART_PREFIX + pathInArt];
-  if (!url) throw new Error(`No art ${pathInArt} in the build`);
+/** The URL of a portrait (an actor's faceset) in the build, by its path inside content/art. */
+export function facesetUrl(pathInArt: string): string {
+  const url = facesetUrls[ART_PREFIX + pathInArt];
+  if (!url) throw new Error(`No portrait ${pathInArt} in the build`);
   return url;
-}
-
-/** Turns a map's tileset image path ("../art/...") into a build URL. */
-export function tilesetUrl(imageInMap: string): string {
-  return artUrl(imageInMap.replace(/^\.\.\/art\//, ''));
 }
 
 export interface ActorArt {
@@ -52,6 +50,21 @@ export const actorKeys = Object.keys(manifest.actors);
 export const frameSize = manifest.frameSize;
 export const sheetLayout = manifest.sheetLayout;
 export const actorShadow = manifest.actorShadow;
+
+/** An effect strip: one row of frames (P-57). */
+export interface EffectArt {
+  sheet: string;
+  frameWidth: number;
+  frameHeight: number;
+  frames: number;
+  frameRate: number;
+}
+
+export const effectArt = manifest.effects as Record<string, EffectArt>;
+/** Which effect plays for a player's move by element, a creep's move, healing and escaping. */
+export const battleEffects = manifest.battleEffects;
+/** The battle backdrop strip: a treeline above tileable grass (P-57). */
+export const battleBackdrop = manifest.battleBackdrop;
 
 export interface LightState {
   ambient: number;

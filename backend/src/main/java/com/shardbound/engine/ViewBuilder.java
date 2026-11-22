@@ -1,7 +1,7 @@
 package com.shardbound.engine;
 
 import com.shardbound.view.ChoiceView;
-import com.shardbound.view.CombatView;
+import com.shardbound.view.BattleView;
 import com.shardbound.view.HudView;
 import com.shardbound.view.SessionView;
 import com.shardbound.view.SessionView.AffinityView;
@@ -14,10 +14,15 @@ import com.shardbound.view.SessionView.QuestView;
 import com.shardbound.view.SessionView.ReputationView;
 import com.shardbound.view.ToastView;
 import com.shardbound.view.WorldView;
-import com.shardbound.combat.CombatEngine;
-import com.shardbound.combat.CombatState;
-import com.shardbound.combat.Enemy;
-import com.shardbound.combat.Hit;
+import com.shardbound.battle.BattleContent;
+import com.shardbound.battle.BattleOutcome;
+import com.shardbound.battle.BattleState;
+import com.shardbound.battle.CreepTemplate;
+import com.shardbound.battle.Fighter;
+import com.shardbound.battle.HitLine;
+import com.shardbound.battle.Skill;
+import com.shardbound.battle.StatusRule;
+import com.shardbound.world.CreepSpawn;
 import com.shardbound.content.GameContent;
 import com.shardbound.item.Consumable;
 import com.shardbound.item.Inventory;
@@ -65,7 +70,7 @@ public class ViewBuilder {
                 s.mode() == Mode.DIALOGUE ? dialogue(s, node) : null,
                 hud(s), inventory(s), quests(s), reputation(s), affinity(s), journal(s),
                 drainToasts(s),
-                s.mode() == Mode.COMBAT ? combat(s) : null,
+                battle(s),
                 s.mode() == Mode.ENDED ? ending(s, node) : null,
                 objective(s),
                 s.offerReload());
@@ -86,16 +91,28 @@ public class ViewBuilder {
         World.Area area = world.area(p.areaId());
         AreaMap map = world.mapOf(p.areaId());
         List<WorldView.NpcView> npcs = new ArrayList<>();
+        List<WorldView.CreepView> creeps = new ArrayList<>();
         List<String> hidden = new ArrayList<>();
         for (MapObject o : map.objects()) {
-            if (!WorldObjects.active(s, p.areaId(), o)) {
-                hidden.add(o.name());
+            if (!WorldObjects.active(s, p.areaId(), o)
+                    || (o.type() == ObjectType.CREEP_SPAWN && s.creeps().isDefeated(CreepRoster.key(p.areaId(), o.name())))) {
+                hidden.add(o.name());                       // absent now, or a creep that is down until a respawn
             } else if (o.type() == ObjectType.NPC) {
                 npcs.add(new WorldView.NpcView(o.name(), o.property("npcId"), map.centre(o.x()), map.centre(o.y())));
+            } else if (o.type() == ObjectType.CREEP_SPAWN) {
+                creeps.add(creep(s, p.areaId(), map, CreepSpawn.of(o)));
             }
         }
         return new WorldView(area.id(), area.name(), area.region(), map.key(), lightState(s, world.regions().get(area.region())),
-                new WorldView.PlayerView(p.x(), p.y(), p.facing()), npcs, hidden);
+                new WorldView.PlayerView(p.x(), p.y(), p.facing()), npcs, creeps, hidden);
+    }
+
+    private WorldView.CreepView creep(GameState s, String areaId, AreaMap map, CreepSpawn spawn) {
+        String key = CreepRoster.key(areaId, spawn.name());
+        CreepTemplate template = content.battle().creeps().get(spawn.template());
+        return new WorldView.CreepView(spawn.name(), template.id(), template.name(), template.sprite(),
+                s.creeps().level(key), map.centre(spawn.object().x()), map.centre(spawn.object().y()),
+                spawn.aggroRadius(), s.creeps().wasFled(key), content.battle().rules().fleeIgnoreTiles());
     }
 
     /** The first light state whose flag is set; the last one is the default. */
@@ -141,19 +158,19 @@ public class ViewBuilder {
         var st = s.stats();
         Weapon weapon = s.inventory().equippedWeapon();
         HudView.WeaponInfo weaponInfo = weapon == null ? null
-                : new HudView.WeaponInfo(weapon.id(), weapon.name(), weapon.tier().name(), weapon.attack());
-        return new HudView(st.hp(), st.maxHp(), st.energy(), st.maxEnergy(), st.gold(), st.level(), st.xp(),
-                st.xpToNext(), st.atk(), st.def(), weaponInfo);
+                : new HudView.WeaponInfo(weapon.id(), weapon.name(), weapon.tier().name(), weapon.base());
+        return new HudView(st.hp(), st.maxHp(), st.fp(), st.maxFp(), st.gold(), st.shards(), st.level(),
+                (int) Math.round(st.derived().attackRating(weapon)), st.derived().defence(), weaponInfo);
     }
 
     /** Weapons best-first (Inventory.weaponsByTier), then everything else in pickup order. O(n log n). */
     private InventoryView inventory(GameState s) {
         Inventory inv = s.inventory();
-        boolean outsideCombat = s.mode() == Mode.WORLD || s.mode() == Mode.DIALOGUE;
+        boolean outsideBattle = s.mode() == Mode.WORLD || s.mode() == Mode.DIALOGUE;
         List<ItemView> items = new ArrayList<>();
         for (Weapon weapon : inv.weaponsByTier()) {
             items.add(new ItemView(weapon.id(), weapon.name(), "WEAPON", weapon.description(), 1,
-                    weapon.id().equals(inv.equippedWeaponId()), weapon.tier().name(), weapon.attack(),
+                    weapon.id().equals(inv.equippedWeaponId()), weapon.tier().name(), weapon.base(),
                     weapon.critPct(), null, null, false));
         }
         for (ItemStack<Item> stack : inv.stacksView()) {
@@ -162,10 +179,10 @@ public class ViewBuilder {
                 continue;
             }
             Integer heal = item instanceof Consumable c ? c.heal() : null;
-            Integer energy = item instanceof Consumable c ? c.energy() : null;
-            boolean usable = outsideCombat && item instanceof Consumable;
+            Integer fp = item instanceof Consumable c ? c.fp() : null;
+            boolean usable = outsideBattle && item instanceof Consumable;
             items.add(new ItemView(item.id(), item.name(), item.type().name(), item.description(), stack.qty(),
-                    false, null, null, null, heal, energy, usable));
+                    false, null, null, null, heal, fp, usable));
         }
         return new InventoryView(inv.usedSlots(), Inventory.CAPACITY, items);
     }
@@ -224,24 +241,52 @@ public class ViewBuilder {
         return result;
     }
 
-    private CombatView combat(GameState s) {
-        CombatState c = s.combat();
-        List<CombatView.EnemyView> enemies = new ArrayList<>();
-        for (Enemy e : c.enemiesView()) {
-            enemies.add(new CombatView.EnemyView(e.index(), e.name(), e.hp(), e.maxHp(), e.isDefending(), e.isAlive()));
+    /** The battle in progress, or (once) the battle that just ended; null otherwise. */
+    private @Nullable BattleView battle(GameState s) {
+        BattleState b = s.mode() == Mode.BATTLE ? s.battle() : s.takeFinishedBattle();
+        if (b == null) {
+            return null;
         }
-        List<CombatView.UsableItem> usable = new ArrayList<>();
+        BattleContent battle = content.battle();
+        List<BattleView.SkillView> skills = new ArrayList<>();
+        List<String> loadout = s.loadout();
+        for (int slot = 0; slot < loadout.size(); slot++) {
+            Skill skill = loadout.get(slot) == null ? null : battle.skills().get(loadout.get(slot));
+            skills.add(skill == null ? new BattleView.SkillView(slot, null, null, null, 0, null, false)
+                    : new BattleView.SkillView(slot, skill.id(), skill.name(), skill.element().name(), skill.fpCost(),
+                            skill.description(), s.stats().fp() >= skill.fpCost()));
+        }
+        List<BattleView.BagItemView> bag = new ArrayList<>();
         for (ItemStack<Item> stack : s.inventory().stacksView()) {
-            if (stack.item() instanceof Consumable) {
-                usable.add(new CombatView.UsableItem(stack.item().id(), stack.item().name(), stack.qty()));
+            if (stack.item() instanceof Consumable c) {
+                bag.add(new BattleView.BagItemView(c.id(), c.name(), stack.qty(), c.heal(), c.fp()));
             }
         }
-        List<CombatView.HitView> hits = new ArrayList<>();
-        for (Hit hit : c.lastHitsView()) {
-            hits.add(new CombatView.HitView(hit.targetIndex(), hit.amount(), hit.crit()));
+        List<BattleView.HitView> hits = new ArrayList<>();
+        for (HitLine hit : b.hits()) {
+            hits.add(new BattleView.HitView(hit.onPlayer(), hit.amount(), hit.crit(),
+                    hit.affinity() == null ? null : hit.affinity().name(),
+                    hit.status() == null ? null : hit.status().name(),
+                    hit.element() == null ? null : hit.element().name(), hit.line()));
         }
-        return new CombatView(c.encounterName(), c.round(), enemies, c.logView(), c.canFlee(),
-                CombatEngine.SKILL_COST, usable, hits);
+        BattleView.RewardsView rewards = null;
+        if (b.rewards() != null) {
+            List<String> names = b.rewards().itemIds().stream().map(id -> content.items().get(id).name()).toList();
+            rewards = new BattleView.RewardsView(b.rewards().shards(), names);
+        }
+        BattleView.MenuView menu = new BattleView.MenuView(b.canFlee(), skills, bag, s.stats().fp(), s.stats().maxFp());
+        return new BattleView(fighter(b.enemy(), battle, false), fighter(b.player(), battle, true), b.round(), b.text(),
+                b.telegraph(), menu, hits, b.outcome() == BattleOutcome.ONGOING ? null : b.outcome().name(), rewards);
+    }
+
+    private static BattleView.FighterView fighter(Fighter f, BattleContent battle, boolean player) {
+        List<BattleView.StatusView> statuses = new ArrayList<>();
+        f.statuses().active().forEach((status, turns) -> {
+            StatusRule rule = battle.status(status);
+            statuses.add(new BattleView.StatusView(status.name(), rule.name(), rule.letter(), rule.icon(), turns));
+        });
+        return new BattleView.FighterView(f.name(), f.level(), f.hp(), f.maxHp(), statuses, f.sprite(),
+                player ? null : f.family().name());
     }
 
     private EndingView ending(GameState s, DialogueNode node) {

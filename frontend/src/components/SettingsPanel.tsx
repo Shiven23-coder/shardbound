@@ -1,7 +1,10 @@
 import Modal from './Modal';
-import { updateSettings, useSettings } from '../settings/settings';
+import { BATTLE_TEXT_SPEEDS, updateSettings, useSettings } from '../settings/settings';
+import type { BattleTextSpeed } from '../settings/settings';
 
-// Sound and hints (P-41, P-42). Stored in this browser until account settings (V2a).
+const SPEED_LABELS: Record<BattleTextSpeed, string> = { slow: 'Slow', normal: 'Normal', fast: 'Fast', instant: 'Instant' };
+
+// Sound, hints and battle text speed (P-41, P-42, P-57). Stored in this browser until account settings (V2a).
 interface SettingsPanelProps {
   onClose: () => void;
 }
@@ -22,6 +25,17 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
           onChange={(effectsVolume) => updateSettings({ effectsVolume })}
         />
         <Switch label="Show hints" on={settings.hints} onChange={(hints) => updateSettings({ hints })} />
+        <fieldset className="settings-choice">
+          <legend>Battle text speed</legend>
+          {BATTLE_TEXT_SPEEDS.map((speed) => (
+            <button
+              key={speed} type="button" className={settings.battleTextSpeed === speed ? 'btn btn-small btn-primary' : 'btn btn-small'}
+              aria-pressed={settings.battleTextSpeed === speed} onClick={() => updateSettings({ battleTextSpeed: speed })}
+            >
+              {SPEED_LABELS[speed]}
+            </button>
+          ))}
+        </fieldset>
       </div>
     </Modal>
   );

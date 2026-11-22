@@ -1,11 +1,16 @@
 package com.shardbound.engine;
 
 import com.shardbound.achievement.AchievementManager;
-import com.shardbound.combat.Action;
-import com.shardbound.combat.ActionType;
-import com.shardbound.combat.CombatEngine;
-import com.shardbound.combat.CombatOutcome;
-import com.shardbound.combat.CombatState;
+import com.shardbound.battle.BattleAction;
+import com.shardbound.battle.BattleEngine;
+import com.shardbound.battle.BattleOutcome;
+import com.shardbound.battle.BattleState;
+import com.shardbound.battle.CreepTemplate;
+import com.shardbound.battle.Encounter;
+import com.shardbound.battle.Skill;
+import com.shardbound.exception.IdempotencyKeyReusedException;
+import com.shardbound.world.CreepSpawn;
+import com.shardbound.world.WorldRules;
 import com.shardbound.content.GameContent;
 import com.shardbound.dialogue.Choice;
 import com.shardbound.dialogue.Dialogue;
@@ -51,6 +56,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
+import java.util.Comparator;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
@@ -59,9 +66,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * The game's rules in motion: world events, dialogue choices, combat routing,
- * equipment, saving and loading. The web layer calls ONLY this class for
- * gameplay (D21, D22).
+ * The game's rules in motion: world events, encounters, dialogue choices,
+ * battle routing, equipment, saving and loading. The web layer calls ONLY
+ * this class for gameplay (D21, D22).
+ *
+ * <p>Idempotency (P-56): the web layer wraps every state-changing call in
+ * {@link #once}, so a repeated request applies nothing and the key is
+ * remembered in the same run write as the action.
  *
  * <p>Thread safety: one GameEngine serves every session. It holds only
  * immutable content and thread-safe collaborators; every public method that
@@ -79,7 +90,6 @@ public class GameEngine {
 
     private static final Logger LOG = LoggerFactory.getLogger(GameEngine.class);
 
-    public static final String STARTING_WEAPON = "rusty_shortsword";
     public static final int AUTOSAVE_SLOT = 0;
     public static final int FIRST_MANUAL_SLOT = 1;
     public static final int LAST_MANUAL_SLOT = 3;
@@ -89,7 +99,7 @@ public class GameEngine {
     private final World world;
     private final WorldEventValidator worldEvents;
     private final Clock clock;
-    private final CombatEngine combatEngine;
+    private final BattleEngine battleEngine;
     private final EndingResolver endingResolver;
     private final ViewBuilder views;
     private final GameSnapshots snapshots;
@@ -111,10 +121,10 @@ public class GameEngine {
         this.world = content.world();
         this.worldEvents = new WorldEventValidator(content.worldRules());
         this.clock = clock;
-        this.combatEngine = new CombatEngine(content.enemies(), content.encounters());
+        this.battleEngine = new BattleEngine(content.battle(), content.items());
         this.endingResolver = new EndingResolver(content.endings());
         this.views = new ViewBuilder(content);
-        this.snapshots = new GameSnapshots(content, combatEngine);
+        this.snapshots = new GameSnapshots(content, battleEngine);
         this.saves = saves;
         this.meta = meta;
         this.runs = runs;
@@ -145,8 +155,8 @@ public class GameEngine {
 
     /**
      * Creates a game at the start of regions.json: the start area and spawn,
-     * the start flags, the starting kit (spec §6.1) and the opening dialogue.
-     * Stores it as a new run.
+     * the start flags, the starting kit (P-55), the creeps' levels and the
+     * opening dialogue. Stores it as a new run.
      */
     public GameState newGame(int playerId, boolean demoMode) {
         return newGame(playerId, demoMode, new Random().nextLong());
@@ -154,15 +164,19 @@ public class GameEngine {
 
     /** Same, with a chosen RNG seed (tests). */
     public GameState newGame(int playerId, boolean demoMode, long seed) {
-        Inventory inventory = new Inventory();
-        inventory.add(content.items().get(STARTING_WEAPON), 1);
-        inventory.equip(STARTING_WEAPON);
         World.Start start = world.start();
+        World.Kit kit = start.kit();
+        Inventory inventory = new Inventory();
+        inventory.add(content.items().get(kit.weapon()), 1);
+        inventory.equip(kit.weapon());
+        kit.bag().forEach((itemId, qty) -> inventory.add(content.items().get(itemId), qty));
         AreaMap map = world.mapOf(start.area());
         WorldPosition position = WorldPosition.at(start.area(), map, map.spawn(start.spawn()).orElseThrow());
-        GameState s = new GameState(newSessionId(), playerId, null, position, Stats.starting(), inventory, seed,
-                demoMode, 0);
+        GameState s = new GameState(newSessionId(), playerId, null, position,
+                Stats.starting(content.progression(), kit.gold()), inventory, seed, demoMode, 0);
         s.moveTo(position, clock.millis());
+        kit.skills().forEach(s::learnSkill);
+        s.creeps().respawn(world, s.rng());
         content.questManager().initialStates(s);
         start.flags().forEach(s::setFlag);
         wireSession(s);
@@ -185,6 +199,38 @@ public class GameEngine {
             s.moveTo(s.position(), clock.millis());
             wireSession(s);
             return s;
+        });
+    }
+
+    /**
+     * Applies a state-changing action once per idempotency key (P-56): a new
+     * key runs {@code action}, which remembers the key in its run write; a
+     * repeat with the same request returns the current view and applies
+     * nothing; the same key with a different request is refused.
+     */
+    public SessionView once(GameState s, ActionKey key, Supplier<SessionView> action) {
+        synchronized (s) {
+            switch (s.recentActions().match(key)) {
+                case REPEAT -> {
+                    return views.build(s);
+                }
+                case REUSED -> throw new IdempotencyKeyReusedException();
+                case NEW -> { }
+            }
+            s.setPendingKey(key);
+            try {
+                return action.get();
+            } finally {
+                s.setPendingKey(null);
+            }
+        }
+    }
+
+    /** The same for an action with no view to return (saving to a slot). */
+    public void once(GameState s, ActionKey key, Runnable action) {
+        once(s, key, () -> {
+            action.run();
+            return views.build(s);
         });
     }
 
@@ -247,6 +293,50 @@ public class GameEngine {
             openDialogue(s, target.property("dialogue"));
             return persistAndView(s);
         }
+    }
+
+    /**
+     * The player came within a creep's aggro radius (V2_SPEC §4.2): after
+     * checks 1–4, the server picks the first living creep within its radius
+     * of the validated position (ties to the lowest object name), skipping one
+     * the player recently fled from (P-54); it must be the creep the client
+     * named. The battle starts.
+     */
+    public SessionView encounter(GameState s, String creepId, int x, int y, Facing facing) {
+        synchronized (s) {
+            WorldPosition last = s.position();
+            AreaMap map = requireWorld(s);
+            long now = clock.millis();
+            int[] tile = worldEvents.checkPosition(map, WorldObjects.collision(s, last.areaId(), map), last,
+                    now - s.lastWorldEventMillis(), x, y);
+            CreepSpawn creep = engagedCreep(s, map, last.areaId(), tile, now)
+                    .filter(c -> c.name().equals(creepId))
+                    .orElseThrow(() -> new WorldEventRejectedException("Nothing attacks you there.", last));
+            s.moveTo(new WorldPosition(last.areaId(), x, y, facing), now);
+            String key = CreepRoster.key(last.areaId(), creep.name());
+            CreepTemplate template = content.battle().creeps().get(creep.template());
+            s.setBattle(battleEngine.start(s, template, s.creeps().level(key), key, null, true));
+            s.setMode(Mode.BATTLE);
+            return persistAndView(s);
+        }
+    }
+
+    /** The first living, attentive creep within its aggro radius of {@code tile}, by object name. */
+    private Optional<CreepSpawn> engagedCreep(GameState s, AreaMap map, String areaId, int[] tile, long now) {
+        long ignoreMillis = fleeIgnoreMillis();
+        return map.objectsOf(ObjectType.CREEP_SPAWN).stream()
+                .filter(o -> WorldObjects.active(s, areaId, o))
+                .map(CreepSpawn::of)
+                .filter(c -> !s.creeps().isDefeated(CreepRoster.key(areaId, c.name())))
+                .filter(c -> !s.creeps().ignores(CreepRoster.key(areaId, c.name()), now, ignoreMillis))
+                .filter(c -> c.distanceTo(tile[0], tile[1]) <= c.aggroRadius())
+                .min(Comparator.comparing(CreepSpawn::name));
+    }
+
+    /** How long a creep fled from ignores the player: time to walk {@code ignoreTiles} out and back (P-54). */
+    private long fleeIgnoreMillis() {
+        WorldRules rules = content.worldRules();
+        return Math.round(2.0 * content.battle().rules().fleeIgnoreTiles() * rules.stepMs() / rules.speedTolerance());
     }
 
     /** Check 1: world events only in WORLD mode. Returns the current area's map. */
@@ -313,8 +403,10 @@ public class GameEngine {
         switch (n.type()) {
             case TEXT -> { }
             case COMBAT -> {
-                s.setCombat(combatEngine.start(s, n.encounterId()));
-                s.setMode(Mode.COMBAT);
+                Encounter encounter = content.encounters().get(n.encounterId());
+                s.setBattle(battleEngine.start(s, content.battle().creeps().get(encounter.creepId()), encounter.level(),
+                        null, encounter.id(), encounter.canFlee()));
+                s.setMode(Mode.BATTLE);
             }
             case RESOLVER -> enterNode(s, endingResolver.resolve(s).nodeId());
             case ENDING -> finish(s, n);
@@ -345,49 +437,103 @@ public class GameEngine {
     }
 
     // =====================================================================
-    // Combat (spec §6.6, D21)
+    // Battles (V2_SPEC §4.7, D21, P-55)
     // =====================================================================
 
     /**
-     * One combat round, then routing on the outcome: WON → win_node,
-     * LOST → lose_node, FLED → flee_node or lose_node.
+     * One battle round, then routing on the outcome. A creep's battle returns
+     * to the world (won: the creep stays down; fled: it ignores the player for
+     * a while; lost: the interim respawn). A dialogue fight goes to its win,
+     * lose or flee node. The view of the last round is shown once.
      */
-    public SessionView combatAction(GameState s, Action action) {
+    public SessionView battleAction(GameState s, BattleAction action) {
         synchronized (s) {
-            requireMode(s, Mode.COMBAT, "You are not in a fight.");
-            checkCombatAction(s, action);
-            DialogueNode node = graph.node(s.currentNode());
-            boolean boss = s.combat().hasBoss();
-            CombatOutcome outcome = combatEngine.act(s, action);
-            switch (outcome) {
-                case ONGOING -> { }
-                case WON -> leaveCombat(s, node.winNode(), false);
-                case LOST -> leaveCombat(s, node.loseNode(), boss);
-                case FLED -> leaveCombat(s, node.fleeNode() != null ? node.fleeNode() : node.loseNode(), false);
+            requireMode(s, Mode.BATTLE, "You are not in a battle.");
+            checkBattleAction(s, action);
+            BattleState battle = s.battle();
+            BattleOutcome outcome = battleEngine.act(s, action);
+            if (outcome != BattleOutcome.ONGOING) {
+                s.setBattle(null);
+                s.setFinishedBattle(battle);
+                if (battle.creepRef() != null) {
+                    endCreepBattle(s, battle.creepRef(), outcome);
+                } else {
+                    endDialogueBattle(s, battle.encounterId(), outcome);
+                }
             }
             return persistAndView(s);
         }
     }
 
-    /** Rejects actions the current fight does not allow (409, D27). */
-    private void checkCombatAction(GameState s, Action action) {
-        CombatState combat = s.combat();
-        if (action.type() == ActionType.FLEE && !combat.canFlee()) {
-            throw new ActionNotAllowedException("There is no escape from this fight.");
-        }
-        if (action.type() == ActionType.SKILL && s.stats().energy() < CombatEngine.SKILL_COST) {
-            throw new ActionNotAllowedException("Not enough energy for Crystal Pulse.");
-        }
-        if (action.type() == ActionType.ITEM && !(s.inventory().get(action.itemId()) instanceof Consumable)) {
-            throw new ActionNotAllowedException("You have no usable item like that.");
+    /** Rejects actions the current battle does not allow (409, D27). */
+    private void checkBattleAction(GameState s, BattleAction action) {
+        switch (action.kind()) {
+            case FLEE -> {
+                if (!s.battle().canFlee()) {
+                    throw new ActionNotAllowedException("There is no escape from this battle.");
+                }
+            }
+            case SKILL -> {
+                String skillId = action.slot() >= 0 && action.slot() < GameState.LOADOUT_SLOTS
+                        ? s.loadout().get(action.slot()) : null;
+                if (skillId == null) {
+                    throw new ActionNotAllowedException("There is no skill in that slot.");
+                }
+                Skill skill = battleEngine.skill(skillId);
+                if (s.stats().fp() < skill.fpCost()) {
+                    throw new ActionNotAllowedException("Not enough FP for " + skill.name() + ".");
+                }
+            }
+            case ITEM -> {
+                if (action.itemId() == null || !(s.inventory().get(action.itemId()) instanceof Consumable)) {
+                    throw new ActionNotAllowedException("You have no usable item like that.");
+                }
+            }
+            case STRIKE, GUARD -> { }
         }
     }
 
-    private void leaveCombat(GameState s, String nextNode, boolean bossLoss) {
-        s.setCombat(null);
+    private void endCreepBattle(GameState s, String creepRef, BattleOutcome outcome) {
+        switch (outcome) {
+            case WON -> s.creeps().markDefeated(creepRef);
+            case FLED -> s.creeps().markFled(creepRef, clock.millis());
+            case LOST -> wakeAtRespawn(s);
+            case ONGOING -> throw new IllegalStateException("The battle is still on");
+        }
+        s.setMode(Mode.WORLD);
+        s.moveTo(s.position(), clock.millis());          // walking time counts from here
+    }
+
+    /**
+     * Defeat by a creep until Lanterns exist (P-55): the player wakes at the
+     * region's respawn point with full HP and FP, the creeps respawn with new
+     * levels, and held Shards are kept. V5 changes the place (last Lantern)
+     * and turns the held Shards into Lost Shards.
+     */
+    private void wakeAtRespawn(GameState s) {
+        String region = world.area(s.position().areaId()).region();
+        World.Place place = world.regions().get(region).respawn();
+        AreaMap map = world.mapOf(place.area());
+        s.moveTo(WorldPosition.at(place.area(), map, map.spawn(place.spawn()).orElseThrow()), clock.millis());
+        s.stats().restoreAll();
+        s.creeps().respawn(world, s.rng());
+        s.addToast(new Toast("BATTLE", "You wake at home, bruised."));
+    }
+
+    /** A dialogue fight (P-37) goes on in its dialogue; a loss leaves the player at half HP (P-55). */
+    private void endDialogueBattle(GameState s, String encounterId, BattleOutcome outcome) {
+        DialogueNode node = graph.node(s.currentNode());
+        String next = switch (outcome) {
+            case WON -> node.winNode();
+            case LOST -> {
+                s.stats().setHp(s.stats().maxHp() * content.battle().rules().dialogueLossHpPct() / 100);
+                yield node.loseNode();
+            }
+            case FLED -> node.fleeNode() != null ? node.fleeNode() : node.loseNode();
+            case ONGOING -> throw new IllegalStateException("The battle " + encounterId + " is still on");
+        };
         s.setMode(Mode.DIALOGUE);
-        s.setOfferReload(bossLoss);
-        enterNode(s, nextNode);
+        enterNode(s, next);
     }
 
     // =====================================================================
@@ -396,7 +542,7 @@ public class GameEngine {
 
     public SessionView equip(GameState s, String itemId) {
         synchronized (s) {
-            requireOutsideCombat(s, "You can only change weapons outside combat.");
+            requireOutsideBattle(s, "You can only change weapons outside battle.");
             Weapon weapon = s.inventory().equip(itemId);
             if (weapon == null) {
                 throw new ActionNotAllowedException("You can only equip a weapon you own.");
@@ -409,7 +555,7 @@ public class GameEngine {
 
     public SessionView use(GameState s, String itemId) {
         synchronized (s) {
-            requireOutsideCombat(s, "Use items from the combat menu during a fight.");
+            requireOutsideBattle(s, "Use items from the BAG during a battle.");
             Item item = s.inventory().get(itemId);
             if (!(item instanceof Consumable consumable)) {
                 throw new ActionNotAllowedException("That item cannot be used.");
@@ -493,13 +639,12 @@ public class GameEngine {
         return saves.list(playerId);
     }
 
+    /** Deletes a slot; an empty slot stays empty, so a retried request changes nothing (P-56). */
     public void deleteSave(int playerId, int slot) {
         if (saves == null) {
             throw new ActionNotAllowedException("Saves are not available on this server.");
         }
-        if (!saves.delete(playerId, slot)) {
-            throw new SaveNotFoundException(playerId, slot);
-        }
+        saves.delete(playerId, slot);
     }
 
     // =====================================================================
@@ -537,14 +682,25 @@ public class GameEngine {
      */
     private void reseedAndPersist(GameState s) {
         s.reseedForSave();
+        rememberPendingKey(s, s.runVersion() + 1);
         if (runs != null) {
             s.setRunVersion(runs.update(s.sessionId(), s.runVersion(), snapshots.run(s)));
         }
     }
 
     private void storeAsNewRun(GameState s) {
+        rememberPendingKey(s, 1);
         if (runs != null) {
             s.setRunVersion(runs.replace(s.sessionId(), s.playerId(), snapshots.run(s)));
+        }
+    }
+
+    /** The action being applied is remembered in the write that applies it (P-56). */
+    private static void rememberPendingKey(GameState s, long version) {
+        ActionKey key = s.pendingKey();
+        if (key != null) {
+            s.recentActions().remember(key, version);
+            s.setPendingKey(null);
         }
     }
 
@@ -568,7 +724,7 @@ public class GameEngine {
         }
     }
 
-    private static void requireOutsideCombat(GameState s, String message) {
+    private static void requireOutsideBattle(GameState s, String message) {
         if (s.mode() != Mode.WORLD && s.mode() != Mode.DIALOGUE) {
             throw new ActionNotAllowedException(message);
         }

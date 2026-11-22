@@ -21,7 +21,7 @@ export const STEP_MS: number = balance.world.stepMs;
 export type Dir = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 export type Controls = 'keyboard' | 'touch';
 
-interface MapObject { name: string; type: string; x: number; y: number; w: number; h: number }
+interface MapObject { name: string; type: string; x: number; y: number; w: number; h: number; props: Record<string, unknown> }
 export interface WorldMap { width: number; height: number; blocked: boolean[]; walls: boolean[]; objects: MapObject[] }
 interface Position { area: string; x: number; y: number }
 /** Where the player is: the tile centre in pixels, the facing, and whether a step is under way. */
@@ -36,12 +36,13 @@ export function loadMap(area: string): WorldMap {
   const json = JSON.parse(readFileSync(path.join(ROOT, 'content', 'maps', `${area}.tmj`), 'utf8'));
   const collision = json.layers.find((l: { name: string }) => l.name === 'collision');
   const objects: MapObject[] = json.layers.find((l: { type: string }) => l.type === 'objectgroup').objects
-    .map((o: { name: string; type: string; x: number; y: number; width: number; height: number }) => ({
+    .map((o: { name: string; type: string; x: number; y: number; width: number; height: number; properties?: { name: string; value: unknown }[] }) => ({
       name: o.name, type: o.type, x: o.x / TILE, y: o.y / TILE, w: o.width / TILE, h: o.height / TILE,
+      props: Object.fromEntries((o.properties ?? []).map((p) => [p.name, p.value])),
     }));
   const walls: boolean[] = collision.data.map((gid: number) => gid !== 0);
   const blocked = [...walls];
-  for (const npc of objects.filter((o) => o.type === 'npc')) blocked[npc.y * json.width + npc.x] = true;
+  for (const actor of objects.filter((o) => o.type === 'npc' || o.type === 'creep_spawn')) blocked[actor.y * json.width + actor.x] = true;
   const map = { width: json.width, height: json.height, blocked, walls, objects };
   maps.set(area, map);
   return map;
@@ -91,6 +92,28 @@ export async function position(page: Page): Promise<Position | null> {
 export async function activeObstacles(page: Page): Promise<string[]> {
   const names = await page.locator('[data-testid="world-canvas"] canvas').getAttribute('data-obstacles');
   return names ? names.split(',') : [];
+}
+
+/**
+ * The map with every creep's aggro zone blocked too, except `target`'s: a walk
+ * to somewhere else never starts a battle by accident (V2_SPEC §4.2).
+ */
+function avoidingCreeps(map: WorldMap, target: MapObject): WorldMap {
+  const blocked = [...map.blocked];
+  for (const creep of map.objects.filter((o) => o.type === 'creep_spawn' && o !== target)) {
+    const radius = Number(creep.props.aggroRadius);
+    for (let y = creep.y - radius; y <= creep.y + radius; y++) {
+      for (let x = creep.x - radius; x <= creep.x + radius; x++) {
+        if (x >= 0 && y >= 0 && x < map.width && y < map.height) blocked[y * map.width + x] = true;
+      }
+    }
+  }
+  return { ...map, blocked };
+}
+
+/** A battle or a dialogue took over the screen. */
+export async function eventOpen(page: Page): Promise<boolean> {
+  return (await page.locator('.dialogue-box').isVisible()) || (await page.locator('.battle-box').isVisible());
 }
 
 /** The map with these obstacles' rectangles blocked (and walled) as well. */
@@ -175,7 +198,7 @@ export async function settle(page: Page, area: string, goal?: [number, number], 
       area: canvas.dataset.area ?? '', x: Number(canvas.dataset.x), y: Number(canvas.dataset.y),
       facing: canvas.dataset.facing as 'UP' | 'DOWN' | 'LEFT' | 'RIGHT', walking: canvas.dataset.walking === '1',
     });
-    const interrupted = () => read().area !== area || document.querySelector('.dialogue-box') !== null;
+    const interrupted = () => read().area !== area || document.querySelector('.dialogue-box, .battle-box') !== null;
     const started = performance.now();
     let still = { key: '', since: started };
     await new Promise<void>((resolve) => {
@@ -276,15 +299,16 @@ export async function walkTo(page: Page, controls: Controls, objectName: string)
 }
 
 async function walkWithin(page: Page, controls: Controls, start: Position, objectName: string): Promise<void> {
-  const map = withObstacles(loadMap(start.area), await activeObstacles(page));
-  const target = map.objects.find((o) => o.name === objectName);
+  const plain = withObstacles(loadMap(start.area), await activeObstacles(page));
+  const target = plain.objects.find((o) => o.name === objectName);
   if (!target) throw new Error(`${objectName} is not in ${start.area}`);
+  const map = avoidingCreeps(plain, target);
   const onTop = target.type === 'exit' || target.type === 'trigger';
   const covers = (x: number, y: number) => x >= target.x && x < target.x + target.w && y >= target.y && y < target.y + target.h;
   const near = (x: number, y: number) =>
     Math.max(Math.max(target.x - x, x - (target.x + target.w - 1), 0), Math.max(target.y - y, y - (target.y + target.h - 1), 0)) <= 1;
   const goal = (x: number, y: number) => (onTop ? covers(x, y) : near(x, y));
-  const dialogueOpen = () => page.locator('.dialogue-box').isVisible();
+  const dialogueOpen = () => eventOpen(page);
   // Walk the path; if the player stopped short (an event in flight, a server snap-back), plan again from there.
   for (let attempt = 0; attempt < 3; attempt++) {
     // No position: the scene is loading the next area, so an exit took the player on.
@@ -316,4 +340,43 @@ export async function interact(page: Page, controls: Controls): Promise<void> {
 /** Waits until the world shows this area. */
 export async function inArea(page: Page, areaName: string): Promise<void> {
   await expect(page.locator('.world-screen')).toHaveAttribute('data-area-name', areaName, { timeout: 20_000 });
+}
+
+/**
+ * Wins the battle on screen through its menu (P-57): Attack, then Strike, every
+ * round (a draught from the Bag below 40 % HP), then Continue once it has ended.
+ * Returns the outcome the screen showed.
+ */
+export async function winBattle(page: Page): Promise<string> {
+  const box = page.locator('.battle-box');
+  await expect(box).toBeVisible();
+  for (let step = 0; step < 300 && (await box.isVisible()); step++) {
+    const continueButton = box.getByRole('button', { name: 'Continue' });
+    if (await continueButton.isVisible()) {
+      await press(continueButton);
+      continue;
+    }
+    const menu = box.locator('.battle-menu');
+    if (!(await menu.isVisible())) {
+      await press(box.locator('.battle-text'));        // skip the round's text
+      await page.waitForTimeout(80);
+      continue;
+    }
+    const hp = Number(await page.locator('.battle-info-player [aria-label="HP"]').getAttribute('aria-valuenow'));
+    const maxHp = Number(await page.locator('.battle-info-player [aria-label="HP"]').getAttribute('aria-valuemax'));
+    const label = await menu.getAttribute('aria-label');
+    if (label === 'Battle menu') {
+      const bag = menu.getByRole('button', { name: /^Bag/ });
+      await press(hp * 100 < maxHp * 40 && (await bag.isEnabled()) ? bag : menu.getByRole('button', { name: /^Attack/ }));
+    } else if (label === 'attack') {
+      await press(menu.getByRole('button', { name: /^Strike/ }));
+    } else if (label === 'bag') {
+      await press(menu.getByRole('button', { name: /^Healing Draught/ }));
+    } else {
+      await press(menu.getByRole('button', { name: /^Back/ }));
+    }
+    await page.waitForTimeout(120);
+  }
+  await expect(box).toBeHidden();
+  return 'done';
 }

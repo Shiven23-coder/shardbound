@@ -53,7 +53,7 @@ describe('session header', () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(makeView({ sessionId: 'abc-123' })));
 
     await api.newGame(7, false);
-    await api.choose(1);
+    await api.choose(1, 'key-1');
 
     expect((await sentRequest(0)).headers.get('X-Session')).toBeNull();
     expect((await sentRequest(1)).headers.get('X-Session')).toBe('abc-123');
@@ -69,15 +69,25 @@ describe('session header', () => {
 });
 
 describe('requests', () => {
-  it('POSTs JSON bodies with a Content-Type header', async () => {
+  it('POSTs JSON bodies with a Content-Type header and the idempotency key', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(makeView()));
-    await api.combatAction('ITEM', 1, 'potion_small');
+    await api.battleAction({ kind: 'ITEM', slot: 0, itemId: 'healing_draught' }, 'key-7');
 
     const sent = await sentRequest(0);
-    expect(sent.path).toBe('/api/combat/action');
+    expect(sent.path).toBe('/api/battle/action');
     expect(sent.method).toBe('POST');
     expect(sent.headers.get('Content-Type')).toBe('application/json');
-    expect(JSON.parse(sent.body)).toEqual({ type: 'ITEM', target: 1, itemId: 'potion_small' });
+    expect(sent.headers.get('Idempotency-Key')).toBe('key-7');
+    expect(JSON.parse(sent.body)).toEqual({ kind: 'ITEM', slot: 0, itemId: 'healing_draught' });
+  });
+
+  it('sends an encounter with the creep and the player position', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(makeView()));
+    await api.worldEncounter('meadow_creep_b', 152, 264, 'DOWN', 'key-8');
+    const sent = await sentRequest(0);
+    expect(sent.path).toBe('/api/world/encounter');
+    expect(sent.headers.get('Idempotency-Key')).toBe('key-8');
+    expect(JSON.parse(sent.body)).toEqual({ creepId: 'meadow_creep_b', x: 152, y: 264, facing: 'DOWN' });
   });
 
   it('puts playerId in the query string for saves, achievements and endings', async () => {
@@ -94,8 +104,8 @@ describe('requests', () => {
   it('fills the slot into the path for load and delete', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(makeView()));
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
-    await api.load(2, 7);
-    await api.deleteSave(3, 7);
+    await api.load(2, 7, 'key-2');
+    await api.deleteSave(3, 7, 'key-3');
 
     expect(await sentRequest(0)).toMatchObject({ path: '/api/saves/2/load?playerId=7', method: 'POST' });
     expect(await sentRequest(1)).toMatchObject({ path: '/api/saves/3?playerId=7', method: 'DELETE' });
@@ -103,9 +113,9 @@ describe('requests', () => {
 
   it('sends world events with the player position and dialogue choices to their endpoints', async () => {
     fetchMock.mockImplementation(async () => jsonResponse(makeView()));
-    await api.worldExit('to_ruins', 312, 8, 'UP');
-    await api.worldInteract('maren', 120, 120, 'DOWN');
-    await api.choose(4);
+    await api.worldExit('to_ruins', 312, 8, 'UP', 'key-4');
+    await api.worldInteract('maren', 120, 120, 'DOWN', 'key-5');
+    await api.choose(4, 'key-6');
 
     const exit = await sentRequest(0);
     expect(exit.path).toBe('/api/world/exit');
@@ -118,7 +128,7 @@ describe('requests', () => {
 
   it('treats 204 No Content as success', async () => {
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
-    await expect(api.save(1)).resolves.toBeUndefined();
+    await expect(api.save(1, 'key-9')).resolves.toBeUndefined();
   });
 });
 
@@ -129,7 +139,7 @@ describe('errors', () => {
       409,
       'application/problem+json',
     ));
-    const err = await apiErrorFrom(api.save(1));
+    const err = await apiErrorFrom(api.save(1, 'key-10'));
 
     expect(err).toBeInstanceOf(Error);
     expect(err.status).toBe(409);
@@ -146,7 +156,7 @@ describe('errors', () => {
       409,
       'application/problem+json',
     ));
-    const err = await apiErrorFrom(api.worldExit('to_ruins', 312, 8, 'UP'));
+    const err = await apiErrorFrom(api.worldExit('to_ruins', 312, 8, 'UP', 'key-11'));
 
     expect(err.code).toBe('WORLD_EVENT_REJECTED');
     expect(err.lastPosition).toEqual({ areaId: 'eldmere_cottage_lane', x: 120, y: 168, facing: 'DOWN' });
@@ -158,7 +168,7 @@ describe('errors', () => {
       409,
       'application/problem+json',
     ));
-    const err = await apiErrorFrom(api.worldExit('to_ruins', 312, 8, 'UP'));
+    const err = await apiErrorFrom(api.worldExit('to_ruins', 312, 8, 'UP', 'key-11'));
     expect(err.lastPosition).toBeUndefined();
   });
 

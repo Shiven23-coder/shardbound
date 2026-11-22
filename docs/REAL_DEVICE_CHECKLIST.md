@@ -11,7 +11,7 @@ One manual run per region on a phone of the target class: mid-range Android, abo
 6. Set screen brightness to about **50 %** and turn adaptive brightness off.
 7. When done, stop with Ctrl+C. Nothing stays open on the network.
 - Start a **New game** with a fresh profile.
-- **[core]** marks the 10 checks that matter most: do them first, in both orientations, if time is short.
+- **[core]** marks the 13 checks that matter most: do them first, in both orientations, if time is short.
 - Play the sections below **upright (portrait, the main phone layout) and sideways (landscape)**; tick each box for both, or note which one failed. Rotating mid-game is allowed and should switch the layout at once (P-40).
 
 ## Eldmere (V3)
@@ -71,20 +71,29 @@ One manual run per region on a phone of the target class: mid-range Android, abo
 - [ ] Opening dialogue → Cottage Lane → the Old Ruins → take the Heartshard → back to the lane → the Square.
 - [ ] The dawn text plays once on entering the Square, and not again.
 - [ ] Mill Road from the Square and back; the millstone and the ford sign answer.
-- [ ] **[core]** Corvin's offer → follow him → the alley → the fight → the ending (END_QUICK).
+- [ ] **[core]** Corvin's offer → follow him → the alley → the battle with the Hired Blade → the ending (END_QUICK).
 - [ ] Signs, the cottage door and the obstacles open as a message box (■, no choice button) that a tap closes.
 - [ ] Helping Corvin on the storm night shows "Corvin will remember that." (no numbers); the Bag still shows the affinity number.
 - [ ] Pushing hard into a fence, a wall or Tanner's crates never carries the player through, even when the phone stutters.
 
 ### Resilience
 - [ ] Lock the phone mid-walk for a minute, unlock: the game continues where it was.
-- [ ] **[core]** Turn Wi-Fi off, try to walk through an exit, turn it back on: "Reconnecting…" shows, then the game resumes.
+- [ ] **[core]** Turn Wi-Fi off, try to walk through an exit, turn it back on: "Reconnecting…" shows, then the exit goes through (sent again with its key, P-56), once.
 - [ ] Reload the page in the Square: the run resumes in the Square at the same place.
 
 ### Performance (feel)
 - [ ] **[core]** Walking is smooth (no visible stutter) in each area, in rain and at dawn.
 - [ ] The first area loads within about 2 seconds after the opening dialogue; later areas within about 1.5 seconds.
 - [ ] The phone does not get noticeably warm after ten minutes.
+
+### Battles (V4)
+- [ ] **[core]** **Portrait:** walking up to a meadow creep starts the battle: the enemy's box and sprite at the top, yours below, the text and ATTACK · SKILLS · BAG · FLEE in the deck; every button is easy to hit with a thumb.
+- [ ] **[core]** **Landscape:** the same battle fits the screen with the text box and menu along the bottom; nothing is cut off or covered.
+- [ ] **[core]** A round's text is easy to read at the default speed; one tap skips the rest of the round; each hit (lunge, effect, flash, number) plays with the line that announces it.
+- [ ] Skills show their FP cost and element; Back returns; the Bag heals; Flee works or fails with a line.
+- [ ] Battle text speed in Settings changes the pace (Slow to Instant); with Reduce motion on there is no shake or flash.
+- [ ] The battle music starts near a creep without a gap and stops after the battle; the victory and defeat stings play.
+- [ ] Losing to a creep wakes you at home with full HP; Shards are kept.
 
 ### Record
 | Item | Value |

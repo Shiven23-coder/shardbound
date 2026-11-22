@@ -7,7 +7,7 @@ Why the specs say what they say. `docs/V2_SPEC.md` is the source of truth for **
 - **D20–D32** came from the review of the v1 ER and class diagrams.
 - **I1–I12** are implementation choices made while building v1.
 - **V-01 … V-35** are the v2 design decisions.
-- **P-01 … P-53** are the platform reset (Phase P0) and its follow-ups: the project became a public game, and these entries win over anything older.
+- **P-01 … P-57** are the platform reset (Phase P0) and its follow-ups: the project became a public game, and these entries win over anything older.
 - Old entries are never deleted. Where a later decision changes an earlier one, the earlier entry says so ("Revised by" or "Superseded by").
 
 Format for each entry: **Problem** → **Decision** → **Why** → **Where in spec**.
@@ -911,6 +911,8 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 
 **Why.** Keeping the keys in the run row makes "applied" and "remembered" one atomic write, so a retry after any failure is safe.
 
+**Revised by** P-56 (only the key, the request's hash and the run version are stored).
+
 **Spec.** §4.12, §12 (V4).
 
 ---
@@ -1248,3 +1250,125 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 **Why.** A phone game should own the whole screen, and a held button should only walk.
 
 **Spec.** §4.16.
+
+---
+
+## P-54 — Battle rules for V4
+
+**Problem.** V2_SPEC §4.2 and §4.5–4.7 leave gaps a battle engine must close: how creeps attack and choose moves, the element of Strike, how long Guard lasts, turn order under Frost, status edge cases, the flee "ignore" rule without per-step reporting, and how many enemies a battle has.
+
+**Decision.**
+- **1 v 1.** A battle is the player against one creep, or against the single enemy of a dialogue encounter.
+- **Moves.** Strike is a Physical weapon move with power 1.0. A creep move's raw damage is `atk × power`. Creeps crit at 5 % (`balance.json`). Each creep has weighted moves (`creeps.json`), chosen with the run's seeded RNG.
+- **AI strategies:**
+  - `AGGRESSIVE`: weighted picks.
+  - `DEFENSIVE`: Guards once below 30 % HP.
+  - `AFFLICTER`: prefers a status move whose status the player does not carry.
+- **Telegraphs come forward from V7.** A move with `telegraph: true` is announced in the battle text one enemy turn early and executed on the enemy's next turn. Guard cuts it to ×0.25, other hits to ×0.5. Guard lasts until the guarder's next turn.
+- **Turn order** is rebuilt every round from current speed, so Frost's −3 counts. The player goes first on ties.
+- **Statuses:**
+  - Statuses tick at the start of their owner's turn, and a tick can end the battle.
+  - An immune hit (×0) applies no status.
+  - Status damage ignores defence and is at least 1.
+- **Flee** uses current speeds with the v1 chance (50 % ± 5 % per speed point, 10–90 %). A creep the player fled from ignores them:
+  - the client re-arms its aggro only after the player has been at least `aggroRadius + 3` tiles away;
+  - the server accepts a new encounter with it only after enough time to walk three tiles out and back (`2 × 3 × stepMs ÷ speedTolerance`).
+- **Encounter lookup.** The server picks the first living, non-ignored creep within Chebyshev `aggroRadius` of the validated position (ties go to the lowest object name). The request's `creepId` must name that creep. The lookup is a linear scan of the area's creeps; the `SpatialHash` of §4.2 waits until an area holds more than 16 creeps.
+- **Element choices for Eldmere's first creeps:**
+  - *Mire Slime* is Sylvan: weak to Fire.
+  - *Storm Rat* is Ashen, a rat touched by the crater's ash on the storm night: weak to Frost, immune to Fire, resists Crystal.
+
+  The pair teaches that the same skill can be the best or the worst choice.
+
+**Why.** Every rule is decided in content and tests rather than in the engine's guesswork, and seeded fights stay reproducible.
+
+**Spec.** §4.2, §4.5, §4.7.
+
+---
+
+## P-55 — Interim progression and recovery until V5
+
+**Problem.** The V2 battle maths needs attributes, and victory and defeat lead to Shards and Lanterns, both of which arrive in V5. V4 needs rules that V5 can replace cleanly.
+
+**Decision.**
+- **Stats:** the six attributes exist and are all fixed at 10, so the player is level 1 with 100 HP, 30 FP, DEF 10, speed 6 and the weapon's crit. Weapons get their §4.6 base values and scaling grades, with no upgrades yet. v1 XP and energy are retired: the `XP` effect becomes `SHARDS`, and save format 3 turns old XP into Shards one for one.
+- **Skills:** the player starts with **Rending Cut** and **Crystal Pulse** in a 4-slot loadout.
+  - **Ember** is earned in Eldmere: Brann teaches it once the player carries the Heartshard ("That's worth the fire").
+  - **Frost Shard** stays locked until a later region.
+  - A `LEARN_SKILL` effect fills the first empty slot.
+- **Victory:**
+  - The player gains Shards = `round(35 · level^1.45)`. They are held, shown in the HUD and saved; spending them comes in V5.
+  - The creep's drops are rolled.
+  - **FP refills to full.**
+  - The creep stays down.
+- **No HP regeneration.** HP heals only from BAG items. The starting bag holds **3 healing draughts** (40 HP each); the balance runner keeps that number within 2–3.
+- **Defeat by a creep:**
+  - The player wakes at the region's `respawn` point (Eldmere: the cottage, `home`) with full HP and FP.
+  - Creeps respawn with new levels.
+  - Held Shards are **kept**.
+
+  V5 changes two lines in `PlayerDefeat`: the place becomes `last_lantern`, and held Shards become Lost Shards.
+- **Dialogue fights** (the Hired Blade) keep their dialogue's win, lose and flee nodes. A loss sets HP to 50 %, the v1 rule.
+- **Gold** stays the story currency (Corvin's offer). V5 decides whether it merges into Shards.
+
+**Why.** The battle numbers are final from V4, and every interim rule lives in one place that V5 swaps out.
+
+**Spec.** §4.1, §4.3, §4.4, §4.6.
+
+---
+
+## P-56 — Idempotency keys in detail
+
+**Problem.** P-31 named the idea; V4 needs the exact contract.
+
+**Decision.**
+- **Client:** every state-changing request sends an `Idempotency-Key` header holding a UUID that is new per action:
+  - world exit, interact and encounter;
+  - dialogue choose;
+  - battle action;
+  - equip and use;
+  - save, load and delete.
+
+  The UUID is built with `crypto.getRandomValues`, since `randomUUID` needs a secure context and phones on the local network use plain http. Without the header the server answers `400 IDEMPOTENCY_KEY_REQUIRED`.
+- **Server:** the run keeps the last **8** actions as `{key, requestHash, runVersion}`, written in the same `active_run` update as the action itself.
+  - A repeated key with the same request hash applies nothing and returns the **current** view.
+  - The same key with a different request returns `422 IDEMPOTENCY_KEY_REUSED`.
+  - A save is remembered like any action: it writes its slot and the run, with its key, in one transaction, so a retried save does not write the slot again.
+  - Load and delete need the key too but keep no record of it: they are idempotent by nature (loading a slot twice gives the same run; deleting an empty slot succeeds).
+  - `/api/game/new` is exempt: it creates a fresh run, and an abandoned one expires.
+- **Retry:** after an outage the client re-sends the **same** request with the **same** key once the game reconnects, so an action is never lost and never applied twice. This replaces V3's snap-back after an outage (P-52).
+
+**Why.** Storing the view would bloat every run row; the key, the request's fingerprint and the run version are enough to answer a retry correctly.
+
+**Revises** P-31 (storage) and the outage rule of P-52.
+
+**Spec.** §4.12, §7.
+
+---
+
+## P-57 — Battle presentation
+
+**Problem.** The v1 fight screen was a list of buttons over the world. V4 needs the monster-battler layout on phones and desktop, with the feel of a real battle, within the budgets.
+
+**Decision.**
+- **Split:** React draws the info boxes, battle text and menus, so they are accessible and keyboard-, gamepad- and touch-friendly. A Phaser `BattleScene` in the existing world chunk draws the arena (backdrop, sprites, effects); the world scene sleeps meanwhile.
+- **Layouts:**
+  - *Portrait:* the enemy's info top-left and its sprite top-right; the player's back view bottom-left and info bottom-right; the deck below holds the battle text and **ATTACK · SKILLS · BAG · FLEE** in a 2 × 2 grid.
+  - *Landscape:* a full-screen arena with a bottom overlay.
+  - *Desktop:* a centred arena with the same overlay.
+
+  Every target is at least 48 px. Keyboard W/S/E/1–4 and Esc (back), gamepad A and B, and touch all work as in dialogue.
+- **Battle text:** a round's lines use the dialogue pager. They **auto-advance** after a short pause; one tap or E skips the rest of the round, and holding E fast-forwards. A **Battle text speed** setting offers Slow, Normal, Fast and Instant (default Fast). The menu appears when the text is done. Reduce motion turns off the typewriter, shake and flashes.
+- **Feel:**
+  - a short transition from the world (the first battle frame within 300 ms of the encounter response);
+  - a hit flash, floating damage numbers, draining HP bars;
+  - camera shake on crits;
+  - idle and attack motion;
+  - effect strips from the art manifest;
+  - status icons with a shape and a letter.
+- **Art and audio** come from the Ninja Adventure pack (monsters, effects, a human fighter for the Hired Blade, hit and magic sounds, victory and defeat stings, a battle track). The backdrop is an original composite of pack tiles made by `tools/art/backdrop.mjs`. Battle art is loaded only by the Phaser chunk, never by the first page.
+- **Audio budget:** effects plus the largest region track plus the battle track, raised to **2,048 KB**. The battle track loads **lazily**, starting when a creep comes within aggro range, and is never part of the first page load.
+
+**Why.** It is the layout the vision promises, it reads well on a phone, and it stays inside the performance budgets.
+
+**Spec.** §1, §4.7, §4.9, §4.13, §4.16.

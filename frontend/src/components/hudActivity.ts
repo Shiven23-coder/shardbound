@@ -9,16 +9,16 @@ export const CALM_MS = 4000;
 /** How long changed numbers stay visible on phones. */
 export const NUMBERS_MS = 2500;
 
-/** True when the change from `before` to `after` is something the player should see: damage, energy use, level-up. */
+/** True when the change from `before` to `after` is something the player should see: damage, FP use, level-up. */
 export function wakes(before: HudView | null, after: HudView): boolean {
   if (!before) return false;
-  return after.hp < before.hp || after.energy < before.energy || after.level > before.level;
+  return after.hp < before.hp || after.fp < before.fp || after.level > before.level;
 }
 
 /** True when any number shown in the cluster changed. */
 export function changed(before: HudView | null, after: HudView): boolean {
   if (!before) return false;
-  return after.hp !== before.hp || after.maxHp !== before.maxHp || after.energy !== before.energy
+  return after.hp !== before.hp || after.maxHp !== before.maxHp || after.fp !== before.fp
     || after.level !== before.level;
 }
 

@@ -1,0 +1,18 @@
+{
+  "$schema": "./schema/creeps.schema.json",
+  "description": "Enemies (V2_SPEC §4.2, P-54): base stats at level 1, scaled per level by balance.json battle.creepScaling. 'sprite' is an art manifest key. Moves are skills, picked by weight; 'ai' is the strategy. Drops roll on victory.",
+  "creeps": [
+    { "id": "mire_slime", "name": "Mire Slime", "family": "SYLVAN", "sprite": "creep.mire_slime",
+      "baseHp": 58, "baseAtk": 10, "baseDef": 8, "baseSpd": 4, "ai": "DEFENSIVE",
+      "moves": [ { "skill": "slime_slam", "weight": 3 }, { "skill": "mire_spit", "weight": 2 } ],
+      "drops": [ { "item": "healing_draught", "pct": 25 } ] },
+    { "id": "storm_rat", "name": "Storm Rat", "family": "ASHEN", "sprite": "creep.storm_rat",
+      "baseHp": 50, "baseAtk": 12, "baseDef": 4, "baseSpd": 8, "ai": "AGGRESSIVE",
+      "moves": [ { "skill": "rat_bite", "weight": 4 }, { "skill": "rat_frenzy", "weight": 1 } ],
+      "drops": [ { "item": "energy_tonic", "pct": 25 } ] },
+    { "id": "hired_blade", "name": "Hired Blade", "family": "HUMAN", "sprite": "creep.hired_blade",
+      "baseHp": 70, "baseAtk": 13, "baseDef": 10, "baseSpd": 5, "ai": "AGGRESSIVE",
+      "moves": [ { "skill": "blade_cut", "weight": 3 }, { "skill": "heavy_swing", "weight": 1 } ],
+      "drops": [] }
+  ]
+}

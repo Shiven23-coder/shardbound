@@ -1,60 +1,66 @@
 package com.shardbound.model;
 
+import com.shardbound.engine.TestEngines;
+import com.shardbound.progression.ProgressionRules;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/** The player's stored numbers, with maximums derived from the attributes (V2_SPEC §4.3, P-55). */
 class StatsTest {
 
+    private final ProgressionRules rules = TestEngines.content().progression();
+
     @Test
-    void startingStatsMatchSpec() {                  // spec §6.1
-        Stats s = Stats.starting();
-        assertEquals(40, s.hp());
-        assertEquals(6, s.atk());
-        assertEquals(2, s.def());
-        assertEquals(5, s.spd());
-        assertEquals(3, s.energy());
-        assertEquals(15, s.gold());
+    void aNewCharacterIsLevelOneWithFullHpAndFp() {
+        Stats s = Stats.starting(rules, 15);
         assertEquals(1, s.level());
+        assertEquals(100, s.maxHp());
+        assertEquals(100, s.hp());
+        assertEquals(30, s.maxFp());
+        assertEquals(30, s.fp());
+        assertEquals(15, s.gold());
+        assertEquals(0, s.shards());
     }
 
     @Test
-    void xpIsProgressWithinTheLevelAndKeepsLeftover() {   // D29
-        Stats s = Stats.starting();
-        assertEquals(0, s.addXp(90));
-        assertEquals(1, s.addXp(30));                 // 120 ≥ 100 → level 2, 20 left
-        assertEquals(2, s.level());
-        assertEquals(20, s.xp());
-        assertEquals(200, s.xpToNext());
+    void healAndDamageStayWithinZeroAndMax() {
+        Stats s = Stats.starting(rules, 0);
+        assertEquals(30, s.damage(30));
+        assertEquals(30, s.heal(45));
+        assertEquals(100, s.hp());
+        assertEquals(100, s.damage(500));
+        assertFalse(s.isAlive());
     }
 
     @Test
-    void severalLevelsAtOnce() {
-        Stats s = Stats.starting();
-        assertEquals(2, s.addXp(100 + 200 + 50));     // level 1→2 (100), 2→3 (200), 50 left
-        assertEquals(3, s.level());
-        assertEquals(50, s.xp());
-        assertEquals(50, s.maxHp());
-        assertEquals(8, s.atk());
+    void fpIsSpentOnlyWhenThereIsEnoughAndRestoredToMax() {
+        Stats s = Stats.starting(rules, 0);
+        assertTrue(s.spendFp(25));
+        assertFalse(s.spendFp(6));
+        assertEquals(5, s.fp());
+        assertEquals(25, s.restoreFp(99));
+        assertEquals(30, s.fp());
     }
 
     @Test
-    void healClampsToMaxAndGoldNeverNegative() {
-        Stats s = new Stats(30, 0, 1, 0, 10);
-        assertEquals(10, s.heal(25));
-        assertEquals(40, s.hp());
+    void goldAndShardsNeverGoBelowZero() {
+        Stats s = Stats.starting(rules, 10);
         assertEquals(-10, s.addGold(-50));
         assertEquals(0, s.gold());
+        assertEquals(35, s.addShards(35));
+        assertEquals(-35, s.addShards(-99));
     }
 
     @Test
-    void energySpendAndRefill() {
-        Stats s = new Stats(40, 1, 1, 0, 0);
-        assertTrue(s.spendEnergy(1));
-        assertFalse(s.spendEnergy(1));
-        s.refillEnergy();
-        assertEquals(3, s.energy());
+    void restoreAllFillsHpAndFp() {
+        Stats s = Stats.starting(rules, 0);
+        s.damage(60);
+        s.spendFp(20);
+        s.restoreAll();
+        assertEquals(100, s.hp());
+        assertEquals(30, s.fp());
     }
 }

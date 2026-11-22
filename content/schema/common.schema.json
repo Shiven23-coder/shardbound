@@ -41,7 +41,7 @@
       "properties": {
         "type": {
           "enum": ["SET_FLAG", "REP", "AFFINITY", "GIVE_ITEM", "TAKE_ITEM", "START_QUEST",
-                   "COMPLETE_QUEST", "FAIL_QUEST", "HEAL", "GOLD", "XP"]
+                   "COMPLETE_QUEST", "FAIL_QUEST", "HEAL", "GOLD", "SHARDS", "LEARN_SKILL"]
         },
         "key": { "$ref": "#/$defs/nullableId" },
         "value": { "type": "integer" }

@@ -12,11 +12,17 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Map;
+import java.util.UUID;
 
-/** A tiny JSON client for integration tests: real HTTP, real headers, no Spring magic. */
+/**
+ * A tiny JSON client for integration tests: real HTTP, real headers, no Spring
+ * magic. Every POST and DELETE carries a fresh Idempotency-Key (P-56) unless a
+ * test passes its own (or none) to the keyed variants.
+ */
 public class TestApi {
 
     public static final String SESSION = "X-Session";
+    public static final String IDEMPOTENCY_KEY = "Idempotency-Key";
 
     /** Status and parsed body (NullNode when the body is empty). */
     public record Response(int status, JsonNode body) {
@@ -40,13 +46,26 @@ public class TestApi {
     }
 
     public Response post(String path, @Nullable String session, @Nullable Object body) {
+        return postKeyed(path, session, body, newKey());
+    }
+
+    /** A POST with this idempotency key, or without the header when it is null. */
+    public Response postKeyed(String path, @Nullable String session, @Nullable Object body, @Nullable String key) {
         String json = body == null ? "" : JSON.writeValueAsString(body);
-        return send(request(path, session).header("Content-Type", "application/json")
+        return send(keyed(request(path, session), key).header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(json)).build());
     }
 
     public Response delete(String path, @Nullable String session) {
-        return send(request(path, session).DELETE().build());
+        return send(keyed(request(path, session), newKey()).DELETE().build());
+    }
+
+    public static String newKey() {
+        return UUID.randomUUID().toString();
+    }
+
+    private static HttpRequest.Builder keyed(HttpRequest.Builder builder, @Nullable String key) {
+        return key == null ? builder : builder.header(IDEMPOTENCY_KEY, key);
     }
 
     /** Creates (or finds) a profile and returns its player id. */

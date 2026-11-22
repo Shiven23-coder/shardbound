@@ -2,9 +2,9 @@ import { motion } from 'framer-motion';
 import { percent } from '../utils/format';
 
 // A labelled bar whose fill animates to value/max. `kind` picks the colour
-// (hp, xp, enemy, progress). Values come straight from the GameView.
+// (hp, xp, progress). Values come straight from the GameView.
 /** Colour of the bar fill (see components.css). */
-export type StatBarKind = 'hp' | 'xp' | 'enemy' | 'progress';
+export type StatBarKind = 'hp' | 'xp' | 'progress';
 
 interface StatBarProps {
   label: string;

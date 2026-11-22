@@ -15,7 +15,6 @@ public record RawContent(
         List<NpcDef> npcs,
         AffinityCues affinityCues,
         List<ItemDef> items,
-        List<EnemyDef> enemies,
         List<EncounterDef> encounters,
         List<QuestDef> quests,
         List<AchievementDef> achievements,
@@ -29,7 +28,6 @@ public record RawContent(
         factions = List.copyOf(factions);
         npcs = List.copyOf(npcs);
         items = List.copyOf(items);
-        enemies = List.copyOf(enemies);
         encounters = List.copyOf(encounters);
         quests = List.copyOf(quests);
         achievements = List.copyOf(achievements);
@@ -52,23 +50,17 @@ public record RawContent(
     public record ItemDef(String id, String name, String type, String description, int price,
                           WeaponDef weapon, ConsumableDef consumable) { }
 
-    public record WeaponDef(String tier, int attack, int critPct, String ability) { }
+    /** Scaling grades are S … E, or null where the weapon does not scale. */
+    public record WeaponDef(String tier, int base, int critPct, @Nullable String strGrade, @Nullable String dexGrade,
+                            @Nullable String arcGrade, @Nullable String ability) { }
 
-    public record ConsumableDef(int heal, int energy) { }
+    public record ConsumableDef(int heal, int fp) { }
 
-    public record EnemyDef(String id, String name, int hp, int atk, int def, int spd,
-                           int xpReward, int goldReward, String ai) { }
-
-    public record EncounterDef(String id, String name, boolean canFlee, List<EncounterEnemyDef> enemies) {
-        public EncounterDef {
-            enemies = List.copyOf(enemies);
-        }
-    }
-
-    public record EncounterEnemyDef(String enemyId, int qty) { }
+    /** A dialogue fight: one enemy from creeps.json at a fixed level (P-37, P-54). */
+    public record EncounterDef(String id, String name, boolean canFlee, String creepId, int level) { }
 
     public record QuestDef(String id, String title, String description, String giverNpc, String rewardItem,
-                           int rewardXp, int rewardGold, boolean isMain, List<String> prereqs) {
+                           int rewardShards, int rewardGold, boolean isMain, List<String> prereqs) {
         public QuestDef {
             prereqs = List.copyOf(prereqs);
         }

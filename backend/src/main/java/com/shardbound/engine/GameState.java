@@ -1,6 +1,6 @@
 package com.shardbound.engine;
 
-import com.shardbound.combat.CombatState;
+import com.shardbound.battle.BattleState;
 import com.shardbound.event.EventBus;
 import com.shardbound.item.Inventory;
 import com.shardbound.model.Faction;
@@ -11,6 +11,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumMap;
@@ -39,6 +40,8 @@ public class GameState {
 
     public static final int AFFINITY_MIN = -100;
     public static final int AFFINITY_MAX = 100;
+    /** Skill slots in the battle menu (V2_SPEC §4.6). */
+    public static final int LOADOUT_SLOTS = 4;
 
     private final String sessionId;
     private final int playerId;
@@ -53,7 +56,13 @@ public class GameState {
     private final Map<String, Integer> affinity = new HashMap<>();
     private final Map<String, QuestStatus> quests = new HashMap<>();
     private final Deque<Step> history = new ArrayDeque<>();
-    private CombatState combat;                 // null outside combat
+    private @Nullable BattleState battle;        // the battle in progress; null outside BATTLE mode
+    private @Nullable BattleState finishedBattle; // a battle that just ended, shown once in the next view
+    private final List<String> knownSkills = new ArrayList<>();
+    private final String[] loadout = new String[LOADOUT_SLOTS];
+    private final CreepRoster creeps = new CreepRoster();
+    private final RecentActions recentActions = new RecentActions();
+    private @Nullable ActionKey pendingKey;       // the key of the action being applied, remembered on write
     private long rngSeed;
     private Random rng;
     private long sessionStartMillis;
@@ -100,7 +109,9 @@ public class GameState {
     public Mode mode()             { return mode; }
     public Stats stats()           { return stats; }
     public Inventory inventory()   { return inventory; }
-    public CombatState combat()    { return combat; }
+    public @Nullable BattleState battle() { return battle; }
+    public CreepRoster creeps()    { return creeps; }
+    public RecentActions recentActions() { return recentActions; }
     public long rngSeed()          { return rngSeed; }
     public Random rng()            { return rng; }
     public boolean demoMode()      { return demoMode; }
@@ -162,6 +173,48 @@ public class GameState {
         quests.put(questId, status);
     }
 
+    // =====================================================================
+    // Skills (V2_SPEC §4.6, P-55)
+    // =====================================================================
+
+    /** The skill in each of the four slots, null where empty. */
+    public List<String> loadout() {
+        return Collections.unmodifiableList(Arrays.asList(loadout.clone()));
+    }
+
+    public List<String> knownSkills() {
+        return List.copyOf(knownSkills);
+    }
+
+    /**
+     * Learns a skill and puts it in the first empty slot (a full loadout keeps
+     * it known; loadouts change at Lanterns in V5). Returns false if it was
+     * already known. O(1).
+     */
+    public boolean learnSkill(String skillId) {
+        if (knownSkills.contains(skillId)) {
+            return false;
+        }
+        knownSkills.add(skillId);
+        for (int i = 0; i < loadout.length; i++) {
+            if (loadout[i] == null) {
+                loadout[i] = skillId;
+                break;
+            }
+        }
+        return true;
+    }
+
+    /** Puts stored skills back (load only). */
+    void restoreSkills(List<String> known, List<String> slots) {
+        knownSkills.clear();
+        knownSkills.addAll(known);
+        Arrays.fill(loadout, null);
+        for (int i = 0; i < Math.min(slots.size(), loadout.length); i++) {
+            loadout[i] = slots.get(i);
+        }
+    }
+
     /** Queues a toast for the next SessionView. O(1). */
     public void addToast(Toast toast) {
         pendingToasts.add(toast);
@@ -210,7 +263,20 @@ public class GameState {
         this.lastWorldEventMillis = millis;
     }
     void setMode(Mode mode)                  { this.mode = mode; }
-    void setCombat(CombatState combat)       { this.combat = combat; }
+    void setBattle(@Nullable BattleState battle) { this.battle = battle; }
+
+    /** A battle that just ended: the next view shows its last round once. */
+    void setFinishedBattle(@Nullable BattleState finished) { this.finishedBattle = finished; }
+
+    /** Takes the just-ended battle for one view (like toasts). */
+    @Nullable BattleState takeFinishedBattle() {
+        BattleState finished = finishedBattle;
+        finishedBattle = null;
+        return finished;
+    }
+
+    @Nullable ActionKey pendingKey()          { return pendingKey; }
+    void setPendingKey(@Nullable ActionKey key) { this.pendingKey = key; }
     void setBus(EventBus bus)                { this.bus = bus; }
     void setOfferReload(boolean offer)       { this.offerReload = offer; }
     int endingSeconds()                      { return endingSeconds; }

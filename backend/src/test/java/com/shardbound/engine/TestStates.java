@@ -22,7 +22,7 @@ public final class TestStates {
 
     public static GameState fresh(long seed, boolean demoMode) {
         GameState state = new GameState("test-session", 1, "p01",
-                new WorldPosition("eldmere_cottage_lane", 120, 168, Facing.DOWN), Stats.starting(), new Inventory(), seed,
+                new WorldPosition("eldmere_cottage_lane", 120, 168, Facing.DOWN), Stats.starting(TestEngines.content().progression(), 15), new Inventory(), seed,
                 demoMode, 0);
         EventBus bus = new EventBus(state);
         bus.subscribe((event, s) -> {

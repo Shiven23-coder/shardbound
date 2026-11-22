@@ -3,7 +3,7 @@
 //    their gzip budgets;
 //  - the region's maps and art stay within the asset budget, and their decoded
 //    images within the texture-memory budget;
-//  - the sound effects and the region's music stay within the audio budget (P-42, P-48);
+//  - the sound effects, the region's music and the battle music stay within the audio budget (P-42, P-48, P-57);
 //  - no dev-only code reached the bundle (the inspector, chapter select, /api/debug).
 // Budgets come from content/balance.json.
 //
@@ -55,14 +55,21 @@ const textureBytes = pack.filter((file) => file.endsWith('.png')).reduce((sum, f
 }, 0);
 check('Texture memory (Eldmere)', textureBytes / (1024 * 1024), budgets.textureMemoryMb, 'MB');
 
-// What one player downloads: every effect, plus Eldmere's music in the larger
-// of its two versions (OGG, or the AAC fallback, P-48); Eldmere has the only track so far.
+// What one player downloads: every effect, plus each track in the larger of its two versions (OGG, or the
+// AAC fallback, P-48): Eldmere's music and the battle track (P-57). Built files are named <track>-<hash>.<ext>,
+// where Vite's hash is 8 characters that may include - and _ (battle-C75rI3V-.ogg).
 const sizeOf = (file) => statSync(path.join(assetsDir, file)).size;
 const effectFiles = assets.filter((file) => EFFECT.test(file));
 const musicFiles = assets.filter((file) => MUSIC.test(file));
-if (effectFiles.length === 0 || musicFiles.length === 0) problems.push('the build is missing its sound effects or music');
-check('Audio (effects + Eldmere music)',
-  kb(effectFiles.reduce((sum, file) => sum + sizeOf(file), 0) + Math.max(0, ...musicFiles.map(sizeOf))), budgets.audioKb, 'KB');
+const trackOf = (file) => file.replace(/-[A-Za-z0-9_-]{8}\.(ogg|m4a)$/, '');
+const largestPerTrack = new Map();
+for (const file of musicFiles) largestPerTrack.set(trackOf(file), Math.max(largestPerTrack.get(trackOf(file)) ?? 0, sizeOf(file)));
+if (effectFiles.length === 0 || !largestPerTrack.has('eldmere') || !largestPerTrack.has('battle')) {
+  problems.push('the build is missing its sound effects, the Eldmere music or the battle music');
+}
+check('Audio (effects + Eldmere music + battle music)',
+  kb(effectFiles.reduce((sum, file) => sum + sizeOf(file), 0) + [...largestPerTrack.values()].reduce((a, b) => a + b, 0)),
+  budgets.audioKb, 'KB');
 
 for (const file of assets.filter((f) => f.endsWith('.js'))) {
   const code = readFileSync(path.join(assetsDir, file), 'utf8');

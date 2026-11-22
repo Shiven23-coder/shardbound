@@ -5,7 +5,7 @@
 //  - Corvin's stop on the east lane, under his lantern
 //  - the flooded west road toward the Whispering Wood: dead trees, water, a sign; the flood
 //    closes the way until the Wood opens (an obstacle, P-45)
-//  - the south meadow: reserved for two creeps (V4)
+//  - the south meadow: two creeps (V4, P-54): a Storm Rat and a Mire Slime
 //  - a secret clearing behind the south-east tree wall: reserved chest
 import {
   build, cluster, forestBorder, forestFill, makeTerrain, noise, paintEllipse, paintPath, paintRect, pathEdges, smooth,
@@ -97,8 +97,8 @@ export default function cottageLane() {
       { name: 'corvin_lantern', type: 'light', x: 27, y: 8, props: { radius: 3.4, color: '#ffc46b', intensity: 1.0 } },
       // purpose kept for later phases (map rule 2)
       { name: 'first_lantern', type: 'reserved', x: 22, y: 13, props: { for: 'lantern', phase: 'V5' } },
-      { name: 'meadow_creep_a', type: 'reserved', x: 17, y: 17, props: { for: 'creep', phase: 'V4' } },
-      { name: 'meadow_creep_b', type: 'reserved', x: 9, y: 17, props: { for: 'creep', phase: 'V4' } },
+      { name: 'meadow_creep_a', type: 'creep_spawn', x: 17, y: 17, props: { template: 'storm_rat', levelMin: 2, levelMax: 3, aggroRadius: 2 } },
+      { name: 'meadow_creep_b', type: 'creep_spawn', x: 9, y: 17, props: { template: 'mire_slime', levelMin: 1, levelMax: 2, aggroRadius: 1 } },
       { name: 'clearing_chest', type: 'reserved', x: 28, y: 18, props: { for: 'chest', phase: 'V5' } },
       { name: 'hidden_gap', type: 'reserved', x: 25, y: 15, w: 1, h: 3, props: { for: 'secret' } },
     ],

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import * as backend from '../support/backend';
 import { expectTouchTargets } from '../support/touch';
-import { choose, inArea, interact, newGame, press, walkTo, type Controls } from '../support/world';
+import { choose, inArea, interact, newGame, press, walkTo, type Controls, winBattle } from '../support/world';
 
 // The merchant route through the real UI, walking the world (V3 acceptance):
 // keyboard on desktop, the touch D-pad and interact button on a phone held
@@ -45,13 +45,9 @@ test('the merchant route reaches its ending by walking the world', async ({ page
   await walkTo(page, controls, 'alley_mouth');
   await expect(page.getByRole('heading', { name: 'The Mouth of the Alley' })).toBeVisible();
   await choose(page, 'Step into the lantern light');
-  const attack = page.locator('.combat-overlay').getByRole('button', { name: 'Attack', exact: true });
-  await expect(attack).toBeVisible();
-  if (controls === 'touch') await expectTouchTargets(page, 'a fight');
-  while (await page.locator('.combat-overlay').isVisible()) {
-    if (await attack.isEnabled()) await press(attack);
-    await page.waitForTimeout(300);
-  }
+  await expect(page.locator('.battle-box .battle-menu')).toBeVisible({ timeout: 20_000 });
+  if (controls === 'touch') await expectTouchTargets(page, 'a battle');
+  await winBattle(page);
 
   await choose(page, 'Take the hatchet');
   await choose(page, 'Take the crystal back by force');

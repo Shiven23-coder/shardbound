@@ -19,10 +19,10 @@ public record Toast(String kind, String text) {
             case REP_CHANGED -> "REP";
             case AFFINITY_CHANGED -> "AFFINITY";
             case QUEST_STARTED, QUEST_COMPLETED, QUEST_FAILED -> "QUEST";
-            case COMBAT_WON, COMBAT_LOST -> "COMBAT";
-            case LEVEL_UP -> "LEVEL";
+            case BATTLE_WON, BATTLE_LOST -> "BATTLE";
             case GOLD_CHANGED -> "GOLD";
-            case XP_GAINED -> "XP";
+            case SHARDS_GAINED -> "SHARDS";
+            case SKILL_LEARNED -> "SKILL";
             case HEALED -> "HEAL";
             default -> "INFO";
         };

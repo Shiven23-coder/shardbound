@@ -1,7 +1,6 @@
 package com.shardbound.engine;
 
-import com.shardbound.combat.Action;
-import com.shardbound.combat.ActionType;
+import com.shardbound.battle.BattleAction;
 import com.shardbound.exception.ActionNotAllowedException;
 import com.shardbound.exception.InvalidChoiceException;
 import com.shardbound.exception.LockedChoiceException;
@@ -68,7 +67,11 @@ class GameEngineTest {
         assertEquals(7 * 16 + 8, v.world().player().x());           // the centre of the home spawn
         assertEquals(10 * 16 + 8, v.world().player().y());
         assertEquals("rusty_shortsword", v.hud().weapon().id());
-        assertEquals(40, v.hud().hp());
+        assertEquals(100, v.hud().hp());                            // V2 stats: every attribute at 10 (P-55)
+        assertEquals(30, v.hud().fp());
+        assertEquals(1, v.hud().level());
+        assertEquals(3, v.inventory().items().stream().filter(i -> i.id().equals("healing_draught"))
+                .findFirst().orElseThrow().qty(), "the starting kit's draughts");
     }
 
     @Test
@@ -137,9 +140,10 @@ class GameEngineTest {
     }
 
     @Test
-    void combatRequestsOutsideCombatAreRefused() {              // D27
+    void battleRequestsOutsideBattleAreRefused() {              // D27
         GameState s = engine.newGame(0, false, 1L);
-        assertThrows(ActionNotAllowedException.class, () -> engine.combatAction(s, Action.of(ActionType.ATTACK)));
+        assertThrows(ActionNotAllowedException.class,
+                () -> engine.battleAction(s, BattleAction.of(BattleAction.Kind.STRIKE)));
     }
 
     @Test

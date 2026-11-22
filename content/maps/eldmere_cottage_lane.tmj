@@ -5338,7 +5338,7 @@
     {
      "id": 14,
      "name": "meadow_creep_a",
-     "type": "reserved",
+     "type": "creep_spawn",
      "x": 272,
      "y": 272,
      "width": 16,
@@ -5347,21 +5347,31 @@
      "visible": true,
      "properties": [
       {
-       "name": "for",
+       "name": "template",
        "type": "string",
-       "value": "creep"
+       "value": "storm_rat"
       },
       {
-       "name": "phase",
-       "type": "string",
-       "value": "V4"
+       "name": "levelMin",
+       "type": "float",
+       "value": 2
+      },
+      {
+       "name": "levelMax",
+       "type": "float",
+       "value": 3
+      },
+      {
+       "name": "aggroRadius",
+       "type": "float",
+       "value": 2
       }
      ]
     },
     {
      "id": 15,
      "name": "meadow_creep_b",
-     "type": "reserved",
+     "type": "creep_spawn",
      "x": 144,
      "y": 272,
      "width": 16,
@@ -5370,14 +5380,24 @@
      "visible": true,
      "properties": [
       {
-       "name": "for",
+       "name": "template",
        "type": "string",
-       "value": "creep"
+       "value": "mire_slime"
       },
       {
-       "name": "phase",
-       "type": "string",
-       "value": "V4"
+       "name": "levelMin",
+       "type": "float",
+       "value": 1
+      },
+      {
+       "name": "levelMax",
+       "type": "float",
+       "value": 2
+      },
+      {
+       "name": "aggroRadius",
+       "type": "float",
+       "value": 1
       }
      ]
     },

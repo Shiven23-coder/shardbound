@@ -57,7 +57,7 @@ function ItemRow({ item, onUse, busy }: ItemRowProps) {
       </div>
       <p className="weapon-stats">
         {item.heal != null && <span>Heals {item.heal}</span>}
-        {item.energy != null && <span>Energy +{item.energy}</span>}
+        {item.fp != null && item.fp > 0 && <span>FP +{item.fp}</span>}
       </p>
       {item.description && <p className="item-desc">{item.description}</p>}
       {item.usable && (

@@ -1,0 +1,15 @@
+{
+  "$schema": "./schema/elements.schema.json",
+  "description": "How much each element hurts each family (V2_SPEC §4.5): W weak, N normal, R resists, I immune.",
+  "multipliers": { "W": 1.5, "N": 1.0, "R": 0.5, "I": 0.0 },
+  "chart": {
+    "BEAST":       { "PHYSICAL": "N", "FIRE": "W", "FROST": "N", "LIGHTNING": "N", "HOLY": "N", "CRYSTAL": "R" },
+    "HUMAN":       { "PHYSICAL": "N", "FIRE": "N", "FROST": "N", "LIGHTNING": "N", "HOLY": "N", "CRYSTAL": "N" },
+    "UNDEAD":      { "PHYSICAL": "R", "FIRE": "N", "FROST": "R", "LIGHTNING": "N", "HOLY": "W", "CRYSTAL": "N" },
+    "SYLVAN":      { "PHYSICAL": "N", "FIRE": "W", "FROST": "R", "LIGHTNING": "N", "HOLY": "R", "CRYSTAL": "N" },
+    "CONSTRUCT":   { "PHYSICAL": "R", "FIRE": "R", "FROST": "N", "LIGHTNING": "W", "HOLY": "N", "CRYSTAL": "N" },
+    "ASHEN":       { "PHYSICAL": "N", "FIRE": "I", "FROST": "W", "LIGHTNING": "N", "HOLY": "N", "CRYSTAL": "R" },
+    "CRYSTALBORN": { "PHYSICAL": "N", "FIRE": "N", "FROST": "N", "LIGHTNING": "W", "HOLY": "R", "CRYSTAL": "I" },
+    "DRACONIC":    { "PHYSICAL": "R", "FIRE": "R", "FROST": "W", "LIGHTNING": "N", "HOLY": "N", "CRYSTAL": "N" }
+  }
+}

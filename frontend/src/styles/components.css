@@ -279,31 +279,6 @@
   font-size: 0.85rem;
 }
 
-.energy {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.energy-label {
-  font-size: 0.75rem;
-  color: var(--text-dim);
-  margin-right: 0.15rem;
-}
-
-.pip {
-  width: 0.8rem;
-  height: 0.8rem;
-  border-radius: 50%;
-  border: 2px solid var(--energy);
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-.pip-full {
-  background: var(--energy);
-  box-shadow: 0 0 6px var(--energy);
-}
-
 .stat-bar-head {
   display: flex;
   justify-content: space-between;
@@ -332,10 +307,6 @@
 
 .stat-bar-xp .stat-bar-fill {
   background: linear-gradient(90deg, var(--xp), var(--xp-2));
-}
-
-.stat-bar-enemy .stat-bar-fill {
-  background: linear-gradient(90deg, #b3261e, var(--hp));
 }
 
 .stat-bar-progress .stat-bar-track {
@@ -567,143 +538,6 @@
 .journal-choice {
   font-size: 0.85rem;
   color: var(--text-dim);
-}
-
-/* ---------- Combat ---------- */
-.hud-wrap {
-  position: relative;
-}
-
-.hud-wrap .damage-layer {
-  left: 0;
-  width: 12rem;
-}
-
-.combat-arena {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.combat-head {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.enemy-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: 0.75rem;
-}
-
-.enemy-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  text-align: left;
-  cursor: pointer;
-  overflow: visible;
-}
-
-.enemy-card:disabled {
-  cursor: default;
-}
-
-.enemy-selected {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent), var(--shadow);
-}
-
-.enemy-dead {
-  opacity: 0.45;
-  filter: grayscale(1);
-}
-
-.enemy-name {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem;
-  font-weight: 600;
-}
-
-.enemy-target-label {
-  position: absolute;
-  top: -0.7rem;
-  right: 0.75rem;
-  padding: 0 0.5rem;
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--accent-text);
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-.hit-flash {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: #fff;
-  mix-blend-mode: overlay;
-  pointer-events: none;
-}
-
-.damage-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 0;
-  pointer-events: none;
-  z-index: 5;
-}
-
-.damage-number {
-  position: absolute;
-  top: 0.5rem;
-  transform-origin: center;
-  font: 800 1.4rem/1 var(--font-ui);
-  color: #ff5b5b;
-  text-shadow: 0 2px 0 #000, 0 0 6px rgba(0, 0, 0, 0.6);
-  white-space: nowrap;
-}
-
-.damage-crit {
-  color: var(--gold);
-  font-size: 1.9rem;
-}
-
-.damage-crit-label {
-  display: block;
-  font-size: 0.7rem;
-  letter-spacing: 0.1em;
-}
-
-.combat-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.item-picker {
-  display: grid;
-  gap: 0.4rem;
-  max-width: 20rem;
-  margin: 0.6rem 0 0;
-  list-style: none;
-}
-
-.combat-log ol {
-  margin: 0;
-  padding-left: 1.2rem;
-  font-family: var(--font-story);
-  color: var(--text-dim);
-}
-
-.combat-log li:last-child {
-  color: var(--text);
 }
 
 /* ---------- Ending ---------- */
@@ -1088,9 +922,6 @@ body:has(.layout-landscape) .toast-layer {
     font-size: 1.05rem;
   }
 
-  .combat-buttons .btn {
-    flex: 1 1 40%;
-  }
 }
 
 /* ---------- World screen: input-aware layouts (P-40) ----------
@@ -1847,15 +1678,6 @@ body:has(.layout-landscape) .toast-layer {
   margin-right: -6.5rem;
 }
 
-/* ---------- Fights over the world (until BattleScene in V4) ---------- */
-.combat-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 14;
-  overflow-y: auto;
-  padding: max(0.75rem, env(safe-area-inset-top)) 0.75rem 0.75rem;
-  background: rgba(7, 6, 10, 0.82);
-}
 
 /* ---------- Controls and settings (P-41, P-42) ---------- */
 .modal-head {
@@ -1933,4 +1755,249 @@ body:has(.layout-landscape) .toast-layer {
   .toggle {
     min-width: 48px;
   }
+}
+
+/* ---------- Battle (P-57) ----------
+   The arena is the Phaser canvas; these sit over it. Enemy info top-left,
+   player info bottom-right of the arena; the text box and the menu over the
+   bottom (desktop, landscape) or in the control deck (portrait). */
+.battle-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 11;
+  pointer-events: none;
+}
+
+.battle-info {
+  position: absolute;
+  min-width: 11rem;
+  max-width: 46%;
+  padding: 0.45rem 0.7rem 0.55rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-small);
+  background: rgba(20, 16, 12, 0.86);
+  color: var(--text);
+  font-family: var(--font-ui);
+  box-shadow: var(--shadow);
+}
+
+.battle-info-enemy {
+  top: max(0.75rem, env(safe-area-inset-top));
+  left: max(0.75rem, env(safe-area-inset-left));
+}
+
+.battle-info-player {
+  right: max(0.75rem, env(safe-area-inset-right));
+  bottom: calc(var(--battle-cover, 0%) + 0.75rem);
+}
+
+.layout-desktop.in-battle { --battle-cover: 30%; }
+.layout-landscape.in-battle { --battle-cover: 36%; }
+
+.battle-info-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-weight: 700;
+}
+
+.battle-info-level {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.battle-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+
+.battle-bar-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.battle-bar-track {
+  flex: 1;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.battle-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.7s ease-out;           /* the bar drains */
+}
+
+.battle-bar-fill.hp-high { background: #5fbf5a; }
+.battle-bar-fill.hp-mid { background: #e1b84a; }
+.battle-bar-fill.hp-low { background: var(--danger); }
+.battle-bar-fill.fp { background: var(--energy); }
+
+.battle-info-numbers,
+.battle-fp-numbers {
+  display: block;
+  text-align: right;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.battle-fp-numbers { display: inline; }
+
+.battle-statuses {
+  display: flex;
+  gap: 0.3rem;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A status is a shape and a letter, never colour alone (§4.9). */
+.status-icon {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #1a120a;
+  background: #d8c9a8;
+}
+
+.status-drop { border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }
+.status-drop > span { transform: rotate(45deg); }
+.status-skull { border-radius: 40% 40% 30% 30%; background: #9ccf7a; }
+.status-flame { border-radius: 50% 50% 20% 20%; background: #f2a65a; }
+.status-flake { clip-path: polygon(50% 0, 63% 37%, 100% 50%, 63% 63%, 50% 100%, 37% 63%, 0 50%, 37% 37%); background: #9fd6f0; }
+.status-star { clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); background: #f5d76e; }
+
+.battle-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  color: var(--text);
+}
+
+.battle-overlay {
+  position: absolute;
+  left: 50%;
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  z-index: 12;
+  width: min(52rem, calc(100% - 1.5rem));
+  height: calc(var(--battle-cover) - 1.5rem);
+  min-height: 7.5rem;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(20, 16, 12, 0.92);
+  box-shadow: var(--shadow);
+  transform: translateX(-50%);
+}
+
+.battle-deck {
+  width: 100%;
+  padding: 0.75rem 1rem max(0.75rem, env(safe-area-inset-bottom));
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr;
+}
+
+.battle-text {
+  position: relative;
+  min-height: 3.2em;
+  font-family: var(--font-story);
+  font-size: 1.05rem;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.battle-measure {
+  position: absolute;
+  visibility: hidden;
+  inset: 0 0 auto 0;
+}
+
+.battle-prompt {
+  margin: 0;
+}
+
+.battle-telegraph {
+  margin: 0.25rem 0 0;
+  color: var(--gold);
+  font-size: 0.95rem;
+}
+
+.battle-menu {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(7rem, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  align-content: center;
+}
+
+.battle-menu-skills,
+.battle-menu-bag,
+.battle-menu-attack {
+  grid-template-columns: repeat(2, minmax(9rem, 1fr));
+}
+
+.battle-option {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.35rem 0.8rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-small);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.battle-option-highlighted {
+  border-color: var(--accent);
+  background: rgba(214, 166, 82, 0.18);
+}
+
+.battle-option:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.battle-option-detail {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+.battle-continue {
+  align-self: end;
+  min-height: 48px;
+}
+
+.layout-portrait .control-deck:has(.battle-deck) {
+  height: auto;
+  min-height: var(--deck-height);
+}
+
+/* A short landscape phone: the menu beside the text, smaller type. */
+@media (orientation: landscape) and (max-height: 480px) {
+  .battle-overlay { padding: 0.5rem 0.75rem; }
+  .battle-text { font-size: 0.95rem; }
+  .battle-info { min-width: 9rem; padding: 0.35rem 0.55rem; }
+}
+
+/* In a battle the battle text tells everything; only errors (a lost connection) still show. */
+body:has(.in-battle) .toast:not([data-kind='ERROR']) {
+  display: none;
 }

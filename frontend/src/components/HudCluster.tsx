@@ -40,7 +40,7 @@ const HudCluster = forwardRef<HTMLButtonElement, HudClusterProps>(function HudCl
   const faded = mayFade(hud, now - wokeAt, enemyNear);
   const numbers = alwaysNumbers || now < numbersUntil;
   const hpShare = hud.maxHp > 0 ? hud.hp / hud.maxHp : 0;
-  const energyShare = hud.maxEnergy > 0 ? hud.energy / hud.maxEnergy : 0;
+  const fpShare = hud.maxFp > 0 ? hud.fp / hud.maxFp : 0;
 
   const classes = ['hud-cluster'];
   if (faded) classes.push('hud-faded');
@@ -52,7 +52,7 @@ const HudCluster = forwardRef<HTMLButtonElement, HudClusterProps>(function HudCl
       ref={ref}
       type="button"
       className={classes.join(' ')}
-      aria-label={`Level ${hud.level}, HP ${hud.hp} of ${hud.maxHp}, energy ${hud.energy} of ${hud.maxEnergy}`}
+      aria-label={`Level ${hud.level}, HP ${hud.hp} of ${hud.maxHp}, FP ${hud.fp} of ${hud.maxFp}`}
       onClick={() => {
         setWokeAt(Date.now());
         setNumbersUntil(Date.now() + NUMBERS_MS);
@@ -62,10 +62,10 @@ const HudCluster = forwardRef<HTMLButtonElement, HudClusterProps>(function HudCl
         <span className="hud-level">{hud.level}</span>
         <span className="hud-meters">
           <span className="hud-meter hud-hp"><span style={{ width: `${hpShare * 100}%` }} /></span>
-          <span className="hud-meter hud-energy"><span style={{ width: `${energyShare * 100}%` }} /></span>
+          <span className="hud-meter hud-energy"><span style={{ width: `${fpShare * 100}%` }} /></span>
           {numbers && (
             <span className="hud-numbers">
-              {hud.hp}/{hud.maxHp} · EN {hud.energy}/{hud.maxEnergy}
+              {hud.hp}/{hud.maxHp} · FP {hud.fp}/{hud.maxFp}
             </span>
           )}
         </span>

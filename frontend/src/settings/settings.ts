@@ -11,9 +11,16 @@ export interface Settings {
   /** 0–100 */
   effectsVolume: number;
   hints: boolean;
+  /** How fast battle text types and moves on (P-57). */
+  battleTextSpeed: BattleTextSpeed;
 }
 
-export const DEFAULT_SETTINGS: Settings = { muted: false, musicVolume: 60, effectsVolume: 80, hints: true };
+export type BattleTextSpeed = 'slow' | 'normal' | 'fast' | 'instant';
+export const BATTLE_TEXT_SPEEDS: readonly BattleTextSpeed[] = ['slow', 'normal', 'fast', 'instant'];
+
+export const DEFAULT_SETTINGS: Settings = {
+  muted: false, musicVolume: 60, effectsVolume: 80, hints: true, battleTextSpeed: 'fast',
+};
 const KEY = 'shardbound.settings';
 
 /** Reads stored settings, keeping only known fields with valid values. */
@@ -31,6 +38,8 @@ export function parseSettings(raw: string | null): Settings {
     musicVolume: volume(stored.musicVolume, DEFAULT_SETTINGS.musicVolume),
     effectsVolume: volume(stored.effectsVolume, DEFAULT_SETTINGS.effectsVolume),
     hints: typeof stored.hints === 'boolean' ? stored.hints : DEFAULT_SETTINGS.hints,
+    battleTextSpeed: BATTLE_TEXT_SPEEDS.includes(stored.battleTextSpeed as BattleTextSpeed)
+      ? (stored.battleTextSpeed as BattleTextSpeed) : DEFAULT_SETTINGS.battleTextSpeed,
   };
 }
 

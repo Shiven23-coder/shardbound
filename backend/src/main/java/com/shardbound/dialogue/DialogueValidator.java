@@ -34,7 +34,7 @@ public class DialogueValidator {
 
     private static final Set<String> CONDITION_TYPES = Set.of("FLAG", "REP", "AFFINITY", "ITEM", "QUEST", "STAT");
     private static final Set<String> EFFECT_TYPES = Set.of("SET_FLAG", "REP", "AFFINITY", "GIVE_ITEM", "TAKE_ITEM",
-            "START_QUEST", "COMPLETE_QUEST", "FAIL_QUEST", "HEAL", "GOLD", "XP");
+            "START_QUEST", "COMPLETE_QUEST", "FAIL_QUEST", "HEAL", "GOLD", "SHARDS", "LEARN_SKILL");
     private static final Set<String> OPS = Set.of("=", "!=", ">", ">=", "<", "<=");
 
     private final RawContent raw;
@@ -52,7 +52,6 @@ public class DialogueValidator {
     private final Set<String> factions = new HashSet<>();
     private final Set<String> npcs = new HashSet<>();
     private final Set<String> encounters = new HashSet<>();
-    private final Set<String> enemies = new HashSet<>();
 
     /**
      * @param flagsReadByWorld flags map objects read ({@code showIf}, {@code hideIf}) and gates
@@ -102,7 +101,6 @@ public class DialogueValidator {
         for (var f : raw.factions()) addUnique(factions, f.id(), "faction");
         for (var n : raw.npcs()) addUnique(npcs, n.id(), "NPC");
         for (var e : raw.encounters()) addUnique(encounters, e.id(), "encounter");
-        for (var e : raw.enemies()) addUnique(enemies, e.id(), "enemy");
     }
 
     private void addUnique(Set<String> set, String id, String kind) {
@@ -229,9 +227,6 @@ public class DialogueValidator {
         }
         for (var n : raw.npcs()) {
             refOpt(factions, n.factionId(), "faction", "NPC " + n.id());
-        }
-        for (var e : raw.encounters()) {
-            for (var slot : e.enemies()) ref(enemies, slot.enemyId(), "enemy", "encounter " + e.id());
         }
     }
 

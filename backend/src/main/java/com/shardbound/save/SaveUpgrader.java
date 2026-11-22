@@ -29,7 +29,7 @@ public class SaveUpgrader {
 
     /** The upgrader this server uses. */
     public static SaveUpgrader standard() {
-        return new SaveUpgrader(SaveFormat.CURRENT_VERSION, List.of(new WorldPositionUpgrade()));
+        return new SaveUpgrader(SaveFormat.CURRENT_VERSION, List.of(new WorldPositionUpgrade(), new BattleStatsUpgrade()));
     }
 
     public int currentVersion() {

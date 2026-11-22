@@ -3,6 +3,8 @@ package com.shardbound.web;
 import com.shardbound.config.OpenApiConfig;
 import com.shardbound.exception.ActionNotAllowedException;
 import com.shardbound.exception.GameException;
+import com.shardbound.exception.IdempotencyKeyRequiredException;
+import com.shardbound.exception.IdempotencyKeyReusedException;
 import com.shardbound.exception.InvalidChoiceException;
 import com.shardbound.exception.InventoryFullException;
 import com.shardbound.exception.LockedChoiceException;
@@ -120,6 +122,8 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
             case RunConflictException ignored -> HttpStatus.CONFLICT;
             case SaveIncompatibleException ignored -> HttpStatus.CONFLICT;
             case WorldEventRejectedException ignored -> HttpStatus.CONFLICT;
+            case IdempotencyKeyRequiredException ignored -> HttpStatus.BAD_REQUEST;
+            case IdempotencyKeyReusedException ignored -> HttpStatus.UNPROCESSABLE_CONTENT;
             default -> HttpStatus.INTERNAL_SERVER_ERROR;
         };
     }

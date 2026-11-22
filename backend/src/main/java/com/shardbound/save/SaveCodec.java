@@ -55,6 +55,12 @@ public class SaveCodec {
         if (storedVersion < 2 && "STORY".equals(run.path("mode").asString())) {
             run.put("mode", "DIALOGUE");    // format 2: v1 story pages are dialogue nodes
         }
+        if (storedVersion < 3) {
+            run.remove("combat");           // format 3: a v1 fight restarts as a battle (BattleStatsUpgrade)
+            if ("COMBAT".equals(run.path("mode").asString())) {
+                run.put("mode", "BATTLE");
+            }
+        }
         return convert(run, RunSnapshot.class);
     }
 

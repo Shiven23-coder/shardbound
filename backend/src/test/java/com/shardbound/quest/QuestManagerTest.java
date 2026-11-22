@@ -30,7 +30,7 @@ class QuestManagerTest {
         for (Quest q : quests) {
             map.put(q.id(), q);
         }
-        Map<String, Item> items = Map.of("blade", new Weapon("blade", "Blade", "", 0, Tier.C, 8, 8, null));
+        Map<String, Item> items = Map.of("blade", new Weapon("blade", "Blade", "", 0, Tier.C, 36, 8, "C", "D", null, null));
         return new QuestManager(map, items);
     }
 
@@ -89,7 +89,7 @@ class QuestManagerTest {
         assertEquals(QuestStatus.COMPLETED, s.questStatus("one"));
         assertEquals(QuestStatus.AVAILABLE, s.questStatus("two"));
         assertEquals(goldBefore + 5, s.stats().gold());
-        assertEquals(10, s.stats().xp());
+        assertEquals(10, s.stats().shards());
     }
 
     @Test

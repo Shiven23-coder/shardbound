@@ -1,0 +1,6 @@
+# Reviewed false positives only (V2_SPEC §11, rule 8). Each line is a gitleaks fingerprint.
+# GameController in a9f33d0: the generic API-key rule matched the idempotency header variable followed by an
+# endpoint name, not a secret; the arguments were reordered in 7be7493. That commit's comment here quoted the
+# matched code and matched in turn, so it is listed too.
+a9f33d0991afe815e8d53dff796b98b564c1d09b:backend/src/main/java/com/shardbound/web/GameController.java:generic-api-key:116
+7be74933156c611eb074b1bb90dabc75b3468a87:.gitleaksignore:generic-api-key:2
