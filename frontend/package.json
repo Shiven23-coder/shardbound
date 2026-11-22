@@ -1,7 +1,7 @@
 {
   "name": "shardbound-frontend",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.4.0",
   "type": "module",
   "description": "Shardbound UI: renders server views and posts player intents. Types and client come from api/openapi.json.",
   "scripts": {
