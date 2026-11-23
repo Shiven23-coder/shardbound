@@ -13,6 +13,14 @@ const fromHere = (relative: string) =>
   decodeURIComponent(new URL(relative, import.meta.url).pathname).replace(/^\/([A-Za-z]:)/, '$1');   // "/S:/x" on Windows
 const phaserSource = fromHere('./node_modules/phaser/src/');
 const phaserBuild = fromHere('./src/world/phaserBuild.cjs');
+const phaserFlags = {
+  'typeof CANVAS_RENDERER': JSON.stringify(true),
+  'typeof WEBGL_RENDERER': JSON.stringify(true),
+  'typeof WEBGL_DEBUG': JSON.stringify(false),
+  'typeof FEATURE_SOUND': JSON.stringify(false),
+  'typeof PLUGIN_CAMERA3D': JSON.stringify(false),
+  'typeof PLUGIN_FBINSTANT': JSON.stringify(false),
+};
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   const apiProxy = { '/api': env.API_PROXY_TARGET || 'http://localhost:8080' };
@@ -24,13 +32,13 @@ export default defineConfig(({ mode }) => {
         { find: /^phaser-src\//, replacement: phaserSource },
       ],
     },
-    define: {
-      'typeof CANVAS_RENDERER': JSON.stringify(true),
-      'typeof WEBGL_RENDERER': JSON.stringify(true),
-      'typeof WEBGL_DEBUG': JSON.stringify(false),
-      'typeof FEATURE_SOUND': JSON.stringify(false),
-      'typeof PLUGIN_CAMERA3D': JSON.stringify(false),
-      'typeof PLUGIN_FBINSTANT': JSON.stringify(false),
+    define: phaserFlags,
+    // The dev server serves src as it is, and the Phaser build is CommonJS: pre-bundling
+    // turns it into an ES module with the same flags, as the production build does
+    // (phaserDev.test.ts).
+    optimizeDeps: {
+      include: ['phaser'],
+      rolldownOptions: { transform: { define: phaserFlags } },
     },
     server: {
       port: 5173,
