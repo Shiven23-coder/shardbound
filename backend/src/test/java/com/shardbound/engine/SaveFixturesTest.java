@@ -17,6 +17,8 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -56,6 +58,21 @@ class SaveFixturesTest {
     }
 
     @Test
+    void aV4SaveWakesWithTheLanternDraughtInsteadOfHealingDraughts() throws IOException {
+        GameState s = snapshots().restoreSave(fixture("v3/lane-after-meadow.json", 3), "session", 7);
+        assertEquals(Mode.WORLD, s.mode());
+        assertEquals(0, s.inventory().count("healing_draught"), "retired in format 4 (P-63)");
+        assertEquals(1, s.inventory().count("lantern_draught"));
+        assertEquals(3, s.flaskCharges("lantern_draught"), "the flask starts full");
+        assertEquals(1, s.inventory().count("energy_tonic"));
+        assertEquals(131, s.stats().shards());
+        assertEquals(63, s.stats().hp());
+        assertNull(s.lastLantern(), "no Lantern rested at yet");
+        assertNull(s.lostShards());
+        assertTrue(s.creeps().isDefeated(CreepRoster.key("eldmere_cottage_lane", "meadow_creep_a")));
+    }
+
+    @Test
     void restoringASnapshotLosesNothing() throws IOException {
         GameSnapshots snapshots = snapshots();
         // The first restore also fills in quests the save did not mention; after that it is a fixed point.
@@ -68,7 +85,8 @@ class SaveFixturesTest {
     private static SaveSnapshot withoutTime(SaveSnapshot s) {
         return new SaveSnapshot(s.currentNode(), s.world(), s.hp(), s.fp(), s.gold(), s.shards(), s.level(),
                 s.attributes(), s.skills(), s.loadout(), s.creeps(), s.inventory(), s.equipped(), s.flags(),
-                s.reputation(), s.affinity(), s.quests(), s.history(), s.rngSeed(), s.demoMode(), 0);
+                s.reputation(), s.affinity(), s.quests(), s.history(), s.rngSeed(), s.demoMode(), 0,
+                s.flaskCharges(), s.lastLantern(), s.lostShards());
     }
 
     @Test
@@ -78,7 +96,7 @@ class SaveFixturesTest {
                 original.shards(), original.level(), original.attributes(), original.skills(), original.loadout(),
                 original.creeps(), original.inventory(), original.equipped(), original.flags(), original.reputation(),
                 original.affinity(), original.quests(), original.history(), original.rngSeed(), original.demoMode(),
-                original.playSeconds());
+                original.playSeconds(), original.flaskCharges(), original.lastLantern(), original.lostShards());
         assertThrows(SaveIncompatibleException.class, () -> snapshots().restoreSave(gone, "s", 7));
     }
 
@@ -90,7 +108,7 @@ class SaveFixturesTest {
                 original.gold(), original.shards(), original.level(), original.attributes(), original.skills(),
                 original.loadout(), original.creeps(), original.inventory(), original.equipped(), original.flags(),
                 original.reputation(), original.affinity(), original.quests(), original.history(), original.rngSeed(),
-                original.demoMode(), original.playSeconds());
+                original.demoMode(), original.playSeconds(), original.flaskCharges(), original.lastLantern(), original.lostShards());
         assertThrows(SaveIncompatibleException.class, () -> snapshots().restoreSave(gone, "s", 7));
     }
 }

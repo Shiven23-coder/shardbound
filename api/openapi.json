@@ -494,6 +494,231 @@
         "tags" : [ "game" ]
       }
     },
+    "/api/lantern/leave" : {
+      "post" : {
+        "operationId" : "lanternLeave",
+        "parameters" : [ {
+          "description" : "A new UUID per action (P-56)",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionView"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "Close the Lantern menu and walk on",
+        "tags" : [ "lantern" ]
+      }
+    },
+    "/api/lantern/levelup" : {
+      "post" : {
+        "operationId" : "lanternLevelUp",
+        "parameters" : [ {
+          "description" : "A new UUID per action (P-56)",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LevelUpRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionView"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "Buy the levels of these raises with held Shards (§4.3)",
+        "tags" : [ "lantern" ]
+      }
+    },
+    "/api/lantern/levelup/preview" : {
+      "post" : {
+        "operationId" : "lanternLevelUpPreview",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LevelUpRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LevelPreviewView"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "What raising these attributes would cost and change; nothing is applied (§4.3)",
+        "tags" : [ "lantern" ]
+      }
+    },
+    "/api/lantern/loadout" : {
+      "post" : {
+        "operationId" : "lanternLoadout",
+        "parameters" : [ {
+          "description" : "A new UUID per action (P-56)",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LoadoutRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionView"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "Set the four skill slots (§4.1)",
+        "tags" : [ "lantern" ]
+      }
+    },
     "/api/leaderboard" : {
       "get" : {
         "operationId" : "leaderboard",
@@ -1004,6 +1229,67 @@
         "summary" : "Talk to an NPC, use an object, or step into a trigger (§4.11)",
         "tags" : [ "game" ]
       }
+    },
+    "/api/world/recover" : {
+      "post" : {
+        "operationId" : "worldRecover",
+        "parameters" : [ {
+          "description" : "A new UUID per action (P-56)",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RecoverRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionView"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "Stepped within a tile of the Lost Shards: they come back (§4.4)",
+        "tags" : [ "game" ]
+      }
     }
   },
   "components" : {
@@ -1045,6 +1331,20 @@
         },
         "required" : [ "name", "npcId", "value" ]
       },
+      "AttributeView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "enum" : [ "VIGOR", "MIND", "STRENGTH", "DEXTERITY", "ENDURANCE", "ARCANE" ]
+          },
+          "value" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "id", "value" ]
+      },
       "BagItemView" : {
         "type" : "object",
         "properties" : {
@@ -1058,6 +1358,10 @@
           },
           "id" : {
             "type" : "string"
+          },
+          "maxQty" : {
+            "type" : "integer",
+            "format" : "int32"
           },
           "name" : {
             "type" : "string"
@@ -1562,6 +1866,10 @@
           "id" : {
             "type" : "string"
           },
+          "maxQty" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
           "name" : {
             "type" : "string"
           },
@@ -1593,6 +1901,103 @@
         },
         "required" : [ "choiceLabel", "nodeTitle" ]
       },
+      "KnownSkillView" : {
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "element" : {
+            "type" : "string"
+          },
+          "fpCost" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "description", "element", "fpCost", "id", "name" ]
+      },
+      "LanternMenuView" : {
+        "type" : "object",
+        "properties" : {
+          "attributeMax" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "attributes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AttributeView"
+            }
+          },
+          "knownSkills" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/KnownSkillView"
+            }
+          },
+          "lanternId" : {
+            "type" : "string"
+          },
+          "level" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "loadout" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LoadoutSlotView"
+            }
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "nextLevelCost" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "shards" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "stats" : {
+            "$ref" : "#/components/schemas/StatsView"
+          }
+        },
+        "required" : [ "attributeMax", "attributes", "knownSkills", "lanternId", "level", "loadout", "name", "nextLevelCost", "shards", "stats" ]
+      },
+      "LanternView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "lanternId" : {
+            "type" : "string"
+          },
+          "lit" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "x" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "y" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "id", "lanternId", "lit", "name", "x", "y" ]
+      },
       "LeaderboardView" : {
         "type" : "object",
         "properties" : {
@@ -1613,6 +2018,107 @@
           }
         },
         "required" : [ "achievements", "endings", "username" ]
+      },
+      "LevelPreviewView" : {
+        "type" : "object",
+        "properties" : {
+          "affordable" : {
+            "type" : "boolean"
+          },
+          "after" : {
+            "$ref" : "#/components/schemas/StatsView"
+          },
+          "before" : {
+            "$ref" : "#/components/schemas/StatsView"
+          },
+          "cost" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "levelAfter" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "levelBefore" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "shardsAfter" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "affordable", "after", "before", "cost", "levelAfter", "levelBefore", "shardsAfter" ]
+      },
+      "LevelUpRequest" : {
+        "type" : "object",
+        "properties" : {
+          "raises" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "integer",
+              "format" : "int32"
+            }
+          }
+        },
+        "required" : [ "raises" ]
+      },
+      "LoadoutRequest" : {
+        "type" : "object",
+        "properties" : {
+          "slots" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "maxLength" : 64,
+              "minLength" : 0
+            },
+            "maxItems" : 4,
+            "minItems" : 4
+          }
+        },
+        "required" : [ "slots" ]
+      },
+      "LoadoutSlotView" : {
+        "type" : "object",
+        "properties" : {
+          "element" : {
+            "type" : "string"
+          },
+          "fpCost" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "skillId" : {
+            "type" : "string"
+          },
+          "slot" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "fpCost", "slot" ]
+      },
+      "LostShardsView" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "x" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "y" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "amount", "x", "y" ]
       },
       "MenuView" : {
         "type" : "object",
@@ -1785,6 +2291,26 @@
         },
         "required" : [ "description", "id", "main", "status", "title" ]
       },
+      "RecoverRequest" : {
+        "type" : "object",
+        "properties" : {
+          "facing" : {
+            "type" : "string",
+            "enum" : [ "DOWN", "UP", "LEFT", "RIGHT" ]
+          },
+          "x" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
+          },
+          "y" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "facing", "x", "y" ]
+      },
       "ReputationView" : {
         "type" : "object",
         "properties" : {
@@ -1850,9 +2376,12 @@
               "$ref" : "#/components/schemas/JournalView"
             }
           },
+          "lantern" : {
+            "$ref" : "#/components/schemas/LanternMenuView"
+          },
           "mode" : {
             "type" : "string",
-            "enum" : [ "WORLD", "DIALOGUE", "BATTLE", "ENDED" ]
+            "enum" : [ "WORLD", "DIALOGUE", "BATTLE", "LANTERN", "ENDED" ]
           },
           "objective" : {
             "type" : "string"
@@ -1946,6 +2475,36 @@
         },
         "required" : [ "exists", "slot" ]
       },
+      "StatsView" : {
+        "type" : "object",
+        "properties" : {
+          "attack" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "critPct" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "defence" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "maxFp" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "maxHp" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "speed" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "attack", "critPct", "defence", "maxFp", "maxHp", "speed" ]
+      },
       "StatusView" : {
         "type" : "object",
         "properties" : {
@@ -2020,8 +2579,17 @@
               "type" : "string"
             }
           },
+          "lanterns" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LanternView"
+            }
+          },
           "lightState" : {
             "type" : "string"
+          },
+          "lostShards" : {
+            "$ref" : "#/components/schemas/LostShardsView"
           },
           "mapKey" : {
             "type" : "string"
@@ -2039,7 +2607,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "areaId", "areaName", "creeps", "hiddenObjects", "lightState", "mapKey", "npcs", "player", "regionId" ]
+        "required" : [ "areaId", "areaName", "creeps", "hiddenObjects", "lanterns", "lightState", "mapKey", "npcs", "player", "regionId" ]
       }
     },
     "securitySchemes" : {

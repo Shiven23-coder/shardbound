@@ -3,6 +3,13 @@ package com.shardbound.engine;
 import com.shardbound.view.ChoiceView;
 import com.shardbound.view.BattleView;
 import com.shardbound.view.HudView;
+import com.shardbound.progression.Attribute;
+import com.shardbound.progression.LevelUp;
+import com.shardbound.progression.PlayerStats;
+import com.shardbound.progression.ProgressionRules;
+import com.shardbound.view.LanternMenuView;
+import com.shardbound.world.Lantern;
+import com.shardbound.model.Stats;
 import com.shardbound.view.SessionView;
 import com.shardbound.view.SessionView.AffinityView;
 import com.shardbound.view.SessionView.DialogueView;
@@ -25,6 +32,7 @@ import com.shardbound.battle.StatusRule;
 import com.shardbound.world.CreepSpawn;
 import com.shardbound.content.GameContent;
 import com.shardbound.item.Consumable;
+import com.shardbound.item.Flask;
 import com.shardbound.item.Inventory;
 import com.shardbound.item.Item;
 import com.shardbound.item.ItemStack;
@@ -71,9 +79,42 @@ public class ViewBuilder {
                 hud(s), inventory(s), quests(s), reputation(s), affinity(s), journal(s),
                 drainToasts(s),
                 battle(s),
+                s.mode() == Mode.LANTERN ? lanternMenu(s) : null,
                 s.mode() == Mode.ENDED ? ending(s, node) : null,
                 objective(s),
                 s.offerReload());
+    }
+
+    /** The Lantern menu (P-61): the Lantern rested at, the player's level, Shards, attributes, stats and skills. */
+    private LanternMenuView lanternMenu(GameState s) {
+        Lantern lantern = content.world().lantern(s.lastLantern()).orElseThrow();
+        Stats stats = s.stats();
+        List<LanternMenuView.AttributeView> attributes = new ArrayList<>();
+        for (Attribute attribute : Attribute.values()) {
+            attributes.add(new LanternMenuView.AttributeView(attribute, stats.attributes().get(attribute)));
+        }
+        List<LanternMenuView.LoadoutSlotView> loadout = new ArrayList<>();
+        List<String> slots = s.loadout();
+        for (int slot = 0; slot < slots.size(); slot++) {
+            Skill skill = slots.get(slot) == null ? null : content.battle().skills().get(slots.get(slot));
+            loadout.add(skill == null ? new LanternMenuView.LoadoutSlotView(slot, null, null, null, 0)
+                    : new LanternMenuView.LoadoutSlotView(slot, skill.id(), skill.name(), skill.element().name(), skill.fpCost()));
+        }
+        List<LanternMenuView.KnownSkillView> known = s.knownSkills().stream()
+                .map(id -> content.battle().skills().get(id))
+                .map(k -> new LanternMenuView.KnownSkillView(k.id(), k.name(), k.element().name(), k.fpCost(),
+                        k.description()))
+                .toList();
+        ProgressionRules rules = content.progression();
+        return new LanternMenuView(lantern.id(), lantern.name(), stats.level(), stats.shards(),
+                new LevelUp(rules).cost(stats.level()), rules.levels().attributeMax(), attributes,
+                statsOf(stats.derived(), s.inventory().equippedWeapon()), loadout, known);
+    }
+
+    /** The stats a level-up changes, for the menu and the preview (P-61). */
+    public static LanternMenuView.StatsView statsOf(PlayerStats p, @Nullable Weapon weapon) {
+        return new LanternMenuView.StatsView(p.maxHp(), p.maxFp(), p.defence(), (int) Math.round(p.attackRating(weapon)),
+                p.speed(), p.critPct(weapon));
     }
 
     /** The current objective (P-46): the first whose conditions hold; none once the game has ended. */
@@ -93,6 +134,7 @@ public class ViewBuilder {
         List<WorldView.NpcView> npcs = new ArrayList<>();
         List<WorldView.CreepView> creeps = new ArrayList<>();
         List<String> hidden = new ArrayList<>();
+        List<WorldView.LanternView> lanterns = new ArrayList<>();
         for (MapObject o : map.objects()) {
             if (!WorldObjects.active(s, p.areaId(), o)
                     || (o.type() == ObjectType.CREEP_SPAWN && s.creeps().isDefeated(CreepRoster.key(p.areaId(), o.name())))) {
@@ -101,10 +143,17 @@ public class ViewBuilder {
                 npcs.add(new WorldView.NpcView(o.name(), o.property("npcId"), map.centre(o.x()), map.centre(o.y())));
             } else if (o.type() == ObjectType.CREEP_SPAWN) {
                 creeps.add(creep(s, p.areaId(), map, CreepSpawn.of(o)));
+            } else if (o.type() == ObjectType.LANTERN) {
+                Lantern lantern = Lantern.of(p.areaId(), o);
+                lanterns.add(new WorldView.LanternView(o.name(), lantern.id(), lantern.name(), map.centre(o.x()),
+                        map.centre(o.y()), s.flag(lantern.litFlag()) != 0));
             }
         }
+        LostShards lost = s.lostShards();
+        WorldView.LostShardsView lostShards = lost == null || !lost.areaId().equals(p.areaId()) ? null
+                : new WorldView.LostShardsView(map.centre(lost.tileX()), map.centre(lost.tileY()), lost.amount());
         return new WorldView(area.id(), area.name(), area.region(), map.key(), lightState(s, world.regions().get(area.region())),
-                new WorldView.PlayerView(p.x(), p.y(), p.facing()), npcs, creeps, hidden);
+                new WorldView.PlayerView(p.x(), p.y(), p.facing()), npcs, creeps, hidden, lanterns, lostShards);
     }
 
     private WorldView.CreepView creep(GameState s, String areaId, AreaMap map, CreepSpawn spawn) {
@@ -166,23 +215,30 @@ public class ViewBuilder {
     /** Weapons best-first (Inventory.weaponsByTier), then everything else in pickup order. O(n log n). */
     private InventoryView inventory(GameState s) {
         Inventory inv = s.inventory();
-        boolean outsideBattle = s.mode() == Mode.WORLD || s.mode() == Mode.DIALOGUE;
+        boolean outsideBattle = s.mode() == Mode.WORLD || s.mode() == Mode.DIALOGUE || s.mode() == Mode.LANTERN;
         List<ItemView> items = new ArrayList<>();
         for (Weapon weapon : inv.weaponsByTier()) {
             items.add(new ItemView(weapon.id(), weapon.name(), "WEAPON", weapon.description(), 1,
                     weapon.id().equals(inv.equippedWeaponId()), weapon.tier().name(), weapon.base(),
-                    weapon.critPct(), null, null, false));
+                    weapon.critPct(), null, null, false, null));
         }
         for (ItemStack<Item> stack : inv.stacksView()) {
             Item item = stack.item();
             if (item instanceof Weapon) {
                 continue;
             }
+            if (item instanceof Flask flask) {
+                int charges = s.flaskCharges(flask.id());
+                items.add(new ItemView(flask.id(), flask.name(), item.type().name(), flask.description(), charges,
+                        false, null, null, null, flask.healFor(s.stats().maxHp()), 0, outsideBattle && charges > 0,
+                        flask.charges()));
+                continue;
+            }
             Integer heal = item instanceof Consumable c ? c.heal() : null;
             Integer fp = item instanceof Consumable c ? c.fp() : null;
             boolean usable = outsideBattle && item instanceof Consumable;
             items.add(new ItemView(item.id(), item.name(), item.type().name(), item.description(), stack.qty(),
-                    false, null, null, null, heal, fp, usable));
+                    false, null, null, null, heal, fp, usable, null));
         }
         return new InventoryView(inv.usedSlots(), Inventory.CAPACITY, items);
     }
@@ -258,8 +314,11 @@ public class ViewBuilder {
         }
         List<BattleView.BagItemView> bag = new ArrayList<>();
         for (ItemStack<Item> stack : s.inventory().stacksView()) {
-            if (stack.item() instanceof Consumable c) {
-                bag.add(new BattleView.BagItemView(c.id(), c.name(), stack.qty(), c.heal(), c.fp()));
+            if (stack.item() instanceof Flask f) {
+                bag.add(new BattleView.BagItemView(f.id(), f.name(), s.flaskCharges(f.id()),
+                        f.healFor(s.stats().maxHp()), 0, f.charges()));
+            } else if (stack.item() instanceof Consumable c) {
+                bag.add(new BattleView.BagItemView(c.id(), c.name(), stack.qty(), c.heal(), c.fp(), null));
             }
         }
         List<BattleView.HitView> hits = new ArrayList<>();

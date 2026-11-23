@@ -28,7 +28,8 @@ public record BattleView(FighterView enemy, FighterView player, int round, List<
     public record SkillView(int slot, @Nullable String id, @Nullable String name, @Nullable String element,
                             int fpCost, @Nullable String description, boolean usable) { }
 
-    public record BagItemView(String id, String name, int qty, int heal, int fp) { }
+    /** A usable item in the battle BAG; for a flask (P-63) {@code qty} is its charges and {@code maxQty} its full charges. */
+    public record BagItemView(String id, String name, int qty, int heal, int fp, @Nullable Integer maxQty) { }
 
     /**
      * A hit of the last round; {@code affinity} (W, N, R, I) and {@code element} are null for status

@@ -2,7 +2,7 @@
 //  - the crater: scorched earth, a ring of rubble, the warm crystal and its steam
 //  - the broken watchtower to the west, with fallen pillars and a wall
 //  - the north rubble, blocking the way to the Ashen Herald's arena (an obstacle, opened in V7)
-//  - the east: a toppled statue and a ruined house; space for ash creeps (V4) and a chest
+//  - the east: a toppled statue and a ruined house; the Ash Wisp and the Barrow Skull from dawn (P-64), space for a chest (V6)
 import {
   build, cluster, forestBorder, forestFill, makeTerrain, noise, paintEllipse, paintPath, pathEdges, smooth,
 } from '../kit.mjs';
@@ -56,9 +56,10 @@ export default function oldRuins() {
       { name: 'heartshard', type: 'prop', x: 14, y: 9, props: { sprite: 'props:2', hideIf: 'dawn' } },
       { name: 'heartshard_glow', type: 'light', x: 14, y: 9, props: { radius: 3.4, color: '#8cf0a8', intensity: 0.9, hideIf: 'dawn' } },
       { name: 'arena_way', type: 'reserved', x: 13, y: 1, w: 4, h: 2, props: { for: 'exit', phase: 'V7' } },
-      { name: 'ruins_creep_a', type: 'reserved', x: 21, y: 9, props: { for: 'creep', phase: 'V4' } },
-      { name: 'ruins_creep_b', type: 'reserved', x: 7, y: 14, props: { for: 'creep', phase: 'V4' } },
-      { name: 'ruins_chest', type: 'reserved', x: 24, y: 15, props: { for: 'chest', phase: 'V5' } },
+      // from dawn only (P-64): the storm-night walk for the Heartshard stays a level-1 walk
+      { name: 'ruins_creep_a', type: 'creep_spawn', x: 21, y: 9, props: { template: 'ash_wisp', levelMin: 3, levelMax: 4, aggroRadius: 2, showIf: 'dawn' } },
+      { name: 'ruins_creep_b', type: 'creep_spawn', x: 7, y: 14, props: { template: 'barrow_skull', levelMin: 4, levelMax: 4, aggroRadius: 1, showIf: 'dawn' } },
+      { name: 'ruins_chest', type: 'reserved', x: 24, y: 15, props: { for: 'chest', phase: 'V6' } },
     ],
   });
 }

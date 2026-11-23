@@ -24,5 +24,7 @@ public enum EventType {
     GOLD_CHANGED,
     HEALED,
     SHARDS_GAINED,
-    SKILL_LEARNED
+    SKILL_LEARNED,
+    // added for V5 progression (P-61)
+    LEVEL_UP
 }

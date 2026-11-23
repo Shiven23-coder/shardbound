@@ -1,6 +1,7 @@
 package com.shardbound.web;
 
 import com.shardbound.battle.BattleAction;
+import com.shardbound.progression.Attribute;
 import com.shardbound.world.Facing;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -10,6 +11,9 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import org.jspecify.annotations.Nullable;
+
+import java.util.List;
+import java.util.Map;
 
 /** JSON request bodies, validated before they reach the engine. */
 public final class Requests {
@@ -42,4 +46,13 @@ public final class Requests {
                                 @Nullable @Size(max = MAX_ID) String itemId) { }
 
     public record ItemRequest(@NotBlank @Size(max = MAX_ID) String itemId) { }
+
+    /** The player stepped within a tile of their Lost Shards: their position (V2_SPEC §4.4, P-62). */
+    public record RecoverRequest(@PositiveOrZero int x, @PositiveOrZero int y, @NotNull Facing facing) { }
+
+    /** Points to add per attribute at a Lantern (P-61); attributes not named stay as they are. */
+    public record LevelUpRequest(@NotNull Map<Attribute, @NotNull @Min(0) @Max(98) Integer> raises) { }
+
+    /** The four skill slots, each a known skill id or null (P-61). */
+    public record LoadoutRequest(@NotNull @Size(min = 4, max = 4) List<@Nullable @Size(max = MAX_ID) String> slots) { }
 }

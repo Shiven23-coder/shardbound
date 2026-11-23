@@ -1,10 +1,10 @@
 // Mill Road (30 × 22): the old mill and the road south.
 //  - the mill and its millstone
-//  - the fenced field: space for creeps (V4)
+//  - the fenced field: the Furrow Mole and the Hedge Adder (P-64)
 //  - the stream and the flooded ford, with its sign and lantern; the flood closes
 //    the road south until the Wood opens (an obstacle, P-45)
 //  - the south edge: dead trees toward the Whispering Wood
-//  - a nook by the stream: space for a chest (V5)
+//  - a nook by the stream: space for a chest (V6)
 import {
   build, cluster, forestBorder, forestFill, makeTerrain, noise, paintEllipse, paintPath, pathEdges, smooth,
 } from '../kit.mjs';
@@ -70,9 +70,9 @@ export default function millRoad() {
       { name: 'flooded_ford', type: 'obstacle', x: 12, y: 15, w: 3, h: 2, props: { dialogue: 'ford_sign', opensIn: 'WW' } },
       { name: 'mill_window', type: 'light', x: 6, y: 9, props: { radius: 2.4, color: '#ffb35c', intensity: 0.7 } },
       { name: 'ford_lantern', type: 'light', x: 16, y: 11, props: { radius: 3.2, color: '#ffc46b', intensity: 0.95 } },
-      { name: 'field_creep_a', type: 'reserved', x: 21, y: 7, props: { for: 'creep', phase: 'V4' } },
-      { name: 'field_creep_b', type: 'reserved', x: 23, y: 9, props: { for: 'creep', phase: 'V4' } },
-      { name: 'stream_nook', type: 'reserved', x: 4, y: 14, props: { for: 'chest', phase: 'V5' } },
+      { name: 'field_creep_a', type: 'creep_spawn', x: 21, y: 7, props: { template: 'furrow_mole', levelMin: 2, levelMax: 3, aggroRadius: 1 } },
+      { name: 'field_creep_b', type: 'creep_spawn', x: 23, y: 9, props: { template: 'hedge_adder', levelMin: 2, levelMax: 3, aggroRadius: 2 } },
+      { name: 'stream_nook', type: 'reserved', x: 4, y: 14, props: { for: 'chest', phase: 'V6' } },
     ],
   });
 }

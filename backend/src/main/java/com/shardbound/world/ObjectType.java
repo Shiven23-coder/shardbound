@@ -10,7 +10,7 @@ import java.util.Optional;
  * {@code CREEP_SPAWN} is where a creep stands and starts battles (V2_SPEC §4.2).
  */
 public enum ObjectType {
-    SPAWN_POINT, EXIT, NPC, INTERACT, TRIGGER, OBSTACLE, BUILDING, LIGHT, EFFECT, PROP, CREEP_SPAWN, RESERVED;
+    SPAWN_POINT, EXIT, NPC, INTERACT, TRIGGER, OBSTACLE, BUILDING, LIGHT, EFFECT, PROP, CREEP_SPAWN, LANTERN, RESERVED;
 
     /** The type for a Tiled object type such as {@code "spawn_point"}; empty if unknown. */
     public static Optional<ObjectType> fromTiled(String type) {
@@ -23,6 +23,6 @@ public enum ObjectType {
 
     /** True for the objects the player can act on through a world event. */
     public boolean interactive() {
-        return this == NPC || this == INTERACT || this == TRIGGER || this == OBSTACLE;
+        return this == NPC || this == INTERACT || this == TRIGGER || this == OBSTACLE || this == LANTERN;
     }
 }

@@ -2,7 +2,10 @@ package com.shardbound.engine;
 
 import com.shardbound.battle.BattleState;
 import com.shardbound.event.EventBus;
+import com.shardbound.item.Flask;
 import com.shardbound.item.Inventory;
+import com.shardbound.item.Item;
+import com.shardbound.item.ItemStack;
 import com.shardbound.model.Faction;
 import com.shardbound.model.Stats;
 import com.shardbound.quest.QuestStatus;
@@ -61,6 +64,9 @@ public class GameState {
     private final List<String> knownSkills = new ArrayList<>();
     private final String[] loadout = new String[LOADOUT_SLOTS];
     private final CreepRoster creeps = new CreepRoster();
+    private final Map<String, Integer> flaskCharges = new HashMap<>();  // flask item id → charges left (P-63)
+    private @Nullable String lastLantern;         // the Lantern the player last rested at (P-61)
+    private @Nullable LostShards lostShards;      // the Shards the last death dropped (P-62)
     private final RecentActions recentActions = new RecentActions();
     private @Nullable ActionKey pendingKey;       // the key of the action being applied, remembered on write
     private long rngSeed;
@@ -111,12 +117,45 @@ public class GameState {
     public Inventory inventory()   { return inventory; }
     public @Nullable BattleState battle() { return battle; }
     public CreepRoster creeps()    { return creeps; }
+    public @Nullable String lastLantern() { return lastLantern; }
+    public @Nullable LostShards lostShards() { return lostShards; }
     public RecentActions recentActions() { return recentActions; }
     public long rngSeed()          { return rngSeed; }
     public Random rng()            { return rng; }
     public boolean demoMode()      { return demoMode; }
     public EventBus bus()          { return bus; }
     public boolean offerReload()   { return offerReload; }
+
+    public void setLastLantern(@Nullable String lanternId) {
+        this.lastLantern = lanternId;
+    }
+
+    public void setLostShards(@Nullable LostShards lostShards) {
+        this.lostShards = lostShards;
+    }
+
+    /** Charges left in a flask (P-63); 0 for one the player does not carry. */
+    public int flaskCharges(String flaskId) {
+        return flaskCharges.getOrDefault(flaskId, 0);
+    }
+
+    public void setFlaskCharges(String flaskId, int charges) {
+        flaskCharges.put(flaskId, Math.max(0, charges));
+    }
+
+    /** Every flask in the bag back to full (a rest or a death, P-63). */
+    public void refillFlasks() {
+        for (ItemStack<Item> stack : inventory.stacksView()) {
+            if (stack.item() instanceof Flask flask) {
+                flaskCharges.put(flask.id(), flask.charges());
+            }
+        }
+    }
+
+    /** Charges per flask, for snapshots. */
+    public Map<String, Integer> flaskChargesView() {
+        return Map.copyOf(flaskCharges);
+    }
 
     /** Seconds played across all sessions of this save. O(1). */
     public int playSeconds() {

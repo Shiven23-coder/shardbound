@@ -1282,6 +1282,8 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 
 **Why.** Every rule is decided in content and tests rather than in the engine's guesswork, and seeded fights stay reproducible.
 
+**Revised by** P-64 (the meadow creeps' levels).
+
 **Spec.** §4.2, §4.5, §4.7.
 
 ---
@@ -1312,6 +1314,8 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 - **Gold** stays the story currency (Corvin's offer). V5 decides whether it merges into Shards.
 
 **Why.** The battle numbers are final from V4, and every interim rule lives in one place that V5 swaps out.
+
+**Replaced by** P-62 (defeat) and P-63 (victory and healing).
 
 **Spec.** §4.1, §4.3, §4.4, §4.6.
 
@@ -1417,6 +1421,8 @@ The audio engine fetches a pack's files when its moment comes and decodes each e
 
 **Revises** P-57 (audio budget).
 
+**Revised by** P-64 (region packs may share effects; boss music gets its own pack in V7).
+
 **Spec.** §4.13.
 
 ---
@@ -1443,3 +1449,112 @@ The audio engine fetches a pack's files when its moment comes and decodes each e
 **Consequence.** A Phaser class or factory used for the first time must be added to `phaserBuild.cjs`. The e2e suite (world, battle and every layout) is the check, since a missing module only fails at runtime.
 
 **Spec.** §4.13.
+
+---
+
+## P-61 — Lanterns and levelling
+
+**Problem.** V5 brings Souls-like progression to Eldmere: places to rest, and levels bought with Shards. The spec (§4.1, §4.3) leaves open how a Lantern is placed and lit, how a rest stays consistent with the autosave, and how the level-up screen stays responsive on a phone.
+
+**Decision.**
+- **Lanterns are map objects:** `lantern` with `lanternId`, `name` and `spawn` (the spawn point where the player wakes). Eldmere's first is the **Junction Lantern** on Cottage Lane, at the reserved spot. `MapValidator` checks unique ids, an existing spawn and reachability.
+- **Kindling:** a Lantern is cold until the player carries the Heartshard; interacting then lights it once. A lit Lantern **stays lit and usable without the Heartshard** (after selling it to Corvin, for example). Without the shard, a cold Lantern only shows a message.
+- **Rest** (interacting with a lit Lantern) is **one transaction**, keyed like every action (P-56):
+  1. HP and FP to max, and Lantern Draught charges refilled (P-63);
+  2. defeated creeps respawn with rerolled levels;
+  3. the Lantern becomes `lastLantern`;
+  4. slot 0 is written synchronously in the same transaction (reseed → snapshot → write);
+  5. the **Lantern menu** opens.
+- **The menu:** **LEVEL UP · SKILLS · LEAVE**. Fast travel joins it with the map in V8.
+- **Levels:** `balance.json` holds the cost curve `cost(L) = round(100 · L^1.5)`, the level cap (99) and the attribute cap (99). Several levels can be bought in one confirm. The server computes the **preview** (`POST /api/lantern/levelup/preview`, read-only, unkeyed): the level, the cost and the Shards left, and HP, FP, DEF, AR and speed before → after. The confirm is keyed.
+- **Input never waits on the network:** + and − change the pending values at once; only the preview numbers update when the server answers, and stale answers are ignored. Confirm sends the pending values and the server checks them again.
+- **Hints:** the first Lantern in reach shows "rest here", and the first menu explains levelling and resting, once per profile.
+- **Osric the Lamplighter** stands beside the Junction Lantern. He explains the Lanterns, the Shards and the Long Dusk, hints at the roads ahead, and has a one-time line after the player's first death.
+
+**Why.** Rest and autosave in one transaction can never disagree. A Lantern lit for good keeps the merchant route playable. A preview from the server keeps the rules on the server (rule 1), and pending values that don't wait on the network keep the screen responsive.
+
+**Spec.** §4.1, §4.3, §4.8.
+
+---
+
+## P-62 — Death and Lost Shards
+
+**Problem.** P-55's interim defeat sent the player home and kept their Shards. V5 needs the risk of §4.4.
+
+**Decision.** One seam, `engine/Death`, replaces P-55's defeat:
+1. Any Lost Shards still on the map are destroyed.
+2. Held Shards become **Lost Shards** at the tile where the battle started; held Shards go to 0. No marker if there were none.
+3. The player wakes at `lastLantern`, or at the region's `respawn` point if no Lantern is lit yet, with full HP and FP, a refilled Lantern Draught, and creeps respawned.
+4. **Recovery:** stepping within one tile of the marker sends `POST /api/world/recover` (keyed, the usual world-event checks, Chebyshev distance ≤ 1). The Shards return and the toast "Shards recovered" shows.
+5. A deaths counter (a flag) drives Osric's one-time line.
+6. What happened ("The Shards you lost before fade into the dark.", "You wake beside the Junction Lantern.") closes the battle's text, read before Continue; a toast would be hidden behind the battle.
+
+**Dialogue fights** (the Hired Blade) keep their story outcome on a loss (the lose node, HP 50 %) and drop no Lost Shards.
+
+**Why.** §4.4's risk, with one place to change it, and story fights stay story.
+
+**Replaces** P-55 (defeat).
+
+**Spec.** §4.4.
+
+---
+
+## P-63 — The Lantern Draught, and FP after victory
+
+**Problem.** P-55's three consumable draughts and the full FP refill after every victory were stand-ins for Lanterns.
+
+**Decision.**
+- **Lantern Draught:** a refillable flask (`lantern_draught`, item kind `FLASK`) with **3 charges**, each healing **40 % of max HP**. It is refilled at every rest and on death. It shows as "Lantern Draught 2/3" in the battle BAG and in the Bag, and uses the existing item action. More charges and potency come with V6.
+- `healing_draught` is retired. Save format 4 turns any stack into a full Lantern Draught, and the Mire Slime drops the Azure Tonic (+10 FP) instead.
+- **FP after victory:** **25 % of max FP** (`battle.victoryFpPct`), not a full refill. Lanterns are the full refill now.
+
+**Balance impact.** The flask heals up to 3 × 40 % *between rests* instead of 120 HP for the whole region, so running low means going back to the Lantern rather than losing the run. 25 % FP keeps the skills (and the creeps' weaknesses) in use without making them free. The balance runner checks both.
+
+**Measured (V5).** The runner's FP variants barely differ in Eldmere: mean turns against the Hedge Adder are 3.36 with no FP after victory, 2.96 with 25 % and 2.92 with a full refill. The route rests every two fights, so the Lantern does most of the refilling; 25 % keeps a skill ready for a second fight without a rest. Revisit in the Whispering Wood, where the stretches between Lanterns are longer.
+
+**Replaces** P-55 (victory and healing).
+
+**Spec.** §1 (Lantern Draught), §4.1.
+
+---
+
+## P-64 — Eldmere's creeps, gold, Lantern audio
+
+**Problem.** Four reserved creep spots were empty, Eldmere needs its 8 fights to reach level 4 before the boss (§10), and the first level-up must come after fight 3 (§12).
+
+**Decision.**
+- **Creeps and levels:**
+
+  | Spot | Creep | Family | Level | Shown |
+  |---|---|---|---|---|
+  | Cottage Lane meadow B | Mire Slime | Sylvan | **1** (was 1–2) | always |
+  | Cottage Lane meadow A | Storm Rat | Ashen (unchanged since V4) | **1** (was 2–3) | always |
+  | Mill Road field A | Furrow Mole | Beast | 2–3 | always (Mill Road opens at dawn) |
+  | Mill Road field B | Hedge Adder | Beast | 2–3 | always |
+  | Old Ruins A | Ash Wisp | Ashen | 3–4 | from dawn |
+  | Old Ruins B | Barrow Skull | Undead | 4 | from dawn |
+
+  Both meadow creeps at level 1 give 70 Shards after two fights and 166 after a third at level 2, so the **first level-up comes after fight 3**. The ruins creeps appear at dawn, so the storm-night walk for the Heartshard stays a level-1 walk. One pass of Eldmere's fights earns about 980 Shards, enough for **level 4** (100 + 283 + 520).
+- **Weakness rule:** every creep's weakness must be exploitable by a skill the player can have when first meeting it, or be documented here as a deliberate **teaser** for a later skill:
+
+  | Creep | Family | Weakness | First met | Skill available then | Status |
+  |---|---|---|---|---|---|
+  | Mire Slime | Sylvan | Fire | storm night (lane) | Rending Cut, Crystal Pulse; Ember from Brann at dawn | teaser on the storm night; exploitable on refights after dawn |
+  | Storm Rat | Ashen | Frost | storm night (lane) | Rending Cut, Crystal Pulse (Crystal is resisted) | **teaser**: Frost Shard comes in a later region; Rending Cut's Bleed is the answer |
+  | Furrow Mole | Beast | Fire | dawn (Mill Road) | Ember | exploitable |
+  | Hedge Adder | Beast | Fire | dawn (Mill Road) | Ember | exploitable |
+  | Ash Wisp | Ashen | Frost | dawn (ruins) | Ember (immune), Crystal Pulse (resisted) | **teaser**, deliberate before the Ashen Herald: fire does not burn the Ashen |
+  | Barrow Skull | Undead | Holy | dawn (ruins) | Crystal Pulse and Ember neutral; Strike resisted | **teaser**: Holy skills come later; it teaches skills against Physical resistance |
+  | Hired Blade | Human | none | the alley | — | no weakness |
+
+- **Gold** stays story money (the merchant ending's 300 gold). Shards are XP and currency (§4.3). V6 decides whether shops take gold.
+- **Lantern audio:** the kindle, rest, level-up and recovery sounds are needed in every region, so they go in **each region's pack**. P-59's rule becomes: initial and battle effects are in exactly one pack; region packs may share effects, and CI counts a shared effect in every region pack that lists it (the browser downloads it once). Eldmere's pack stays within 1,280 KB.
+- **V7:** boss music gets **its own pack, loaded at the boss arena**, with its own budget.
+
+- **Tuning and result (V5):** the balance runner (V2_SPEC §10.2) set Furrow Mole HP 92, Hedge Adder HP 92, Ash Wisp ATK 11, and Barrow Skull ATK 11 and HP 60, so every creep fight takes a median of 3–6 turns. Over 1,000 seeds: first level-up after fight 3, median level 4 before the boss, about 0.06 deaths per run, and the boss stand-in (Hired Blade at level 5, HP ×1.8) won 84 % on the first attempt.
+
+**Why.** It fits §10's curve exactly, keeps the story's order safe, and makes every weakness either usable or a lesson.
+
+**Revises** P-54 (meadow levels) and P-59 (shared region effects).
+
+**Spec.** §4.2, §4.3, §10.

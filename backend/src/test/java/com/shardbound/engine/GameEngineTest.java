@@ -70,8 +70,10 @@ class GameEngineTest {
         assertEquals(100, v.hud().hp());                            // V2 stats: every attribute at 10 (P-55)
         assertEquals(30, v.hud().fp());
         assertEquals(1, v.hud().level());
-        assertEquals(3, v.inventory().items().stream().filter(i -> i.id().equals("healing_draught"))
-                .findFirst().orElseThrow().qty(), "the starting kit's draughts");
+        SessionView.ItemView flask = v.inventory().items().stream().filter(i -> i.id().equals("lantern_draught"))
+                .findFirst().orElseThrow();
+        assertEquals(3, flask.qty(), "the Lantern Draught starts full (P-63)");
+        assertEquals(3, flask.maxQty());
     }
 
     @Test

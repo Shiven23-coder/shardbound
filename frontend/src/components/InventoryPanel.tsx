@@ -52,7 +52,8 @@ function ItemRow({ item, onUse, busy }: ItemRowProps) {
     <div className="item-row">
       <div className="item-row-head">
         <strong>{item.name}</strong>
-        {item.qty > 1 && <span className="item-qty">×{item.qty}</span>}
+        {item.maxQty ? <span className="item-qty">{item.qty}/{item.maxQty}</span>
+          : item.qty > 1 && <span className="item-qty">×{item.qty}</span>}
         <span className="tag">{item.type}</span>
       </div>
       <p className="weapon-stats">

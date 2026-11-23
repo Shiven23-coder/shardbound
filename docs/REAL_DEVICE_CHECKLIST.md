@@ -11,7 +11,7 @@ One manual run per region on a phone of the target class: mid-range Android, abo
 6. Set screen brightness to about **50 %** and turn adaptive brightness off.
 7. When done, stop with Ctrl+C. Nothing stays open on the network.
 - Start a **New game** with a fresh profile.
-- **[core]** marks the 13 checks that matter most: do them first, in both orientations, if time is short.
+- **[core]** marks the 16 checks that matter most: do them first, in both orientations, if time is short.
 - Play the sections below **upright (portrait, the main phone layout) and sideways (landscape)**; tick each box for both, or note which one failed. Rotating mid-game is allowed and should switch the layout at once (P-40).
 
 ## Eldmere (V3)
@@ -93,7 +93,16 @@ One manual run per region on a phone of the target class: mid-range Android, abo
 - [ ] Skills show their FP cost and element; Back returns; the Bag heals; Flee works or fails with a line.
 - [ ] Battle text speed in Settings changes the pace (Slow to Instant); with Reduce motion on there is no shake or flash.
 - [ ] The battle music starts near a creep without a gap and stops after the battle; the victory and defeat stings play.
-- [ ] Losing to a creep wakes you at home with full HP; Shards are kept.
+- [ ] Losing to a creep before any Lantern is lit wakes you at home with full HP (since V5 the Shards stay where you fell, P-62).
+
+### Lanterns and progression (V5)
+- [ ] **[core]** **Portrait:** at the Junction Lantern with the Heartshard, Ⓐ kindles it (the glass turns gold and green, the kindle sound plays); Ⓐ again rests: HP and FP fill, the Lantern menu covers the deck and its first tip shows once.
+- [ ] **[core]** **Both layouts:** Level up shows six attributes with − and +; each tap answers at once, the preview (Level, Shards, cost, HP, FP, DEF, AR, speed) follows within a moment, and Confirm buys the levels with the level-up sound; every button is easy to hit with a thumb.
+- [ ] **[core]** Lose a battle on purpose: the battle's last line says where you wake, you wake beside the Lantern with no Shards, and a green glow marks where the battle started; walking next to it brings the Shards back with a sound.
+- [ ] Skills in the Lantern menu: tap a slot, then a skill; the skill moves (its old slot empties) and the battle menu shows the new order.
+- [ ] The Lantern Draught reads "Lantern Draught 3/3" in the Bag and in battle, heals, counts down, and is full again after a rest.
+- [ ] After a rest the meadow creeps are back; with no Lantern menu open, the Shards count shows on the HUD.
+- [ ] Osric talks beside the Lantern; after your first death he has a line about it, once.
 
 ### Record
 | Item | Value |

@@ -195,3 +195,13 @@ describe('dialogue pages at sentence boundaries', () => {
     }
   }
 });
+
+describe('left and right (P-61)', () => {
+  it('reads A/D and the side arrows as left and right, which a dialogue ignores', () => {
+    expect(keyIntent('a')).toEqual({ kind: 'left' });
+    expect(keyIntent('ArrowRight')).toEqual({ kind: 'right' });
+    const choosing = { pageDone: true, lastPage: true, alreadyRead: false, choices: [true, true], highlight: 0 };
+    expect(dialogueAction(choosing, { kind: 'left' }, false)).toBeNull();
+    expect(dialogueAction(choosing, { kind: 'right' }, false)).toBeNull();
+  });
+});

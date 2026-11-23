@@ -20,7 +20,7 @@
       "additionalProperties": { "$ref": "#/$defs/track" }
     },
     "packs": {
-      "description": "When each sound downloads (P-59). Each effect belongs to exactly one pack.",
+      "description": "When each sound downloads (P-59, P-64). Initial and battle effects are in exactly one pack; region packs may share effects (the Lantern sounds).",
       "type": "object",
       "required": ["initial", "regions", "battle"],
       "additionalProperties": false,

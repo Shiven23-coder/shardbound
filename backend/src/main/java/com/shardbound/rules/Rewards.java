@@ -6,6 +6,7 @@ import com.shardbound.event.EventType;
 import com.shardbound.event.GameEvent;
 import com.shardbound.exception.InventoryFullException;
 import com.shardbound.item.Consumable;
+import com.shardbound.item.Flask;
 import com.shardbound.item.Item;
 
 /**
@@ -51,6 +52,22 @@ public final class Rewards {
             text.append(healed > 0 ? ", +" : ": +").append(restored).append(" FP");
         }
         bus.publish(GameEvent.of(EventType.HEALED, text.toString(), "itemId", consumable.id()));
+    }
+
+    /**
+     * Drinks one charge of a flask (P-63): heals its share of max HP. Returns the HP healed,
+     * or -1 if the flask is empty.
+     */
+    public static int useFlask(GameState state, EventBus bus, Flask flask) {
+        int charges = state.flaskCharges(flask.id());
+        if (charges <= 0) {
+            return -1;
+        }
+        state.setFlaskCharges(flask.id(), charges - 1);
+        int healed = state.stats().heal(flask.healFor(state.stats().maxHp()));
+        bus.publish(GameEvent.of(EventType.HEALED, "Drank the " + flask.name() + (healed > 0 ? ": +" + healed + " HP" : ""),
+                "itemId", flask.id()));
+        return healed;
     }
 
     /**

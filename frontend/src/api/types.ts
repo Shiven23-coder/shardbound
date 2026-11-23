@@ -32,6 +32,19 @@ export type ReputationView = Schemas['ReputationView'];
 export type AffinityView = Schemas['AffinityView'];
 export type JournalView = Schemas['JournalView'];
 export type EndingView = Schemas['EndingView'];
+export type LanternView = Schemas['LanternView'];
+export type LostShardsView = Schemas['LostShardsView'];
+export type LanternMenuView = Schemas['LanternMenuView'];
+export type AttributeView = Schemas['AttributeView'];
+export type StatsView = Schemas['StatsView'];
+export type LoadoutSlotView = Schemas['LoadoutSlotView'];
+export type KnownSkillView = Schemas['KnownSkillView'];
+export type LevelPreviewView = Schemas['LevelPreviewView'];
+export type LevelUpRequest = Schemas['LevelUpRequest'];
+/** One of the six attributes (VIGOR …, P-61). */
+export type AttributeId = AttributeView['id'];
+/** Points to add per attribute at a Lantern. */
+export type Raises = Partial<Record<AttributeId, number>> & LevelUpRequest['raises'];
 
 export type ProfileResponse = Schemas['ProfileResponse'];
 export type SlotView = Schemas['SlotView'];

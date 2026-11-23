@@ -20,6 +20,7 @@ export function useHint(bridge: WorldBridge, playerId: number | undefined, walki
   const { hints: enabled } = useSettings();
   const [shown, setShown] = useState<Shown | null>(null);
   const seen = useRef<Set<HintId>>(new Set());
+  const lastReach = useRef<string | null>(null);
 
   useEffect(() => {
     if (!enabled || playerId === undefined) {
@@ -37,10 +38,17 @@ export function useHint(bridge: WorldBridge, playerId: number | undefined, walki
     if (!seen.current.has('move')) setShown({ hint: 'move', talk: false });
     const offs = [
       bridge.toReact.on('moved', () => finish('move')),
-      bridge.toReact.on('interact', () => finish('interact')),
+      bridge.toReact.on('interact', () => {
+        finish('interact');
+        if (lastReach.current === 'lantern') finish('lantern');
+      }),
       bridge.toReact.on('reach', (kind) => {
-        if (seen.current.has('interact') || !seen.current.has('move')) return;
-        setShown(kind ? { hint: 'interact', talk: kind === 'npc' } : null);
+        lastReach.current = kind;
+        if (!seen.current.has('move')) return;
+        // The first Lantern in reach gets its own hint (P-61), even after the general one.
+        if (kind === 'lantern' && !seen.current.has('lantern')) setShown({ hint: 'lantern', talk: false });
+        else if (!seen.current.has('interact')) setShown(kind ? { hint: 'interact', talk: kind === 'npc' } : null);
+        else setShown((current) => (current?.hint === 'lantern' && kind !== 'lantern' ? null : current));
       }),
     ];
     return () => offs.forEach((off) => off());

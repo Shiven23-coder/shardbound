@@ -4227,7 +4227,7 @@
     {
      "id": 9,
      "name": "ruins_creep_a",
-     "type": "reserved",
+     "type": "creep_spawn",
      "x": 336,
      "y": 144,
      "width": 16,
@@ -4236,21 +4236,36 @@
      "visible": true,
      "properties": [
       {
-       "name": "for",
+       "name": "template",
        "type": "string",
-       "value": "creep"
+       "value": "ash_wisp"
       },
       {
-       "name": "phase",
+       "name": "levelMin",
+       "type": "float",
+       "value": 3
+      },
+      {
+       "name": "levelMax",
+       "type": "float",
+       "value": 4
+      },
+      {
+       "name": "aggroRadius",
+       "type": "float",
+       "value": 2
+      },
+      {
+       "name": "showIf",
        "type": "string",
-       "value": "V4"
+       "value": "dawn"
       }
      ]
     },
     {
      "id": 10,
      "name": "ruins_creep_b",
-     "type": "reserved",
+     "type": "creep_spawn",
      "x": 112,
      "y": 224,
      "width": 16,
@@ -4259,14 +4274,29 @@
      "visible": true,
      "properties": [
       {
-       "name": "for",
+       "name": "template",
        "type": "string",
-       "value": "creep"
+       "value": "barrow_skull"
       },
       {
-       "name": "phase",
+       "name": "levelMin",
+       "type": "float",
+       "value": 4
+      },
+      {
+       "name": "levelMax",
+       "type": "float",
+       "value": 4
+      },
+      {
+       "name": "aggroRadius",
+       "type": "float",
+       "value": 1
+      },
+      {
+       "name": "showIf",
        "type": "string",
-       "value": "V4"
+       "value": "dawn"
       }
      ]
     },
@@ -4289,7 +4319,7 @@
       {
        "name": "phase",
        "type": "string",
-       "value": "V5"
+       "value": "V6"
       }
      ]
     },

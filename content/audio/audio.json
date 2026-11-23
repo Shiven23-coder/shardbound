@@ -54,6 +54,22 @@
     "defeat": {
       "file": "sfx/defeat.wav",
       "volume": 0.5
+    },
+    "lanternKindle": {
+      "file": "sfx/lantern-kindle.wav",
+      "volume": 0.5
+    },
+    "lanternRest": {
+      "file": "sfx/lantern-rest.wav",
+      "volume": 0.45
+    },
+    "levelUp": {
+      "file": "sfx/level-up.wav",
+      "volume": 0.5
+    },
+    "shardsRecovered": {
+      "file": "sfx/shards-recovered.wav",
+      "volume": 0.5
     }
   },
   "music": {
@@ -69,14 +85,14 @@
     }
   },
   "packs": {
-    "description": "When each sound downloads (P-59): the initial pack with the first page, a region's pack on entering that region, the battle pack only when a creep is near. Every effect is in exactly one pack; CI budgets each pack on its own.",
+    "description": "When each sound downloads (P-59, P-64): the initial pack with the first page, a region's pack on entering that region, the battle pack only when a creep is near. Initial and battle effects are in exactly one pack; region packs may share effects (the Lantern sounds), which CI counts in each region pack and the browser downloads once. V7's boss music gets its own pack, loaded at the boss arena. CI budgets each pack on its own.",
     "initial": {
       "effects": ["blip", "click"]
     },
     "regions": {
       "eldmere": {
         "music": "eldmere",
-        "effects": ["rain", "footstep"]
+        "effects": ["rain", "footstep", "lanternKindle", "lanternRest", "levelUp", "shardsRecovered"]
       }
     },
     "battle": {

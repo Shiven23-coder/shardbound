@@ -11,7 +11,8 @@
     "statusChanceCap": 90,
     "flee": { "basePct": 50, "pctPerSpeed": 5, "minPct": 10, "maxPct": 90, "ignoreTiles": 3 },
     "defensiveGuardBelowPct": 30,
-    "dialogueLossHpPct": 50
+    "dialogueLossHpPct": 50,
+    "victoryFpPct": 25
   },
   "progression": {
     "attributeStart": 10,
@@ -27,7 +28,8 @@
     "crit": { "dexPerPct": 5, "maxBonusPct": 10 },
     "spellPower": { "base": 20, "range": 80 },
     "gradeCoefficients": { "S": 1.5, "A": 1.2, "B": 0.9, "C": 0.6, "D": 0.35, "E": 0.15 },
-    "upgrade": { "base": 0.08, "scaling": 0.03 }
+    "upgrade": { "base": 0.08, "scaling": 0.03 },
+    "levels": { "costBase": 100, "costExponent": 1.5, "maxLevel": 99, "attributeMax": 99 }
   },
   "budgets": {
     "initialJsGzipKb": 200,

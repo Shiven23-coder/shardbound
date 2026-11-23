@@ -19,6 +19,7 @@ import {
 } from './content';
 import { artUrl, tilesetUrl } from './art';
 import { BACKDROP_KEY, BATTLE_SCENE, BattleScene } from './BattleScene';
+import { reducedMotion } from './motion';
 import type { LightState, RegionLighting } from './content';
 
 const TILE = 16;
@@ -29,7 +30,11 @@ const DEPTH = {
 };
 const DRAWN_LAYERS = ['ground', 'detail', 'shadows', 'decor', 'obstacles', 'above'] as const;
 /** Object types the player can use: talk to, read, look at (P-45 obstacles included). */
-const USABLE = new Set(['npc', 'interact', 'obstacle']);
+const USABLE = new Set(['npc', 'interact', 'obstacle', 'lantern']);
+/** Frames of Shardbound's props sheet (tools/art/props.mjs): a Lantern's top, lit and cold; the Lost Shards. */
+const PROPS_FRAME = { lanternLit: 0, lanternCold: 4, lostShards: 5 } as const;
+/** A kindled Lantern's green core glow (P-61), in tiles; it does not fade with daylight. */
+const LANTERN_CORE = { radius: 0.9, colour: '#8fe3b0', alpha: 0.6 } as const;
 /** Frames per second of a creep's idle loop. */
 const CREEP_IDLE_FPS = 3;
 /** A creep this many tiles beyond its aggro radius is near: the battle music starts loading (P-57). */
@@ -85,7 +90,7 @@ export class WorldScene extends Phaser.Scene {
   private stepper!: Stepper;
   private readonly stepWorld: StepWorld = {
     blocked: (tile) => this.blocked(tile),
-    arrived: (tile) => this.checkStandingOn(tile) || this.checkAggro(tile),
+    arrived: (tile) => this.checkStandingOn(tile) || this.checkLostShards(tile) || this.checkAggro(tile),
     stepStarted: () => this.stepStarted(),
   };
   private npcs = new Map<string, Actor>();
@@ -98,6 +103,10 @@ export class WorldScene extends Phaser.Scene {
   private npcTiles = new Set<string>();
   private lighting: Phaser.GameObjects.GameObject[] = [];
   private props: Phaser.GameObjects.Image[] = [];
+  /** Each Lantern's top, drawn lit or cold (P-61). */
+  private lanternTops = new Map<string, Phaser.GameObjects.Image>();
+  /** The Lost Shards marker in this area (P-62). */
+  private lostMarker: Phaser.GameObjects.Image | null = null;
   private keyboard!: KeyboardInput;
   /** The exit or trigger the player stands on: it fires once per entry. */
   private standingOn: string | null = null;
@@ -107,7 +116,7 @@ export class WorldScene extends Phaser.Scene {
   /** The gamepad direction on the last frame, so a new one counts as a press. */
   private padDirection: Direction | null = null;
   /** What was last reported as in reach, so the report goes out only on a change. */
-  private reachReported: 'npc' | 'object' | null = null;
+  private reachReported: 'npc' | 'lantern' | 'object' | null = null;
   private reachTile = '';
   private hasMoved = false;
   private hudCovered = false;
@@ -142,6 +151,8 @@ export class WorldScene extends Phaser.Scene {
     this.interactQueued = false;
     this.padDirection = null;
     this.npcs = new Map();
+    this.lanternTops = new Map();
+    this.lostMarker = null;
     this.creeps = new Map();
     this.disarmed = new Set();
     this.nearCreeps = new Set();
@@ -184,6 +195,8 @@ export class WorldScene extends Phaser.Scene {
     this.buildMap();
     this.createPlayer();
     this.showNpcs(this.view.npcs);
+    this.showLanterns();
+    this.showLostShards();
     this.showCreeps(this.view.creeps);
     this.showProps();
     this.showObstacles();
@@ -605,7 +618,8 @@ export class WorldScene extends Phaser.Scene {
     if (key === this.reachTile) return;
     this.reachTile = key;
     const inReach = this.inReach(tile);
-    const kind = inReach.length === 0 ? null : inReach.some((o) => o.type === 'npc') ? 'npc' : 'object';
+    const kind = inReach.length === 0 ? null : inReach.some((o) => o.type === 'npc') ? 'npc'
+      : inReach.some((o) => o.type === 'lantern') ? 'lantern' : 'object';
     if (kind === this.reachReported) return;
     this.reachReported = kind;
     this.bridge.toReact.emit('reach', kind);
@@ -640,8 +654,9 @@ export class WorldScene extends Phaser.Scene {
   private applyView(view: WorldView): void {
     const areaChanged = view.areaId !== this.view.areaId;
     const moved = view.player.x !== this.view.player.x || view.player.y !== this.view.player.y;
+    const kindled = view.lanterns.filter((l) => l.lit && !this.view.lanterns.find((o) => o.id === l.id)?.lit);
     const lightChanged = view.lightState !== this.view.lightState
-      || view.hiddenObjects.join() !== this.view.hiddenObjects.join();
+      || view.hiddenObjects.join() !== this.view.hiddenObjects.join() || kindled.length > 0;
     this.view = view;
     this.pending = false;
     if (areaChanged) {
@@ -650,6 +665,9 @@ export class WorldScene extends Phaser.Scene {
     }
     this.showNpcs(view.npcs);
     this.showCreeps(view.creeps);
+    this.showLanterns();
+    this.showLostShards();
+    if (kindled.length > 0) audio.play('lanternKindle');
     this.showProps();
     this.showObstacles();
     if (lightChanged) this.buildLighting();
@@ -676,20 +694,73 @@ export class WorldScene extends Phaser.Scene {
     this.markerKey = '';
   }
 
+  /**
+   * Each Lantern's top above its post (P-61): its glass lit or cold. The light
+   * of a lit Lantern is drawn with the area's other lights.
+   */
+  private showLanterns(): void {
+    for (const lantern of this.view.lanterns) {
+      const frame = this.tileFrame('props', lantern.lit ? PROPS_FRAME.lanternLit : PROPS_FRAME.lanternCold);
+      const top = this.lanternTops.get(lantern.id)
+        ?? this.add.image(lantern.x, lantern.y - TILE, tilesetKey('props'), frame).setDepth(DEPTH.above);
+      top.setFrame(frame);
+      this.lanternTops.set(lantern.id, top);
+    }
+  }
+
+  /** The Lost Shards (P-62): a pulsing glow on the tile where the player fell, until recovered. */
+  private showLostShards(): void {
+    const lost = this.view.lostShards;
+    // Published on the canvas (data-lost-shards, a tile) for automation such as the e2e walker.
+    this.game.canvas.dataset.lostShards = lost ? `${Math.floor(lost.x / TILE)},${Math.floor(lost.y / TILE)}` : '';
+    if (!lost) {
+      this.lostMarker?.destroy();
+      this.lostMarker = null;
+      return;
+    }
+    if (this.lostMarker) return;
+    this.lostMarker = this.add.image(lost.x, lost.y, tilesetKey('props'), this.tileFrame('props', PROPS_FRAME.lostShards))
+      .setDepth(DEPTH.actors + lost.y / 10000);
+    this.lostMarker.setData('glow', this.addLight(lost.x, lost.y, TILE * 1.4, '#8fe3b0', 0.55));
+    if (!reducedMotion()) {
+      this.tweens.add({ targets: this.lostMarker, alpha: 0.55, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+    this.lostMarker.once(Phaser.GameObjects.Events.DESTROY, (marker: Phaser.GameObjects.Image) =>
+      (marker.getData('glow') as Phaser.GameObjects.Image | undefined)?.destroy());
+  }
+
+  /**
+   * Stepping within one tile of the Lost Shards picks them up (V2_SPEC §4.4,
+   * P-62): the scene sends the recovery and stops. Returns true when it did.
+   */
+  private checkLostShards(tile: Tile): boolean {
+    const lost = this.view.lostShards;
+    if (!lost || !this.canWalk() || chebyshev(tile, tileAt(lost.x, lost.y)) > 1) return false;
+    const { x, y } = this.position();
+    this.pending = true;
+    this.stepper.halt();
+    this.bridge.toReact.emit('recover', { x, y, facing: this.stepper.facing });
+    return true;
+  }
+
+  /** A frame for one 16 × 16 tile of a tileset texture, added on first use. */
+  private tileFrame(tileset: string, id: number): string {
+    const texture = this.textures.get(tilesetKey(tileset));
+    const frame = `tile-${id}`;
+    if (!texture.has(frame)) {
+      const columns = texture.getSourceImage().width / TILE;
+      texture.add(frame, 0, (id % columns) * TILE, Math.floor(id / columns) * TILE, TILE, TILE);
+    }
+    return frame;
+  }
+
   /** Prop objects present now, drawn from a tile of their tileset ("props:2"). */
   private showProps(): void {
     this.props.splice(0).forEach((image) => image.destroy());
     for (const o of this.objects.filter((obj) => obj.type === 'prop' && this.isActive(obj))) {
       const [tileset, id] = String(o.props.sprite).split(':');
-      const key = tilesetKey(tileset!);
-      const frame = `tile-${id}`;
-      const texture = this.textures.get(key);
-      if (!texture.has(frame)) {
-        const columns = texture.getSourceImage().width / TILE;
-        const index = Number(id);
-        texture.add(frame, 0, (index % columns) * TILE, Math.floor(index / columns) * TILE, TILE, TILE);
-      }
-      this.props.push(this.add.image((o.x + 0.5) * TILE, (o.y + 0.5) * TILE, key, frame)
+      const frame = this.tileFrame(tileset!, Number(id));
+      this.props.push(this.add.image((o.x + 0.5) * TILE, (o.y + 0.5) * TILE, tilesetKey(tileset!), frame)
         .setDepth(DEPTH.actors + ((o.y + 1) * TILE) / 10000));
     }
   }
@@ -706,7 +777,10 @@ export class WorldScene extends Phaser.Scene {
   // light, rain, steam
 
   private buildLighting(): void {
-    this.lighting.splice(0).forEach((o) => o.destroy());
+    this.lighting.splice(0).forEach((o) => {
+      this.tweens.killTweensOf(o);
+      o.destroy();
+    });
     this.playerLight = null;
     const { region, state } = lightingFor(this.view.regionId, this.view.lightState);
     const darkness = this.add.rectangle(0, 0, this.mapWidth, this.mapHeight, ambientColour(state))
@@ -719,6 +793,18 @@ export class WorldScene extends Phaser.Scene {
       const radius = Number(o.props.radius) * TILE * region.lightRadiusScale;
       this.lighting.push(this.addLight((o.x + 0.5) * TILE, (o.y + 0.5) * TILE, radius, String(o.props.color),
         Number(o.props.intensity) * strength));
+    }
+    for (const lantern of this.view.lanterns.filter((l) => l.lit)) {
+      const o = this.objects.find((obj) => obj.name === lantern.id);
+      if (!o) continue;
+      this.lighting.push(this.addLight(lantern.x, lantern.y - TILE / 2, Number(o.props.radius) * TILE * region.lightRadiusScale,
+        String(o.props.color), Number(o.props.intensity) * strength));
+      // The green heart of a kindled Lantern, seen by day too: what sets it apart from a street lamp.
+      const core = this.addLight(lantern.x, lantern.y - TILE, TILE * LANTERN_CORE.radius, LANTERN_CORE.colour, LANTERN_CORE.alpha);
+      this.lighting.push(core);
+      if (!reducedMotion()) {
+        this.tweens.add({ targets: core, alpha: LANTERN_CORE.alpha * 0.6, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      }
     }
     if (state.playerLight) {
       const { radius, color, intensity } = region.playerLight;

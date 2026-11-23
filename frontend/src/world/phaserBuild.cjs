@@ -1,12 +1,13 @@
 // Shardbound's Phaser build (P-60): Phaser's own core entry point
 // (phaser/src/phaser-core.js) plus the modules the world and battle scenes use:
 // tilemaps, particles (rain), tile sprites (the battle backdrop), containers,
-// ellipse and rectangle shapes, Display.Color and Math.Clamp. Physics, Phaser's
+// ellipse and rectangle shapes, game object events, Display.Color and Math.Clamp. Physics, Phaser's
 // sound system (sound runs through src/audio), video, DOM elements, bitmap text,
 // meshes and the other unused game objects stay out: the chunk is about 106 KB
 // gzip smaller than the prebuilt bundle. vite.config.ts points `phaser` here
 // and sets Phaser's build flags; the types still come from the phaser package.
-// A Phaser class or factory used for the first time must be added here.
+// A Phaser class or factory used for the first time must be added here;
+// phaserBuild.test.ts fails for any Phaser path the world code uses that is missing.
 require('phaser-src/polyfills/requestVideoFrame');
 
 var CONST = require('phaser-src/const');
@@ -31,6 +32,7 @@ var Phaser = {
         GameObjectCreator: require('phaser-src/gameobjects/GameObjectCreator'),
         GameObjectFactory: require('phaser-src/gameobjects/GameObjectFactory'),
         UpdateList: require('phaser-src/gameobjects/UpdateList'),
+        Events: require('phaser-src/gameobjects/events'),
         Components: require('phaser-src/gameobjects/components'),
         BuildGameObject: require('phaser-src/gameobjects/BuildGameObject'),
         BuildGameObjectAnimation: require('phaser-src/gameobjects/BuildGameObjectAnimation'),

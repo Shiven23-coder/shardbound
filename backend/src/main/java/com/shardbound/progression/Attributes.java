@@ -49,6 +49,13 @@ public final class Attributes {
         return new EnumMap<>(values);
     }
 
+    /** These attributes with each of {@code raises} added (raises are zero or more). */
+    public Attributes raised(Map<Attribute, Integer> raises) {
+        Attributes raised = copy();
+        raises.forEach((attribute, by) -> raised.values.merge(attribute, by, Integer::sum));
+        return raised;
+    }
+
     public Attributes copy() {
         return new Attributes(new EnumMap<>(values), start);
     }

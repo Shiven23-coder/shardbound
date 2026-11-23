@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
 import path from 'node:path';
 import * as backend from '../support/backend';
-import { choose, inArea, interact, newGame, press, status, tap, turnPage, walkTo, type Controls } from '../support/world';
+import {
+  choose, inArea, interact, leaveLantern, newGame, press, restAtLantern, status, tap, turnPage, walkTo, winBattle, type Controls,
+} from '../support/world';
 
 // Review screenshots of each layout (P-40): a dialogue page with its ▼
 // marker, the choices with one highlighted, the player caught mid-step
@@ -91,4 +93,46 @@ test('a battle: the menu, and a hit landing', async ({ page }, testInfo) => {
   await press(menu.getByRole('button', { name: /^Skills/ }));
   await page.waitForTimeout(300);
   await shot('battle-skills');
+});
+
+test('the Lantern menu and the level-up screen', async ({ page }, testInfo) => {
+  const controls: Controls = testInfo.project.use.hasTouch ? 'touch' : 'keyboard';
+  const shot = (name: string) => page.screenshot({ path: path.join(SHOTS_DIR!, `${testInfo.project.name}-${name}.png`) });
+  const meadow = async () => {
+    for (const creep of ['meadow_creep_b', 'meadow_creep_a']) {
+      await walkTo(page, controls, creep);
+      await winBattle(page);
+    }
+  };
+  await newGame(page, `shotl-${testInfo.project.name.slice(0, 7)}-${Date.now() % 1e9}`);
+  for (let turns = 0; turns < 60 && !(await page.locator('.dialogue-body > .choice-list').isVisible()); turns++) await turnPage(page);
+  await choose(page, 'Help Corvin lash down his wagon before the wind takes it');
+  await inArea(page, 'Cottage Lane');
+  await meadow();                                                     // 70 Shards
+  await walkTo(page, controls, 'to_ruins');
+  await inArea(page, 'The Old Ruins');
+  await walkTo(page, controls, 'crater_crystal');
+  await interact(page, controls);
+  await choose(page, 'Take the crystal in your bare hands');
+  await choose(page, 'Walk on');
+  await walkTo(page, controls, 'to_lane');
+  await inArea(page, 'Cottage Lane');
+
+  await restAtLantern(page, controls);                                // kindles it, then rests
+  if (controls === 'keyboard') await page.mouse.move(1, 1);
+  await page.waitForTimeout(500);
+  await shot('lantern-menu');
+  await leaveLantern(page);
+  await page.waitForTimeout(600);
+  await shot('lantern-on-map');                                       // lit, with Osric beside it
+
+  await meadow();                                                     // the rest brought them back: 140 Shards
+  await restAtLantern(page, controls);
+  const box = page.locator('.lantern-box');
+  await press(box.getByRole('button', { name: /^Level up/ }));
+  await press(box.getByRole('button', { name: 'Raise Vigor' }));
+  await expect(box.locator('.lantern-cost')).toContainText('100');
+  if (controls === 'keyboard') await page.mouse.move(1, 1);
+  await page.waitForTimeout(400);
+  await shot('level-up');
 });

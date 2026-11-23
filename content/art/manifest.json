@@ -27,6 +27,26 @@
       "sheet": "ninja-adventure/eldmere/monsters/StormRat/SpriteSheet.png",
       "faceset": "ninja-adventure/eldmere/monsters/StormRat/Faceset.png"
     },
+    "npc.osric": {
+      "sheet": "ninja-adventure/eldmere/actors/OldMan2/SpriteSheet.png",
+      "faceset": "ninja-adventure/eldmere/actors/OldMan2/Faceset.png"
+    },
+    "creep.furrow_mole": {
+      "sheet": "ninja-adventure/eldmere/monsters/FurrowMole/SpriteSheet.png",
+      "faceset": "ninja-adventure/eldmere/monsters/FurrowMole/Faceset.png"
+    },
+    "creep.hedge_adder": {
+      "sheet": "ninja-adventure/eldmere/monsters/HedgeAdder/SpriteSheet.png",
+      "faceset": "ninja-adventure/eldmere/monsters/HedgeAdder/Faceset.png"
+    },
+    "creep.ash_wisp": {
+      "sheet": "ninja-adventure/eldmere/monsters/AshWisp/SpriteSheet.png",
+      "faceset": "ninja-adventure/eldmere/monsters/AshWisp/Faceset.png"
+    },
+    "creep.barrow_skull": {
+      "sheet": "ninja-adventure/eldmere/monsters/BarrowSkull/SpriteSheet.png",
+      "faceset": "ninja-adventure/eldmere/monsters/BarrowSkull/Faceset.png"
+    },
     "creep.hired_blade": {
       "sheet": "ninja-adventure/eldmere/actors/FighterWhite/SpriteSheet.png",
       "faceset": "ninja-adventure/eldmere/actors/FighterWhite/Faceset.png"

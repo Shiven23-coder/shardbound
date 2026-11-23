@@ -68,6 +68,11 @@ public final class BattleState {
         return text.size();
     }
 
+    /** A line added after the battle has ended, by what follows it (where a death wakes the player, P-62). */
+    public void close(String line) {
+        text.add(line);
+    }
+
     void say(String line) {
         text.add(line);
     }

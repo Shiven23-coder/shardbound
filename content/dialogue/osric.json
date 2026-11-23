@@ -1,0 +1,309 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "osric",
+  "npc": "osric",
+  "start": "osric_storm",
+  "entries": [
+    {
+      "node": "osric_after_death",
+      "conditions": [
+        {
+          "type": "FLAG",
+          "key": "lantern_lit_junction",
+          "op": ">=",
+          "value": 1
+        },
+        {
+          "type": "FLAG",
+          "key": "deaths",
+          "op": ">=",
+          "value": 1
+        },
+        {
+          "type": "FLAG",
+          "key": "osric_death_line",
+          "op": "=",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "node": "osric_first",
+      "conditions": [
+        {
+          "type": "FLAG",
+          "key": "lantern_lit_junction",
+          "op": ">=",
+          "value": 1
+        },
+        {
+          "type": "FLAG",
+          "key": "osric_met",
+          "op": "=",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "node": "osric_hub",
+      "conditions": [
+        {
+          "type": "FLAG",
+          "key": "lantern_lit_junction",
+          "op": ">=",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "node": "osric_hint",
+      "conditions": [
+        {
+          "type": "ITEM",
+          "key": "heartshard",
+          "op": ">=",
+          "value": 1
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "osric_storm",
+      "title": "Osric the Lamplighter",
+      "speaker": "osric",
+      "text": "An old man in an oilskin coat crouches at the crossroads, shielding a Lantern from the rain with his own body. \"Forty years I've lit this glass,\" he mutters, \"and tonight it won't take a spark. It's as if something drank the light right out of it.\" [page] He squints past you at the green glow on the hill. \"Whatever that is up there, it's the first light I've seen tonight that isn't afraid of the dark.\"",
+      "choices": [
+        {
+          "label": "Leave him to it",
+          "end": true
+        }
+      ]
+    },
+    {
+      "id": "osric_hint",
+      "title": "Osric the Lamplighter",
+      "speaker": "osric",
+      "text": "Osric stares at the green glow under your coat, and for a long moment he says nothing. \"Whatever you're carrying,\" he says at last, \"hold it up to the glass.\"",
+      "choices": [
+        {
+          "label": "Leave him to it",
+          "end": true
+        }
+      ]
+    },
+    {
+      "id": "osric_first",
+      "title": "Osric the Lamplighter",
+      "speaker": "osric",
+      "text": "Osric stares at the flame, then at the lump under your coat. \"Green,\" he says at last. \"I'd forgotten it could burn green.\" [page] He sits down hard on the Lantern's step, as if his legs have only now remembered how old they are. \"Ask, then. I can see you've questions. I've had all my life to think up answers.\"",
+      "choices": [
+        {
+          "label": "Sit with him",
+          "to": "osric_more",
+          "effects": [
+            {
+              "type": "SET_FLAG",
+              "key": "osric_met",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "osric_hub",
+      "title": "Osric the Lamplighter",
+      "speaker": "osric",
+      "text": "\"The Lantern's holding,\" Osric says, warming his hands. \"So are you, by the look of it.\"",
+      "choices": [
+        {
+          "label": "What has become of the world?",
+          "to": "osric_world",
+          "effects": [
+            {
+              "type": "SET_FLAG",
+              "key": "osric_asked_world",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "label": "What are the Lanterns?",
+          "to": "osric_lanterns"
+        },
+        {
+          "label": "What are these Shards?",
+          "to": "osric_shards"
+        },
+        {
+          "label": "Where do the roads lead?",
+          "to": "osric_roads",
+          "hiddenWhenLocked": true,
+          "conditions": [
+            {
+              "type": "FLAG",
+              "key": "osric_asked_world",
+              "op": ">=",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "label": "I should go.",
+          "to": "osric_bye"
+        }
+      ]
+    },
+    {
+      "id": "osric_after_death",
+      "title": "Osric the Lamplighter",
+      "speaker": "osric",
+      "text": "\"Back already?\" Osric says without looking up. \"The light kept you. It always does... until it doesn't.\"",
+      "choices": [
+        {
+          "label": "Ask something else",
+          "to": "osric_more",
+          "effects": [
+            {
+              "type": "SET_FLAG",
+              "key": "osric_death_line",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "label": "I should go.",
+          "to": "osric_bye",
+          "effects": [
+            {
+              "type": "SET_FLAG",
+              "key": "osric_death_line",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "osric_more",
+      "title": "Osric the Lamplighter",
+      "speaker": "osric",
+      "text": "Osric warms his hands at the glass and waits.",
+      "choices": [
+        {
+          "label": "What has become of the world?",
+          "to": "osric_world",
+          "effects": [
+            {
+              "type": "SET_FLAG",
+              "key": "osric_asked_world",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "label": "What are the Lanterns?",
+          "to": "osric_lanterns"
+        },
+        {
+          "label": "What are these Shards?",
+          "to": "osric_shards"
+        },
+        {
+          "label": "Where do the roads lead?",
+          "to": "osric_roads",
+          "hiddenWhenLocked": true,
+          "conditions": [
+            {
+              "type": "FLAG",
+              "key": "osric_asked_world",
+              "op": ">=",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "label": "I should go.",
+          "to": "osric_bye"
+        }
+      ]
+    },
+    {
+      "id": "osric_world",
+      "title": "Osric the Lamplighter",
+      "speaker": "osric",
+      "text": "\"When I was a boy, every road in Valdren had a Lantern, and every Lantern burned. Travellers slept beside them and woke whole.\" [page] \"Then the light began to thin. Not all at once. A Lantern would gutter here, go cold there, and the keepers grew old with nobody to follow them.\" [page] \"Where the light goes out, the ash creeps in. You've seen the beasts in the meadow, the way their eyes catch the dark. They weren't like that once.\" [page] \"The Ashen Circle call it the Long Dusk, and they pray for it. I call it a winter that forgot to end.\"",
+      "choices": [
+        {
+          "label": "Ask something else",
+          "to": "osric_more"
+        },
+        {
+          "label": "I should go.",
+          "to": "osric_bye"
+        }
+      ]
+    },
+    {
+      "id": "osric_lanterns",
+      "title": "Osric the Lamplighter",
+      "speaker": "osric",
+      "text": "\"A Lantern remembers whoever rests by it. Sit a while and your hurts close, the draught at your belt fills again, and the creatures you've put down get up and walk the dark once more.\" [page] \"Fall out there and you'll wake beside the last Lantern you rested at. The light keeps you. That's its whole bargain.\" [page] \"It won't keep what you carried, mind. That stays where you fell, glowing, till you fetch it back or fall again first.\"",
+      "choices": [
+        {
+          "label": "Ask something else",
+          "to": "osric_more"
+        },
+        {
+          "label": "I should go.",
+          "to": "osric_bye"
+        }
+      ]
+    },
+    {
+      "id": "osric_shards",
+      "title": "Osric the Lamplighter",
+      "speaker": "osric",
+      "text": "\"Every ash-touched thing holds a sliver of the old light, stolen. Strike it down and the sliver goes free, and that stone of yours drinks it.\" [page] \"Spend them here, at the glass. The Lantern turns borrowed light into you: a stronger arm, a steadier breath, a harder skin.\" [page] \"Hoard them and you'll lose them. I've watched braver folk than you learn that twice.\"",
+      "choices": [
+        {
+          "label": "Ask something else",
+          "to": "osric_more"
+        },
+        {
+          "label": "I should go.",
+          "to": "osric_bye"
+        }
+      ]
+    },
+    {
+      "id": "osric_roads",
+      "title": "Osric the Lamplighter",
+      "speaker": "osric",
+      "text": "\"West, past the flooded road, lies the Whispering Wood; from the mill you'd reach it south across the ford, once the water falls. The Wardens there don't love strangers, and they love the Circle less.\" [page] \"Under the hills, the Hollow Deep, where the old kings are buried and some of them won't stay so. Beyond it, the city: all banners, all lies.\" [page] \"And past everything, where the ground turns to cinder, a spire of crystal you can see on a clear night. Nobody I know has walked there and come back to say so.\" [page] He looks at your coat again. \"If that stone is what I think it is, every one of those roads will want a look at you.\"",
+      "choices": [
+        {
+          "label": "Ask something else",
+          "to": "osric_more"
+        },
+        {
+          "label": "I should go.",
+          "to": "osric_bye"
+        }
+      ]
+    },
+    {
+      "id": "osric_bye",
+      "title": "Osric the Lamplighter",
+      "speaker": "osric",
+      "text": "\"Rest when you can. The dark doesn't.\"",
+      "choices": [
+        {
+          "label": "Leave",
+          "end": true
+        }
+      ]
+    }
+  ]
+}

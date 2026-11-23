@@ -12,6 +12,7 @@ import com.shardbound.save.SaveSnapshot.CreepsEntry;
 import org.jspecify.annotations.Nullable;
 import com.shardbound.content.GameContent;
 import com.shardbound.exception.SaveIncompatibleException;
+import com.shardbound.item.Flask;
 import com.shardbound.item.Inventory;
 import com.shardbound.item.Item;
 import com.shardbound.model.Faction;
@@ -82,7 +83,13 @@ final class GameSnapshots {
         CreepsEntry roster = new CreepsEntry(creeps.levelsView(), List.copyOf(creeps.defeatedView()), creeps.fledView());
         return new SaveSnapshot(s.currentNode(), world, stats.hp(), stats.fp(), stats.gold(), stats.shards(), stats.level(), attributes,
                 s.knownSkills(), s.loadout(), roster, inventory, s.inventory().equippedWeaponId(), s.flagsView(),
-                reputation, s.affinityView(), quests, history, s.rngSeed(), s.demoMode(), s.playSeconds());
+                reputation, s.affinityView(), quests, history, s.rngSeed(), s.demoMode(), s.playSeconds(),
+                s.flaskChargesView(), s.lastLantern(), lostShards(s.lostShards()));
+    }
+
+    private static SaveSnapshot.@Nullable LostShardsEntry lostShards(@Nullable LostShards lost) {
+        return lost == null ? null : new SaveSnapshot.LostShardsEntry(lost.areaId(), lost.tileX(), lost.tileY(),
+                lost.amount());
     }
 
     RunSnapshot run(GameState s) {
@@ -101,6 +108,27 @@ final class GameSnapshots {
     // ---------------------------------------------------------------------
     // snapshot → live state (no bus yet: the engine wires it)
     // ---------------------------------------------------------------------
+
+    /** Flask charges, the last Lantern and Lost Shards (format 4, P-61 … P-63), each checked against the content. */
+    private void restoreProgress(GameState s, SaveSnapshot d) {
+        for (Map.Entry<String, Integer> charges : d.flaskCharges().entrySet()) {
+            if (!(s.inventory().get(charges.getKey()) instanceof Flask)) {
+                throw incompatible("flask", charges.getKey());
+            }
+            s.setFlaskCharges(charges.getKey(), charges.getValue());
+        }
+        if (d.lastLantern() != null && content.world().lantern(d.lastLantern()).isEmpty()) {
+            throw incompatible("Lantern", d.lastLantern());
+        }
+        s.setLastLantern(d.lastLantern());
+        SaveSnapshot.LostShardsEntry lost = d.lostShards();
+        if (lost != null) {
+            if (!content.world().maps().containsKey(lost.area())) {
+                throw incompatible("area of Lost Shards", lost.area());
+            }
+            s.setLostShards(new LostShards(lost.area(), lost.x(), lost.y(), lost.amount()));
+        }
+    }
 
     GameState restoreSave(SaveSnapshot d, String sessionId, int playerId) {
         if (d.currentNode() != null && content.graph().node(d.currentNode()) == null) {
@@ -143,6 +171,7 @@ final class GameSnapshots {
         }
         s.restoreSkills(d.skills(), d.loadout());
         restoreCreeps(s, d.creeps());
+        restoreProgress(s, d);
         content.questManager().initialStates(s);                // quests added to content since the save
         for (Map.Entry<String, String> quest : d.quests().entrySet()) {
             if (content.questManager().quest(quest.getKey()) == null) {

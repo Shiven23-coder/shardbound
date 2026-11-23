@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 import { E2E_API_PORT } from './support/backend';
 
-const PHONE_TESTS = /(battle|merchant-route|touch-targets|touch-controls|layout|screenshots)\.spec\.ts/;
+const PHONE_TESTS = /(battle|lantern|death|merchant-route|touch-targets|touch-controls|layout|screenshots)\.spec\.ts/;
 
 // End-to-end tests against the real stack: the backend jar (started and
 // restarted by the tests themselves, see support/backend.ts), PostgreSQL and

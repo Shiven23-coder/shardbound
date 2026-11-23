@@ -1,0 +1,49 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "junction_lantern",
+  "start": "junction_cold",
+  "entries": [
+    {
+      "node": "junction_kindle",
+      "conditions": [
+        {
+          "type": "ITEM",
+          "key": "heartshard",
+          "op": ">=",
+          "value": 1
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "junction_cold",
+      "title": "Junction Lantern",
+      "text": "The glass is cold. Something it needs is missing.",
+      "choices": [
+        {
+          "label": "Leave it",
+          "end": true
+        }
+      ]
+    },
+    {
+      "id": "junction_kindle",
+      "title": "Junction Lantern",
+      "text": "You lift the crystal to the cold glass. For a moment nothing happens. Then the wick catches with a sound like a held breath let go, and the Lantern burns gold, green at its heart. [page] Warmth runs into your hands. The ache of the night loosens. Beside you, the old lamplighter is holding his breath.",
+      "choices": [
+        {
+          "label": "Warm your hands",
+          "end": true,
+          "effects": [
+            {
+              "type": "SET_FLAG",
+              "key": "lantern_lit_junction",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -17,6 +17,7 @@ import com.shardbound.engine.Ending;
 import com.shardbound.engine.Objective;
 import com.shardbound.exception.ContentValidationException;
 import com.shardbound.item.Consumable;
+import com.shardbound.item.Flask;
 import com.shardbound.item.Item;
 import com.shardbound.item.KeyItem;
 import com.shardbound.item.Weapon;
@@ -132,6 +133,13 @@ public class ContentAssembler {
             case "KEY" -> {
                 return new KeyItem(d.id(), d.name(), d.description(), d.price());
             }
+            case "FLASK" -> {
+                if (d.flask() == null) {
+                    throw new ContentValidationException("Flask " + d.id() + " has no charges/heal values");
+                }
+                return new Flask(d.id(), d.name(), d.description(), d.price(), d.flask().charges(),
+                        d.flask().healPct());
+            }
             default -> throw new ContentValidationException("Unknown item type " + d.type() + " for " + d.id());
         }
     }
@@ -159,8 +167,8 @@ public class ContentAssembler {
             }
         }
         for (String itemId : kit.bag().keySet()) {
-            if (!(items.get(itemId) instanceof Consumable)) {
-                throw new ContentValidationException("Starting bag item " + itemId + " is not a consumable");
+            if (!(items.get(itemId) instanceof Consumable) && !(items.get(itemId) instanceof Flask)) {
+                throw new ContentValidationException("Starting bag item " + itemId + " is not a consumable or a flask");
             }
         }
     }

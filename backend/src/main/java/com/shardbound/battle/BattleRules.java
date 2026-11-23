@@ -10,13 +10,14 @@ package com.shardbound.battle;
  * @param shardsExponent    Shards grow as level^exponent
  * @param guardTelegraphed  damage multiplier while guarding against a telegraphed move
  * @param fleeIgnoreTiles   a creep fled from ignores the player until they are this far beyond its aggro radius
- * @param dialogueLossHpPct HP left after losing a dialogue fight (P-55)
+ * @param dialogueLossHpPct HP left after losing a dialogue fight (P-55, kept by P-62)
+ * @param victoryFpPct      FP restored by a victory, % of max FP (P-63)
  */
 public record BattleRules(double hpPerLevel, double atkPerLevel, double defPerLevel, double shardsBase,
                           double shardsExponent, double rollMin, double rollMax, double critMultiplier,
                           int enemyCritPct, double guardNormal, double guardTelegraphed, int statusChanceCap,
                           int fleeBasePct, int fleePctPerSpeed, int fleeMinPct, int fleeMaxPct, int fleeIgnoreTiles,
-                          int defensiveGuardBelowPct, int dialogueLossHpPct) {
+                          int defensiveGuardBelowPct, int dialogueLossHpPct, int victoryFpPct) {
 
     /** Shards for defeating a creep of this level: round(base · level^exponent). */
     public int creepShards(int level) {

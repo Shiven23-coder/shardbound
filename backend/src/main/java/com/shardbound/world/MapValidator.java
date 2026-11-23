@@ -2,6 +2,7 @@ package com.shardbound.world;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -20,6 +21,7 @@ public class MapValidator {
     private final Set<String> dialogues;
     private final Set<String> npcs;
     private final Set<String> creeps;
+    private final Set<String> lanternIds = new HashSet<>();
     private final List<String> errors = new ArrayList<>();
 
     /** The aggro radius a creep spawn may have, in tiles (V2_SPEC §4.2). */
@@ -126,8 +128,29 @@ public class MapValidator {
             }
             case INTERACT, TRIGGER, OBSTACLE -> checkDialogue(where, o);
             case CREEP_SPAWN -> checkCreep(where, o);
+            case LANTERN -> checkLantern(areaId, where, o);
             default -> { }
         }
+    }
+
+    /**
+     * A Lantern (P-61) has an id unique in the world, a name, a spawn point of its own map for the
+     * player to wake at, and a dialogue for its messages.
+     */
+    private void checkLantern(String areaId, String where, MapObject o) {
+        String id = o.property("lanternId");
+        if (id == null || id.isBlank() || o.property("name") == null) {
+            errors.add(where + ": Lantern " + o.name() + " needs a lanternId and a name");
+            return;
+        }
+        if (!lanternIds.add(id)) {
+            errors.add(where + ": Lantern id " + id + " is used twice");
+        }
+        AreaMap map = world.maps().get(areaId);
+        if (o.property("spawn") == null || map.spawn(o.property("spawn")).isEmpty()) {
+            errors.add(where + ": Lantern " + o.name() + " names no spawn point of its map");
+        }
+        checkDialogue(where, o);
     }
 
     /** A creep spawn names a known enemy, a level range 1 ≤ min ≤ max ≤ 99 and an aggro radius of 1–3 tiles. */

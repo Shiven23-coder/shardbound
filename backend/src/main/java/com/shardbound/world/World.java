@@ -85,4 +85,17 @@ public record World(Start start, Map<String, Region> regions, Map<String, Area> 
     public Optional<Edge> edgeBetween(String a, String b) {
         return edges.stream().filter(e -> e.joins(a, b)).findFirst();
     }
+
+    /** The Lanterns of an area (P-61). */
+    public List<Lantern> lanternsIn(String areaId) {
+        AreaMap map = maps.get(areaId);
+        return map == null ? List.of()
+                : map.objectsOf(ObjectType.LANTERN).stream().map(o -> Lantern.of(areaId, o)).toList();
+    }
+
+    /** A Lantern by its id, anywhere in the world: a scan of a few objects per map. */
+    public Optional<Lantern> lantern(String lanternId) {
+        return maps.keySet().stream().flatMap(area -> lanternsIn(area).stream())
+                .filter(l -> l.id().equals(lanternId)).findFirst();
+    }
 }

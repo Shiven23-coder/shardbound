@@ -1,0 +1,31 @@
+{
+  "currentNode": null,
+  "world": { "area": "eldmere_cottage_lane", "spawn": null, "x": 328, "y": 200, "facing": "UP" },
+  "hp": 63,
+  "fp": 18,
+  "gold": 15,
+  "shards": 131,
+  "level": 1,
+  "attributes": { "VIGOR": 10, "MIND": 10, "STRENGTH": 10, "DEXTERITY": 10, "ENDURANCE": 10, "ARCANE": 10 },
+  "skills": ["rending_cut", "crystal_pulse"],
+  "loadout": ["rending_cut", "crystal_pulse", null, null],
+  "creeps": {
+    "levels": { "eldmere_cottage_lane/meadow_creep_a": 2, "eldmere_cottage_lane/meadow_creep_b": 1 },
+    "defeated": ["eldmere_cottage_lane/meadow_creep_a", "eldmere_cottage_lane/meadow_creep_b"],
+    "fled": {}
+  },
+  "inventory": [
+    { "itemId": "rusty_shortsword", "qty": 1 },
+    { "itemId": "healing_draught", "qty": 2 },
+    { "itemId": "energy_tonic", "qty": 1 }
+  ],
+  "equipped": "rusty_shortsword",
+  "flags": { "storm_night": 1 },
+  "reputation": { "ASHEN": 0, "ELDMERE": 0, "CROWN": 0, "SYLVAN": 0 },
+  "affinity": {},
+  "quests": {},
+  "history": [{ "nodeId": "p01", "choiceId": 2 }],
+  "rngSeed": 424242,
+  "demoMode": false,
+  "playSeconds": 312
+}

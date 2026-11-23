@@ -1,6 +1,7 @@
 package com.shardbound.model;
 
 import com.shardbound.progression.Attributes;
+import com.shardbound.progression.LevelUp;
 import com.shardbound.progression.PlayerStats;
 import com.shardbound.progression.ProgressionRules;
 
@@ -12,14 +13,16 @@ import com.shardbound.progression.ProgressionRules;
  */
 public class Stats {
 
-    private final Attributes attributes;
-    private final PlayerStats derived;
+    private final ProgressionRules rules;
+    private Attributes attributes;
+    private PlayerStats derived;
     private int hp;
     private int fp;
     private int gold;
     private int shards;
 
     public Stats(Attributes attributes, ProgressionRules rules, int hp, int fp, int gold, int shards) {
+        this.rules = rules;
         this.attributes = attributes;
         this.derived = new PlayerStats(attributes, rules);
         this.hp = clamp(hp, 0, maxHp());
@@ -83,7 +86,33 @@ public class Stats {
         return fp - before;
     }
 
-    /** HP and FP to their maximums (the interim respawn, P-55). O(1). */
+    /** HP and FP to their maximums (a rest or a death, P-61, P-62). O(1). */
+    /**
+     * Applies a level-up bought at a Lantern (P-61): the new attributes, the cost taken from held
+     * Shards, and HP and FP at their new maximum (the player has just rested).
+     *
+     * @throws IllegalArgumentException if the plan was made for other attributes or is not affordable
+     */
+    public void applyLevelUp(LevelUp.Plan plan) {
+        if (!plan.before().asMap().equals(attributes.asMap())) {
+            throw new IllegalArgumentException("The level-up was planned for other attributes");
+        }
+        if (!plan.affordable() || plan.cost() > shards) {
+            throw new IllegalArgumentException("Not enough Shards");
+        }
+        shards -= plan.cost();
+        attributes = plan.after();
+        derived = new PlayerStats(attributes, rules);
+        restoreAll();
+    }
+
+    /** Takes every held Shard (a death, P-62) and returns how many there were. */
+    public int takeAllShards() {
+        int taken = shards;
+        shards = 0;
+        return taken;
+    }
+
     public void restoreAll() {
         hp = maxHp();
         fp = maxFp();
@@ -96,7 +125,7 @@ public class Stats {
         return gold - before;
     }
 
-    /** Adds Shards (V2_SPEC §4.3; spending arrives in V5). Returns the real change. O(1). */
+    /** Adds Shards (V2_SPEC §4.3). Returns the real change. O(1). */
     public int addShards(int amount) {
         int before = shards;
         shards = Math.max(0, shards + amount);

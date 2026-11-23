@@ -48,3 +48,21 @@ describe('battle menu (P-57)', () => {
     expect(menuStep(bag, menu, { kind: 'primary' }).action).toEqual({ kind: 'ITEM', slot: 0, itemId: 'healing_draught' });
   });
 });
+
+describe('left and right (P-61)', () => {
+  it('are ignored: they are − and + on the level-up screen', () => {
+    expect(menuStep(ROOT, menu, { kind: 'left' })).toEqual({ state: ROOT });
+    expect(menuStep(ROOT, menu, { kind: 'right' })).toEqual({ state: ROOT });
+  });
+});
+
+describe('the Lantern Draught in the BAG (P-63)', () => {
+  it('shows its charges as 2/3 and cannot be drunk empty', () => {
+    const flask = { id: 'lantern_draught', name: 'Lantern Draught', qty: 2, maxQty: 3, heal: 40, fp: 0 };
+    const [full] = menuItems('bag', { ...menu, bag: [flask] });
+    expect(full!.label).toBe('Lantern Draught 2/3');
+    expect(full!.disabled).toBe(false);
+    const [empty] = menuItems('bag', { ...menu, bag: [{ ...flask, qty: 0 }] });
+    expect(empty!.disabled).toBe(true);
+  });
+});

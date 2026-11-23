@@ -6,6 +6,7 @@ import com.shardbound.event.EventBus;
 import com.shardbound.event.EventType;
 import com.shardbound.event.GameEvent;
 import com.shardbound.item.Consumable;
+import com.shardbound.item.Flask;
 import com.shardbound.item.Item;
 import com.shardbound.rules.Rewards;
 import org.jspecify.annotations.Nullable;
@@ -181,7 +182,10 @@ public final class BattleEngine {
 
     private void useItem(GameState s, BattleState battle, @Nullable String itemId) {
         Item item = itemId == null ? null : s.inventory().get(itemId);
-        if (item instanceof Consumable consumable) {
+        if (item instanceof Flask flask) {
+            int healed = Rewards.useFlask(s, s.bus(), flask);
+            battle.say("You drink the " + flask.name() + (healed > 0 ? " and recover " + healed + " HP" : "") + ".");
+        } else if (item instanceof Consumable consumable) {
             int hpBefore = s.stats().hp();
             int fpBefore = s.stats().fp();
             Rewards.useConsumable(s, s.bus(), consumable);
@@ -285,8 +289,9 @@ public final class BattleEngine {
     }
 
     /**
-     * Victory (P-55): Shards for the enemy's level, its drops rolled, FP
-     * refilled. One {@code nextInt(100)} per drop, in table order.
+     * Victory (P-63): Shards for the enemy's level, its drops rolled, and a
+     * share of FP restored (Lanterns are the full refill). One
+     * {@code nextInt(100)} per drop, in table order.
      */
     private BattleOutcome won(GameState s, BattleState battle) {
         CreepFighter enemy = battle.enemy();
@@ -308,7 +313,7 @@ public final class BattleEngine {
             Rewards.grantItem(s, bus, item, 1);
             battle.say("The " + enemy.name() + " dropped a " + item.name() + ".");
         }
-        s.stats().restoreFp(s.stats().maxFp());
+        s.stats().restoreFp(s.stats().maxFp() * content.rules().victoryFpPct() / 100);
         battle.end(BattleOutcome.WON, new BattleState.Rewards(shards, drops));
         return BattleOutcome.WON;
     }

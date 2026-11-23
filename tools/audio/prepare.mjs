@@ -36,6 +36,11 @@ const EFFECTS = {
   'Heal.wav': 'sfx/heal.wav',
   'Success1.wav': 'sfx/victory.wav',
   'GameOver2.wav': 'sfx/defeat.wav',
+  // Lanterns and Lost Shards (P-61, P-62, P-64)
+  'Fire.wav': 'sfx/lantern-kindle.wav',
+  'Heal2.wav': 'sfx/lantern-rest.wav',
+  'LevelUp1.wav': 'sfx/level-up.wav',
+  'PowerUp1.wav': 'sfx/shards-recovered.wav',
 };
 const MUSIC = {
   '26 - Lost Village.ogg': 'music/eldmere.ogg',

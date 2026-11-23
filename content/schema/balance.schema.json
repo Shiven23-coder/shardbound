@@ -68,7 +68,8 @@
         "statusChanceCap",
         "flee",
         "defensiveGuardBelowPct",
-        "dialogueLossHpPct"
+        "dialogueLossHpPct",
+        "victoryFpPct"
       ],
       "additionalProperties": false,
       "properties": {
@@ -230,9 +231,15 @@
           "maximum": 100
         },
         "dialogueLossHpPct": {
-          "description": "HP left after losing a dialogue fight, % of max (P-55).",
+          "description": "HP left after losing a dialogue fight, % of max (P-55, kept by P-62).",
           "type": "integer",
           "minimum": 1,
+          "maximum": 100
+        },
+        "victoryFpPct": {
+          "description": "FP a victory restores, % of max FP (P-63). Lanterns are the full refill.",
+          "type": "integer",
+          "minimum": 0,
           "maximum": 100
         }
       }
@@ -247,7 +254,8 @@
         "crit",
         "spellPower",
         "gradeCoefficients",
-        "upgrade"
+        "upgrade",
+        "levels"
       ],
       "additionalProperties": false,
       "properties": {
@@ -520,6 +528,18 @@
               "type": "number",
               "minimum": 0
             }
+          }
+        },
+        "levels": {
+          "description": "Buying levels at a Lantern (V2_SPEC §4.3, P-61): cost(L → L+1) = round(costBase · L^costExponent).",
+          "type": "object",
+          "required": ["costBase", "costExponent", "maxLevel", "attributeMax"],
+          "additionalProperties": false,
+          "properties": {
+            "costBase": { "type": "number", "exclusiveMinimum": 0 },
+            "costExponent": { "type": "number", "exclusiveMinimum": 0 },
+            "maxLevel": { "description": "The highest level a player can reach.", "type": "integer", "minimum": 1 },
+            "attributeMax": { "description": "The highest value of one attribute.", "type": "integer", "minimum": 1 }
           }
         }
       }

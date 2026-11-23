@@ -53,7 +53,8 @@ class SaveRepositoryIT extends IntegrationTest {
         saves.save(player, 2, first, "eldmere_square");
         SaveSnapshot later = new SaveSnapshot("p03", first.world(), 40, 3, 50, 10, 2, first.attributes(),
                 first.skills(), first.loadout(), first.creeps(), first.inventory(), first.equipped(), first.flags(),
-                first.reputation(), first.affinity(), first.quests(), first.history(), 99L, false, 600);
+                first.reputation(), first.affinity(), first.quests(), first.history(), 99L, false, 600,
+                first.flaskCharges(), first.lastLantern(), first.lostShards());
         saves.save(player, 2, later, "eldmere_mill");
 
         List<SlotSummary> slots = saves.list(player);

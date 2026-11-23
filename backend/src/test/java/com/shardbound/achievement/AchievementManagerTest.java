@@ -33,7 +33,7 @@ class AchievementManagerTest {
     void firstLightUnlocksOnHeartshardOnly() {
         GameState s = TestStates.fresh();
         AchievementManager m = manager(Set.of());
-        m.onEvent(GameEvent.of(EventType.ITEM_GAINED, "x", "itemId", "healing_draught"), s);
+        m.onEvent(GameEvent.of(EventType.ITEM_GAINED, "x", "itemId", "energy_tonic"), s);
         assertFalse(m.unlocked().contains("FIRST_LIGHT"));
         m.onEvent(GameEvent.of(EventType.ITEM_GAINED, "x", "itemId", "heartshard"), s);
         assertTrue(m.unlocked().contains("FIRST_LIGHT"));

@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class BalanceSliceTest {
 
     private static final int RUNS = 1000;
-    private static final String DRAUGHT = "healing_draught";
+    private static final String DRAUGHT = "lantern_draught";
 
     private final GameContent content = TestEngines.content();
     private final BattleContent battle = content.battle();
@@ -49,6 +49,7 @@ class BalanceSliceTest {
         s.inventory().equip(kit.weapon());
         kit.bag().forEach((item, qty) -> s.inventory().add(content.items().get(item), qty));
         kit.skills().forEach(s::learnSkill);
+        s.refillFlasks();                         // a new game starts with the Lantern Draught full (P-63)
         return s;
     }
 
@@ -66,7 +67,7 @@ class BalanceSliceTest {
 
     /** The bot policy: a draught below 40 % HP, else a skill the enemy is weak to, else Strike. */
     private BattleAction choose(GameState s, CreepTemplate creep) {
-        if (s.stats().hp() * 100 < s.stats().maxHp() * 40 && s.inventory().count(DRAUGHT) > 0) {
+        if (s.stats().hp() * 100 < s.stats().maxHp() * 40 && s.flaskCharges(DRAUGHT) > 0) {
             return BattleAction.item(DRAUGHT);
         }
         List<String> loadout = s.loadout();
@@ -99,15 +100,9 @@ class BalanceSliceTest {
     }
 
     @Test
-    void theMireSlimeTakesThreeToSixTurnsAtItsLevels() {
-        assertCreep("mire_slime", 1);
-        assertCreep("mire_slime", 2);
-    }
-
-    @Test
-    void theStormRatTakesThreeToSixTurnsAtItsLevels() {
-        assertCreep("storm_rat", 2);
-        assertCreep("storm_rat", 3);
+    void theMeadowCreepsTakeThreeToSixTurnsAtLevelOne() {
+        assertCreep("mire_slime", 1);                 // P-64: both meadow creeps at level 1
+        assertCreep("storm_rat", 1);
     }
 
     @Test
@@ -128,15 +123,15 @@ class BalanceSliceTest {
         int wins = 0;
         for (long seed = 1; seed <= RUNS; seed++) {
             GameState s = freshPlayer(seed);
-            if (fight(s, "mire_slime", 2).outcome() != BattleOutcome.WON
-                    || fight(s, "storm_rat", 3).outcome() != BattleOutcome.WON) {
+            if (fight(s, "mire_slime", 1).outcome() != BattleOutcome.WON
+                    || fight(s, "storm_rat", 1).outcome() != BattleOutcome.WON) {
                 continue;                         // a lost meadow fight sends the player home to heal
             }
             if (fight(s, "hired_blade", 2).outcome() == BattleOutcome.WON) {
                 wins++;
             }
         }
-        String report = "hired_blade after the meadow (hardest levels): " + wins * 100 / RUNS + " % won";
+        String report = "hired_blade after the meadow, no rest: " + wins * 100 / RUNS + " % won";
         System.out.println(report);
         assertTrue(wins * 100 >= RUNS * 85, report);
     }

@@ -3,6 +3,7 @@ package com.shardbound.content;
 import com.shardbound.content.RawContent.AchievementDef;
 import com.shardbound.content.RawContent.ChoiceDef;
 import com.shardbound.content.RawContent.ConsumableDef;
+import com.shardbound.content.RawContent.FlaskDef;
 import com.shardbound.content.RawContent.EncounterDef;
 import com.shardbound.content.RawContent.EndingDef;
 import com.shardbound.content.RawContent.ObjectiveDef;
@@ -123,8 +124,10 @@ public class JsonContentReader {
             if (c != null && !c.isNull()) {
                 consumable = new ConsumableDef(optInt(c, "heal", 0), optInt(c, "fp", 0));
             }
+            JsonNode f = n.get("flask");
+            FlaskDef flask = f == null || f.isNull() ? null : new FlaskDef(integer(f, "charges"), integer(f, "healPct"));
             result.add(new ItemDef(text(n, "id"), text(n, "name"), text(n, "type"), text(n, "description"),
-                    optInt(n, "price", 0), weapon, consumable));
+                    optInt(n, "price", 0), weapon, consumable, flask));
         }
         return result;
     }

@@ -12,6 +12,7 @@ import com.shardbound.web.Requests.BattleRequest;
 import com.shardbound.web.Requests.EncounterRequest;
 import com.shardbound.web.Requests.ExitRequest;
 import com.shardbound.web.Requests.InteractRequest;
+import com.shardbound.web.Requests.RecoverRequest;
 import com.shardbound.web.Requests.ItemRequest;
 import com.shardbound.web.Requests.NewGameRequest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,6 +23,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -80,7 +82,9 @@ public class GameController {
                 () -> engine.exit(state, body.exitId(), body.x(), body.y(), body.facing()));
     }
 
+    /** A rest at a Lantern writes slot 0 with the run, so the request is one transaction (P-61). */
     @PostMapping("/world/interact")
+    @Transactional
     @Operation(operationId = "worldInteract",
             summary = "Talk to an NPC, use an object, or step into a trigger (§4.11)")
     @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
@@ -88,6 +92,15 @@ public class GameController {
                                 @Parameter(name = IdempotencyKeys.HEADER, in = ParameterIn.HEADER, required = true, description = "A new UUID per action (P-56)") @RequestHeader(name = IdempotencyKeys.HEADER, required = false) @Nullable String key) {
         return engine.once(state, IdempotencyKeys.of("world/interact", key, body),
                 () -> engine.interact(state, body.targetId(), body.x(), body.y(), body.facing()));
+    }
+
+    @PostMapping("/world/recover")
+    @Operation(operationId = "worldRecover", summary = "Stepped within a tile of the Lost Shards: they come back (§4.4)")
+    @SecurityRequirement(name = OpenApiConfig.SESSION_SCHEME)
+    public SessionView recover(@CurrentGame GameState state, @Valid @RequestBody RecoverRequest body,
+                               @Parameter(name = IdempotencyKeys.HEADER, in = ParameterIn.HEADER, required = true, description = "A new UUID per action (P-56)") @RequestHeader(name = IdempotencyKeys.HEADER, required = false) @Nullable String key) {
+        return engine.once(state, IdempotencyKeys.of("world/recover", key, body),
+                () -> engine.recover(state, body.x(), body.y(), body.facing()));
     }
 
     @PostMapping("/world/encounter")

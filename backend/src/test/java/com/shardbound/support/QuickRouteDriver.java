@@ -94,10 +94,10 @@ public final class QuickRouteDriver {
             boolean low = player.get("hp").asInt() * 100 < player.get("maxHp").asInt() * 40;
             boolean draught = false;
             for (JsonNode item : battle.get("menu").get("bag")) {
-                draught |= "healing_draught".equals(item.get("id").asString());
+                draught |= "lantern_draught".equals(item.get("id").asString()) && item.get("qty").asInt() > 0;
             }
             Map<String, Object> action = low && draught
-                    ? Map.of("kind", "ITEM", "slot", 0, "itemId", "healing_draught")
+                    ? Map.of("kind", "ITEM", "slot", 0, "itemId", "lantern_draught")
                     : Map.of("kind", "STRIKE", "slot", 0);
             Response round = api.post("/api/battle/action", session, action);
             TestApi.expect(200, round);

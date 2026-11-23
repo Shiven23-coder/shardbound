@@ -131,7 +131,9 @@ Resting at a Lantern, in one transaction:
 2. Defeated creeps respawn: the run's defeated-creep set is cleared, and each spawn rerolls its level from the run's seeded RNG.
 3. The Lantern becomes `last_lantern`, the respawn point.
 4. An autosave is written to slot 0 (the D24 path: reseed the live state → snapshot → write).
-5. The Lantern menu opens: **Level up** (§4.3), **Fast travel**, **Skills** (4-slot loadout), **Leave**. Weapon upgrades happen at Smith NPCs (§4.6).
+5. The Lantern menu opens: **Level up** (§4.3), **Skills** (4-slot loadout), **Leave**; **Fast travel** joins it with the map in V8. Weapon upgrades happen at Smith NPCs (§4.6).
+
+**From V5 (P-61):** Lanterns are `lantern` map objects (`lanternId`, `name`, `spawn`). A Lantern is cold until the player carries the Heartshard; interacting lights it once, and a lit Lantern stays lit and usable without the Heartshard. Steps 1–5 run as one keyed transaction, and the slot-0 autosave is written synchronously inside it.
 
 **Fast travel.** Lanterns are vertices of the **area graph**: the edges in `regions.json` (`from`, `to`, `weight`), where the weight is the walking time in seconds between connected areas (from the maps). Edges whose `gateFlag` the player hasn't set are excluded. `Graph.dijkstra(source, weight)` returns each area's distance and the parent map. Travel is allowed to any **discovered** Lantern whose area is reachable.
 - The route is drawn on the map screen, and the ETA sets the length of the travel transition: `min(3 s, ETA / 30)`.
@@ -175,15 +177,17 @@ These curves were fitted to the progression table in §10.2: the model hits ever
 | Arcane | status chance bonus (percentage points) | (10,0) (40,15) (99,25) |
 | Arcane | spell power for Holy/Crystal skills | `SPa = 20 + 80·sat(Arcane)` |
 
-Level-up happens only at a Lantern. The menu shows a server-computed **preview** (POST `/api/lantern/levelup/preview`). Several levels can be bought in one confirm, which runs in one transaction.
+Level-up happens only at a Lantern. The menu shows a server-computed **preview** (POST `/api/lantern/levelup/preview`, read-only and unkeyed). Several levels can be bought in one confirm, which runs in one keyed transaction. Input never waits on the network: + and − change the pending values at once, only the preview numbers follow the server's answer, and stale answers are ignored (P-61). The cost curve and the caps live in `balance.json`.
 
 ### 4.4 Death and Lost Shards
 On death (HP reaches 0 in battle):
 1. All held Shards become **Lost Shards** at the tile where the battle started. This replaces any previous Lost Shards (those are destroyed).
 2. Held Shards are set to 0. The player respawns at `last_lantern` with full HP/FP and refilled draughts. Creeps respawn, and the boss resets (its intro cutscene does not replay, §4.7).
-3. Recovering them: a validated interact event on the Lost Shards marker (within Chebyshev distance 1, §4.11) adds them back, deletes the marker, and shows the toast "Shards recovered".
+3. Recovering them: stepping within Chebyshev distance 1 of the marker sends `POST /api/world/recover` (a keyed, validated world event, §4.11), which adds them back, deletes the marker, and shows the toast "Shards recovered".
 4. Dying again before recovering destroys them.
 5. Telemetry records `DEATH` and `SHARDS_LOST` / `SHARDS_RECOVERED`.
+
+**From V5 (P-62):** one seam (`engine/Death`) applies these steps. Before any Lantern is lit, the player wakes at the region's `respawn` point. Dialogue fights (the Hired Blade) keep their story outcome on a loss and drop no Lost Shards. **P-63:** the Lantern Draught has 3 charges of 40 % max HP, refilled at rests and on death; a victory restores 25 % of max FP.
 
 ### 4.5 Elements and statuses
 Elements: **Physical, Fire, Frost, Lightning, Holy, Crystal**. Creature families: Beast, Human, Undead, Sylvan, Construct, Ashen, Crystalborn, Draconic.
@@ -482,7 +486,7 @@ There is no v1 → v2 conversion: v1 never ran in production, so no v1 saves exi
 | Phaser chunk (lazy) | ≤ 450 KB gzip | CI bundle check from **V3**; Shardbound's own Phaser build with only the modules it uses (P-60) |
 | Region asset pack | ≤ 1.5 MB | CI asset check |
 | Audio, initial pack | ≤ 64 KB | CI bundle check: interface sounds loaded with the first page (P-59) |
-| Audio, region pack | ≤ 1,280 KB per region | CI bundle check: the region's music (larger of OGG and AAC) and ambience, loaded on entering it (P-59) |
+| Audio, region pack | ≤ 1,280 KB per region | CI bundle check: the region's music (larger of OGG and AAC), ambience and the shared Lantern sounds, loaded on entering it (P-59, P-64). V7's boss music gets its own pack, loaded at the boss arena |
 | Audio, battle pack | ≤ 1,024 KB | CI bundle check: the battle track and effects, loaded only when a creep is near (P-57, P-59) |
 
 **Mobile performance budget (P-24, from V3).** Target device class: mid-range Android, about 4 GB RAM, Snapdragon 6-series class. The automated measurements run **nightly and before releases**, not as PR gates (P-36).
@@ -786,6 +790,8 @@ The harsher case (dying mid-region with a full purse, or under-levelled) is cove
 - +10 (Heartstone) and the S/SS/SSS weapons come from side content, so a completionist is stronger than the table, which is intentional.
 - Boss targets are the **player level** expected on a first attempt; each boss's own level is one higher (§10.1).
 
+**Measured in V5 (P-64):** `balance/EldmereProgressionTest` plays Eldmere's real route (storm night, kindle and rest, Ember at dawn, Mill Road, the Hired Blade, the ruins, rests and greedy level-ups) over 1,000 seeds with the real battle engine: the first level-up is affordable after fight 3 and not before, the median level before the boss is **4**, creep fights take a median of 3–6 turns, and the boss stand-in (the Hired Blade template at level 5 with **HP ×1.8**) is won on the first attempt in **84 %** of runs, inside the 70–85 % band. ×1.8 is the starting point for the Ashen Herald in V7.
+
 ---
 
 ## 11. Assets and licensing (CREDITS.md)
@@ -806,7 +812,7 @@ The harsher case (dying mid-region with a full purse, or under-levelled) is cove
 | **P0** | Platform reset | Tag `v1-archive` on `main`. From a fresh clone with Docker running, `npm run dev` starts postgres, mailpit, API and Vite, and the prologue plays to the quick ending with save/load. Restarting the backend mid-run loses nothing (`ActiveRunIT` + manual restart). `mvnw verify` green (unit tests, ArchUnit, content schema tests, Testcontainers ITs, OpenAPI export). `npm run typecheck`, `npm test`, `npm run build` green with no hand-written view types. No content tables, no `ContentImporter`, no Javalin, no `db.properties`. CI config complete |
 | **V3** | World | Phaser 4 lazy-loaded (P-33); 16×16 art at integer scale with the art manifest (P-29, P-34); Tiled maps loaded and validated at startup (BFS reachability) and shipped in the frontend build (P-35). Tile-step client movement (P-51); REST events (exit, interact, encounter) validated with BFS reachability **+ speed check** (path ≤ speed × elapsed × 1.25 + slack). Eldmere's 4 areas walkable, NPC dialogue, merchant ending reachable. **Touch D-pad + tap to interact, landscape responsive HUD, every touch target ≥ 48 px.** No debug inspector code in the production bundle. PR gates: Playwright e2e (desktop + mobile, resume ×5), bundle and asset budgets, bundle grep, CREDITS check; **mobile performance budget** nightly (P-36) |
 | **V4** | Battles | Battle layout (portrait, landscape, desktop), ATTACK/SKILLS/BAG/FLEE with touch targets ≥ 48 px, elements, statuses, 4 skill slots (2 to start; Ember from Brann), telegraphed creep moves, visible creeps with aggro in the south meadow; the Hired Blade on the battle screen; interim victory/defeat (P-55). **Idempotency keys** on every state-changing action (P-31, P-56). Seeded balance runner. Battle music loaded lazily |
-| **V5** | Progression | Shards, Lanterns (rest, respawn, autosave), attributes and curves, level-up with preview, Lost Shards; first level-up after fight 3 |
+| **V5** | Progression | Shards, Lanterns (rest, respawn, autosave), attributes and curves, level-up with preview, Lost Shards; first level-up after fight 3. The Lantern Draught flask; Eldmere's six creeps (P-64) with expected level 4 before the boss; Osric the Lamplighter |
 | **V7** | Bosses (Eldmere only) | Ashen Herald: phases, telegraphs, Guard, skippable intro, FOE VANQUISHED, boss bar; tuned for an unupgraded weapon |
 | **V2a** | Accounts + privacy | Guest + Google sign-in (OIDC), guest → Google upgrade, Spring Security sessions, CSRF, configurable rate limits, Turnstile, data export, account deletion, privacy policy + terms |
 | **V2c** | Observability, deploy, PWA, version skew | Sentry (frontend + backend), JSON logs, Actuator metrics + health. Container image; hosting (backend Mumbai/Singapore, frontend CDN proxying `/api`, managed Postgres with PITR or daily backups plus a tested restore). Preview deployments per PR. Installable PWA with asset caching. Version skew: `X-API-Version`, "Update available — reload", backend compatible with the previous frontend for one release (`oasdiff` check). Content id guard in CI: no id removed or renamed without a `SaveUpgrade` (P-28) |

@@ -26,6 +26,7 @@ public record SessionView(
         List<JournalView> journal,
         List<ToastView> toasts,
         @Nullable BattleView battle,
+        @Nullable LanternMenuView lantern,
         @Nullable EndingView ending,
         @Nullable String objective,
         boolean offerReload) {
@@ -41,10 +42,11 @@ public record SessionView(
     public record InventoryView(int usedSlots, int capacity, List<ItemView> items) { }
 
     /** tier/base/critPct are null for non-weapons; heal/fp null for non-consumables. */
+    /** An item in the bag; for a flask (P-63) {@code qty} is its charges left and {@code maxQty} its charges when full. */
     public record ItemView(String id, String name, String type, String description, int qty, boolean equipped,
                            @Nullable String tier, @Nullable Integer base, @Nullable Integer critPct,
                            @Nullable Integer heal, @Nullable Integer fp,
-                           boolean usable) { }
+                           boolean usable, @Nullable Integer maxQty) { }
 
     public record QuestView(String id, String title, String description, String status, boolean main) { }
 

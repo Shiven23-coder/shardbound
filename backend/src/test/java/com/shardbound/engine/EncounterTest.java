@@ -147,12 +147,13 @@ class EncounterTest {
     }
 
     @Test
-    void defeatByACreepWakesThePlayerAtHomeWithShardsKeptAndCreepsBack() {
+    void defeatBeforeAnyLanternWakesThePlayerAtHomeAndDropsTheirShardsWhereTheBattleStarted() {
         encounter(SLIME, 1);
         winBattle();
         state.stats().addShards(100);
         int shards = state.stats().shards();
         encounter(RAT, 1);
+        WorldPosition fell = state.position();
         SessionView v = engine.view(state);
         while (v.mode() == Mode.BATTLE) {
             state.stats().damage(1000);                                // the next round ends it
@@ -161,12 +162,15 @@ class EncounterTest {
         assertEquals("LOST", v.battle().outcome());
         assertEquals(Mode.WORLD, v.mode());
         AreaMap lane = lane();
-        assertEquals(WorldPosition.at(LANE, lane, lane.spawn("home").orElseThrow()).x(), state.position().x());
+        assertEquals(WorldPosition.at(LANE, lane, lane.spawn("home").orElseThrow()).x(), state.position().x(),
+                "no Lantern lit yet: the region's respawn point (P-62)");
         assertEquals(state.stats().maxHp(), state.stats().hp());
         assertEquals(state.stats().maxFp(), state.stats().fp());
-        assertEquals(shards, state.stats().shards(), "held Shards are kept until Lost Shards exist (P-55)");
+        assertEquals(0, state.stats().shards(), "held Shards drop on death (P-62)");
+        assertEquals(new LostShards(LANE, lane.tileOf(fell.x()), lane.tileOf(fell.y()), shards), state.lostShards());
+        assertEquals(lane.centre(lane.tileOf(fell.x())), v.world().lostShards().x());
         assertTrue(v.world().creeps().stream().anyMatch(c -> c.id().equals(SLIME)), "the slime is back");
-        assertTrue(v.toasts().stream().anyMatch(t -> t.text().contains("You wake at home")));
+        assertEquals("You wake at home, bruised.", v.battle().text().getLast());
     }
 
     @Test

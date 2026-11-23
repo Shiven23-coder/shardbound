@@ -4,6 +4,8 @@
 //   0, 1  lantern post (top, base)
 //   2     the Heartshard in the crater: a pale green crystal on rubble
 //   3     millstone, seen from above
+//   4     lantern post top, cold: dark glass (an unlit Lantern, P-61)
+//   5     Lost Shards: three pale green shards on the ground (P-62)
 //   node tools/art/props.mjs
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -28,6 +30,8 @@ const PALETTE = {
   s: [104, 100, 104, 255], // stone
   S: [138, 132, 134, 255], // stone highlight
   k: [70, 66, 72, 255], // stone shade
+  q: [40, 46, 58, 255], // cold glass
+  Q: [74, 84, 100, 255], // cold glass highlight
 };
 
 // Lantern post, two tiles tall.
@@ -85,7 +89,30 @@ const HEARTSHARD = [
   '................',
 ];
 
-const image = blankImage(TILE * 4, TILE, [0, 0, 0, 0]);
+// Lost Shards (P-62): three small shards stuck in the ground, glowing.
+const LOST_SHARDS = [
+  '................',
+  '................',
+  '................',
+  '.......o........',
+  '......oCo.......',
+  '......oCdo......',
+  '..o...oCdo...o..',
+  '.oCo..oCcdo.oCo.',
+  '.oCdo.oCcdo.oCdo',
+  '.occdooccddooccd',
+  '..occdoccddocdo.',
+  '...ooooooooooo..',
+  '................',
+  '................',
+  '................',
+  '................',
+];
+
+/** The lantern post's top with its glass cold: lit colours become dark glass. */
+const COLD_LANTERN_TOP = LANTERN_POST.slice(0, TILE).map((line) => line.replace(/[gh]/g, 'q').replace(/G/g, 'Q'));
+
+const image = blankImage(TILE * 6, TILE, [0, 0, 0, 0]);
 
 /** Draws a letter grid, `TILE` columns wide, starting at tile `first`; taller grids continue in the next tiles. */
 function draw(grid, first) {
@@ -121,6 +148,8 @@ function millstone(tile) {
 draw(LANTERN_POST, 0);
 draw(HEARTSHARD, 2);
 millstone(3);
+draw(COLD_LANTERN_TOP, 4);
+draw(LOST_SHARDS, 5);
 
 const out = path.join(ROOT, 'content', 'art', 'shardbound', 'props.png');
 mkdirSync(path.dirname(out), { recursive: true });

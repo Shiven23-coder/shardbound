@@ -26,6 +26,10 @@ import ReputationPanel from '../components/ReputationPanel';
 import Journal from '../components/Journal';
 import BattleBox from '../components/BattleBox';
 import BattleInfoBox from '../components/BattleInfoBox';
+import LanternBox from '../components/LanternBox';
+import ShardsCounter from '../components/ShardsCounter';
+import { hintText, markHintSeen, seenHints } from '../settings/hints';
+import { useSettings } from '../settings/settings';
 import { hpShown } from '../battle/battleText';
 
 const TABS = ['Inventory', 'Quests', 'Reputation', 'Journal'] as const;
@@ -47,6 +51,36 @@ export default function WorldScreen() {
   const { view, busy } = state;
   const bridge = useMemo(() => new WorldBridge(), []);
   const { layout, device } = useInputState();
+  const { hints: hintsOn } = useSettings();
+  const playerId = state.player?.playerId;
+  // The first Lantern menu explains levelling and resting, once per profile (P-61).
+  const [levelTip, setLevelTip] = useState(false);
+  const levelTipShown = useRef(false);
+  levelTipShown.current = levelTip;
+  const atLantern = view?.mode === 'LANTERN';
+  useEffect(() => {
+    if (atLantern && hintsOn && playerId !== undefined && !seenHints(playerId).has('levelup')) setLevelTip(true);
+    if (!atLantern && levelTipShown.current && playerId !== undefined) {
+      markHintSeen(playerId, 'levelup');                   // shown once: leaving the menu counts as read
+      setLevelTip(false);
+    }
+  }, [atLantern, hintsOn, playerId]);
+  const dismissLevelTip = () => {
+    if (playerId !== undefined) markHintSeen(playerId, 'levelup');
+    setLevelTip(false);
+  };
+  // Lantern and Lost Shards sounds (P-61, P-62): a rest, a bought level, Shards picked up.
+  const heard = useRef({ atLantern: false, level: 0, lost: false });
+  useEffect(() => {
+    if (!view) return;
+    const before = heard.current;
+    const level = view.lantern?.level ?? 0;
+    const lost = Boolean(view.world.lostShards);
+    if (atLantern && !before.atLantern) audio.play('lanternRest');
+    else if (atLantern && level > before.level && before.level > 0) audio.play('levelUp');
+    if (before.lost && !lost && view.mode === 'WORLD') audio.play('shardsRecovered');
+    heard.current = { atLantern, level, lost };
+  }, [view, atLantern]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [hudCovered, setHudCovered] = useState(false);
   const hudRef = useRef<HTMLButtonElement>(null);
@@ -125,6 +159,8 @@ export default function WorldScreen() {
         void run((key) => api.worldExit(exitId, x, y, facing, key), snapBack)),
       bridge.toReact.on('interact', ({ targetId, x, y, facing }) =>
         void run((key) => api.worldInteract(targetId, x, y, facing, key), snapBack)),
+      bridge.toReact.on('recover', ({ x, y, facing }) =>
+        void run((key) => api.worldRecover(x, y, facing, key), snapBack)),
       bridge.toReact.on('encounter', ({ creepId, x, y, facing }) =>
         void run((key) => api.worldEncounter(creepId, x, y, facing, key), snapBack)),
       bridge.toReact.on('creepNear', () => audio.loadBattle()),
@@ -201,6 +237,7 @@ export default function WorldScreen() {
           </div>
         )}
         {battle && layout !== 'portrait' && battleBox?.('overlay')}
+        {!battle && <ShardsCounter shards={view.hud.shards} />}
         {!battle && <HudCluster ref={hudRef} hud={view.hud} alwaysNumbers={layout === 'desktop'} dodge={hudCovered} />}
         {overlay === 'title' && <AreaTitle name={view.world.areaName} />}
         {overlay === 'objective' && objective.shown && <ObjectiveLine objective={objective.shown} />}
@@ -230,6 +267,18 @@ export default function WorldScreen() {
             </>
           )}
         </div>
+      )}
+      {view.mode === 'LANTERN' && view.lantern && (
+        <LanternBox
+          lantern={view.lantern}
+          busy={busy}
+          layout={layout}
+          tip={levelTip ? hintText('levelup', device) : null}
+          onTipDismiss={dismissLevelTip}
+          onLevelUp={(raises) => run((key) => api.lanternLevelUp(raises, key))}
+          onLoadout={(slots) => run((key) => api.lanternLoadout(slots, key))}
+          onLeave={() => run((key) => api.lanternLeave(key))}
+        />
       )}
       {panelOpen && (
         <SidePanels

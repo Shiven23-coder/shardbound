@@ -98,7 +98,7 @@ export async function activeObstacles(page: Page): Promise<string[]> {
  * The map with every creep's aggro zone blocked too, except `target`'s: a walk
  * to somewhere else never starts a battle by accident (V2_SPEC §4.2).
  */
-function avoidingCreeps(map: WorldMap, target: MapObject): WorldMap {
+function avoidingCreeps(map: WorldMap, target: MapObject | null): WorldMap {
   const blocked = [...map.blocked];
   for (const creep of map.objects.filter((o) => o.type === 'creep_spawn' && o !== target)) {
     const radius = Number(creep.props.aggroRadius);
@@ -111,9 +111,10 @@ function avoidingCreeps(map: WorldMap, target: MapObject): WorldMap {
   return { ...map, blocked };
 }
 
-/** A battle or a dialogue took over the screen. */
+/** A battle, a dialogue or the Lantern menu took over the screen. */
 export async function eventOpen(page: Page): Promise<boolean> {
-  return (await page.locator('.dialogue-box').isVisible()) || (await page.locator('.battle-box').isVisible());
+  return (await page.locator('.dialogue-box').isVisible()) || (await page.locator('.battle-box').isVisible())
+    || (await page.locator('.lantern-box').isVisible());
 }
 
 /** The map with these obstacles' rectangles blocked (and walled) as well. */
@@ -308,6 +309,19 @@ async function walkWithin(page: Page, controls: Controls, start: Position, objec
   const near = (x: number, y: number) =>
     Math.max(Math.max(target.x - x, x - (target.x + target.w - 1), 0), Math.max(target.y - y, y - (target.y + target.h - 1), 0)) <= 1;
   const goal = (x: number, y: number) => (onTop ? covers(x, y) : near(x, y));
+  await walkToGoal(page, controls, start, map, goal, objectName);
+}
+
+/** Walks to one tile of the current area, keeping clear of every creep's aggro zone. */
+export async function walkToTile(page: Page, controls: Controls, tile: [number, number]): Promise<void> {
+  const start = await waitForPosition(page);
+  const map = avoidingCreeps(withObstacles(loadMap(start.area), await activeObstacles(page)), null);
+  await walkToGoal(page, controls, start, map, (x, y) => x === tile[0] && y === tile[1], `tile ${tile}`);
+}
+
+async function walkToGoal(
+  page: Page, controls: Controls, start: Position, map: WorldMap, goal: (x: number, y: number) => boolean, label: string,
+): Promise<void> {
   const dialogueOpen = () => eventOpen(page);
   // Walk the path; if the player stopped short (an event in flight, a server snap-back), plan again from there.
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -327,7 +341,7 @@ async function walkWithin(page: Page, controls: Controls, start: Position, objec
   }
   const p = await position(page);
   if (p && p.area === start.area && !goal(...tileOf(p)) && !(await dialogueOpen())) {
-    throw new Error(`Could not reach ${objectName}: at tile ${tileOf(p)} in ${p.area}`);
+    throw new Error(`Could not reach ${label}: at tile ${tileOf(p)} in ${p.area}`);
   }
 }
 
@@ -371,7 +385,7 @@ export async function winBattle(page: Page): Promise<string> {
     } else if (label === 'attack') {
       await press(menu.getByRole('button', { name: /^Strike/ }));
     } else if (label === 'bag') {
-      await press(menu.getByRole('button', { name: /^Healing Draught/ }));
+      await press(menu.getByRole('button', { name: /^Lantern Draught/ }));
     } else {
       await press(menu.getByRole('button', { name: /^Back/ }));
     }
@@ -379,4 +393,115 @@ export async function winBattle(page: Page): Promise<string> {
   }
   await expect(box).toBeHidden();
   return 'done';
+}
+
+/** The Junction Lantern (P-61): the rest spawn west of it, facing it, puts only the Lantern in reach. */
+export const JUNCTION_REST: [number, number] = [21, 13];
+
+/**
+ * Walks to the Junction Lantern and rests there, kindling it first if it is
+ * still cold (the player must carry the Heartshard). Returns with the Lantern
+ * menu open.
+ */
+export async function restAtLantern(page: Page, controls: Controls): Promise<void> {
+  await walkToTile(page, controls, JUNCTION_REST);
+  await expect.poll(async () => {
+    await tap(page, controls, 'RIGHT', 1);                  // a tap toward it only turns the player
+    return (await status(page))?.facing;
+  }, { timeout: 10_000 }).toBe('RIGHT');
+  await interact(page, controls);
+  const box = page.locator('.lantern-box');
+  const dialogue = page.locator('.dialogue-box');
+  await expect(box.or(dialogue)).toBeVisible({ timeout: 15_000 });
+  if (await dialogue.isVisible()) {                         // still cold: the kindling message, two pages
+    await choose(page, 'Warm your hands');
+    await expect(dialogue).toBeHidden();
+    await interact(page, controls);
+  }
+  await expect(box).toBeVisible({ timeout: 15_000 });
+}
+
+/** Leaves the Lantern menu for the world. */
+export async function leaveLantern(page: Page): Promise<void> {
+  await press(page.locator('.lantern-box').getByRole('button', { name: /^Leave/ }));
+  await expect(page.locator('.lantern-box')).toBeHidden();
+}
+
+/**
+ * A new game played to the Junction Lantern with the Heartshard (P-61): the
+ * storm night, the ruins and back to the lane. With `meadow`, the two meadow
+ * creeps are beaten first (70 Shards). Returns in the lane, Lantern still cold.
+ */
+export async function toTheLanternWithTheShard(page: Page, controls: Controls, username: string, meadow = false): Promise<void> {
+  await newGame(page, username);
+  await choose(page, 'Help Corvin lash down his wagon before the wind takes it');
+  await inArea(page, 'Cottage Lane');
+  if (meadow) await beatTheMeadow(page, controls);
+  await walkTo(page, controls, 'to_ruins');
+  await inArea(page, 'The Old Ruins');
+  await walkTo(page, controls, 'crater_crystal');
+  await interact(page, controls);
+  await choose(page, 'Take the crystal in your bare hands');
+  await choose(page, 'Walk on');
+  await walkTo(page, controls, 'to_lane');
+  await inArea(page, 'Cottage Lane');
+}
+
+/** Beats the Mire Slime and the Storm Rat in the meadow (35 Shards each at level 1, P-64). */
+export async function beatTheMeadow(page: Page, controls: Controls): Promise<void> {
+  for (const creep of ['meadow_creep_b', 'meadow_creep_a']) {
+    await walkTo(page, controls, creep);
+    await winBattle(page);
+  }
+}
+
+/** The Shards counter in the HUD. */
+export async function heldShards(page: Page): Promise<number> {
+  const text = await page.locator('[data-testid="hud-shards"]').textContent();
+  return Number((text ?? '').replace(/\D/g, ''));
+}
+
+/** Walks to a tile within one of `tile` (Chebyshev), outside every creep's aggro zone. */
+export async function walkNear(page: Page, controls: Controls, tile: [number, number]): Promise<void> {
+  const start = await waitForPosition(page);
+  const map = avoidingCreeps(withObstacles(loadMap(start.area), await activeObstacles(page)), null);
+  const near = (x: number, y: number) => Math.max(Math.abs(x - tile[0]), Math.abs(y - tile[1])) <= 1;
+  await walkToGoal(page, controls, start, map, near, `near ${tile}`);
+}
+
+/** The tile of the Lost Shards marker the scene draws, or null (data-lost-shards, P-62). */
+export async function lostShardsTile(page: Page): Promise<[number, number] | null> {
+  const value = await page.getByTestId('world-canvas').locator('canvas').getAttribute('data-lost-shards');
+  if (!value) return null;
+  const [x, y] = value.split(',').map(Number);
+  return [x!, y!];
+}
+
+/** Guards every round until the battle is lost, then closes it (a death, P-62). Returns the closing line. */
+export async function loseBattle(page: Page): Promise<string> {
+  const box = page.locator('.battle-box');
+  await expect(box).toBeVisible();
+  for (let step = 0; step < 600; step++) {
+    const continueButton = box.getByRole('button', { name: 'Continue' });
+    if (await continueButton.isVisible()) {
+      const closing = (await box.locator('.battle-prompt').textContent()) ?? '';
+      await press(continueButton);
+      await expect(box).toBeHidden();
+      return closing;
+    }
+    const menu = box.locator('.battle-menu');
+    if (await menu.isVisible()) {
+      const label = await menu.getAttribute('aria-label');
+      if (label === 'Battle menu') await press(menu.getByRole('button', { name: /^Attack/ }));
+      else if (label === 'attack') await press(menu.getByRole('button', { name: /^Guard/ }));
+      else await press(menu.getByRole('button', { name: /^Back/ }));
+      await page.waitForTimeout(80);
+    } else if (await box.isVisible()) {
+      await press(box.locator('.battle-text'));        // skip the round's text
+      await page.waitForTimeout(60);
+    } else {
+      throw new Error('The battle closed before its last page was read');
+    }
+  }
+  throw new Error('The battle did not end');
 }

@@ -50,7 +50,7 @@ test('a meadow battle: the menu pages, then a victory', async ({ page }, testInf
   await back(page, controls);
 
   await open(page, controls, '3', /^Bag/);
-  await expect(menu.getByRole('button', { name: /^Healing Draught ×3/ })).toBeVisible();
+  await expect(menu.getByRole('button', { name: /^Lantern Draught 3\/3/ })).toBeVisible();
   if (controls === 'touch') await expectTouchTargets(page, 'the bag page');
   await back(page, controls);
 

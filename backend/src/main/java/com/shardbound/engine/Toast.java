@@ -24,6 +24,7 @@ public record Toast(String kind, String text) {
             case SHARDS_GAINED -> "SHARDS";
             case SKILL_LEARNED -> "SKILL";
             case HEALED -> "HEAL";
+            case LEVEL_UP -> "LEVEL";
             default -> "INFO";
         };
         return new Toast(kind, message);

@@ -280,7 +280,8 @@
           "enum": [
             "WEAPON",
             "CONSUMABLE",
-            "KEY"
+            "KEY",
+            "FLASK"
           ]
         },
         "description": {
@@ -394,6 +395,33 @@
               }
             }
           ]
+        },
+        "flask": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "description": "A refillable flask (P-63): charges when full, and HP healed per charge as a share of max HP.",
+              "required": [
+                "charges",
+                "healPct"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "charges": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "healPct": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                }
+              }
+            }
+          ]
         }
       },
       "allOf": [
@@ -430,6 +458,25 @@
             ],
             "properties": {
               "consumable": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "FLASK"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "flask"
+            ],
+            "properties": {
+              "flask": {
                 "type": "object"
               }
             }

@@ -16,7 +16,9 @@ export interface SceneEvents {
   /** A creep is close: a battle may start soon (the battle music starts loading, P-57). */
   creepNear: undefined;
   /** Something the player can use came into reach (its kind), or nothing is in reach (null). */
-  reach: 'npc' | 'object' | null;
+  reach: 'npc' | 'lantern' | 'object' | null;
+  /** The player stepped within a tile of their Lost Shards (P-62). */
+  recover: { x: number; y: number; facing: Facing };
   /** The player took their first step in this scene. */
   moved: undefined;
   /** The player walked under the HUD (true) or out from under it (false). */

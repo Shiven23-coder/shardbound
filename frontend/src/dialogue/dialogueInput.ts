@@ -2,7 +2,9 @@
 // keyboard, the gamepad and taps share one set of rules.
 
 /** The player's intent, whatever the device. */
-export type Intent = { kind: 'primary' } | { kind: 'up' } | { kind: 'down' } | { kind: 'pick'; index: number } | { kind: 'back' };
+export type Intent =
+  | { kind: 'primary' } | { kind: 'up' } | { kind: 'down' } | { kind: 'pick'; index: number } | { kind: 'back' }
+  | { kind: 'left' } | { kind: 'right' };            // − and + on the level-up screen (P-61)
 
 /** What the dialogue box should do. */
 export type DialogueAction =
@@ -30,6 +32,8 @@ export function keyIntent(key: string): Intent | null {
   if (key === 'e' || key === 'E' || key === ' ' || key === 'Enter') return { kind: 'primary' };
   if (key === 'w' || key === 'W' || key === 'ArrowUp') return { kind: 'up' };
   if (key === 's' || key === 'S' || key === 'ArrowDown') return { kind: 'down' };
+  if (key === 'a' || key === 'A' || key === 'ArrowLeft') return { kind: 'left' };
+  if (key === 'd' || key === 'D' || key === 'ArrowRight') return { kind: 'right' };
   if (key === 'Escape' || key === 'Backspace') return { kind: 'back' };
   const number = Number(key);
   if (Number.isInteger(number) && number >= 1 && number <= MAX_NUMBERED) return { kind: 'pick', index: number - 1 };
@@ -41,7 +45,7 @@ export function keyIntent(key: string): Intent | null {
  * only fast-forwards text already read, and never takes a choice.
  */
 export function dialogueAction(moment: DialogueMoment, intent: Intent, held: boolean): DialogueAction | null {
-  if (intent.kind === 'back') return null;                // a dialogue has no "back"; Esc stays the menu key
+  if (intent.kind === 'back' || intent.kind === 'left' || intent.kind === 'right') return null;   // no "back" here; Esc stays the menu key
   const choosing = moment.pageDone && moment.lastPage;
   if (intent.kind === 'primary') {
     if (held && (!moment.alreadyRead || choosing)) return null;

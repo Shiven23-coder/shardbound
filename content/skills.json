@@ -28,6 +28,14 @@
       "unlock": "CREEP", "description": "A practised cut." },
     { "id": "heavy_swing", "name": "Heavy Swing", "element": "PHYSICAL", "power": 2.0, "fpCost": 0, "scaling": "WEAPON",
       "telegraph": true, "telegraphLine": "The {name} draws his blade back over his shoulder!",
-      "unlock": "CREEP", "description": "Everything behind one swing." }
+      "unlock": "CREEP", "description": "Everything behind one swing." },
+    {"id": "mole_claw", "name": "Claw", "element": "PHYSICAL", "power": 1.0, "fpCost": 0, "scaling": "WEAPON", "unlock": "CREEP", "description": "Spade-like claws, caked with earth."},
+    {"id": "upheaval", "name": "Upheaval", "element": "PHYSICAL", "power": 1.8, "fpCost": 0, "scaling": "WEAPON", "telegraph": true, "telegraphLine": "The {name} burrows, and the ground shudders under your feet!", "unlock": "CREEP", "description": "The earth bucks under you."},
+    {"id": "adder_fang", "name": "Fang", "element": "PHYSICAL", "power": 0.8, "fpCost": 0, "scaling": "WEAPON", "status": "POISON", "statusChance": 50, "unlock": "CREEP", "description": "Two needle teeth, dripping."},
+    {"id": "adder_strike", "name": "Strike", "element": "PHYSICAL", "power": 1.1, "fpCost": 0, "scaling": "WEAPON", "unlock": "CREEP", "description": "A lunge too quick to see."},
+    {"id": "cinder_touch", "name": "Cinder Touch", "element": "FIRE", "power": 0.8, "fpCost": 0, "scaling": "WEAPON", "status": "BURN", "statusChance": 45, "unlock": "CREEP", "description": "Grey fire that gives no warmth."},
+    {"id": "wisp_flare", "name": "Flare", "element": "FIRE", "power": 1.2, "fpCost": 0, "scaling": "WEAPON", "unlock": "CREEP", "description": "The wisp flares into a sheet of ash."},
+    {"id": "skull_gnaw", "name": "Gnaw", "element": "PHYSICAL", "power": 1.0, "fpCost": 0, "scaling": "WEAPON", "status": "BLEED", "statusChance": 20, "unlock": "CREEP", "description": "Old teeth, still sharp."},
+    {"id": "grave_bite", "name": "Grave Bite", "element": "PHYSICAL", "power": 2.0, "fpCost": 0, "scaling": "WEAPON", "telegraph": true, "telegraphLine": "The {name}'s jaw unhinges, wider than any jaw should!", "unlock": "CREEP", "description": "Everything a grave keeps, in one bite."}
   ]
 }

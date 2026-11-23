@@ -1,5 +1,11 @@
 package com.shardbound.engine;
 
+import java.util.HashSet;
+import com.shardbound.world.Lantern;
+import com.shardbound.view.LevelPreviewView;
+import com.shardbound.progression.PlayerStats;
+import com.shardbound.progression.LevelUp;
+import com.shardbound.progression.Attribute;
 import com.shardbound.achievement.AchievementManager;
 import com.shardbound.battle.BattleAction;
 import com.shardbound.battle.BattleEngine;
@@ -28,6 +34,7 @@ import com.shardbound.exception.LockedChoiceException;
 import com.shardbound.exception.SaveNotFoundException;
 import com.shardbound.exception.WorldEventRejectedException;
 import com.shardbound.item.Consumable;
+import com.shardbound.item.Flask;
 import com.shardbound.item.Inventory;
 import com.shardbound.item.Item;
 import com.shardbound.item.Weapon;
@@ -103,6 +110,8 @@ public class GameEngine {
     private final EndingResolver endingResolver;
     private final ViewBuilder views;
     private final GameSnapshots snapshots;
+    private final Death death;
+    private final LevelUp levelUp;
     private final @Nullable SaveStore saves;
     private final @Nullable MetaStore meta;
     private final @Nullable RunStore runs;
@@ -125,6 +134,8 @@ public class GameEngine {
         this.endingResolver = new EndingResolver(content.endings());
         this.views = new ViewBuilder(content);
         this.snapshots = new GameSnapshots(content, battleEngine);
+        this.death = new Death(world);
+        this.levelUp = new LevelUp(content.progression());
         this.saves = saves;
         this.meta = meta;
         this.runs = runs;
@@ -176,6 +187,7 @@ public class GameEngine {
                 Stats.starting(content.progression(), kit.gold()), inventory, seed, demoMode, 0);
         s.moveTo(position, clock.millis());
         kit.skills().forEach(s::learnSkill);
+        s.refillFlasks();
         s.creeps().respawn(world, s.rng());
         content.questManager().initialStates(s);
         start.flags().forEach(s::setFlag);
@@ -290,7 +302,13 @@ public class GameEngine {
             if (target.type() == ObjectType.TRIGGER && target.flag("once")) {
                 s.setFlag(WorldObjects.onceFlag(last.areaId(), target), 1);
             }
-            openDialogue(s, target.property("dialogue"));
+            if (target.type() == ObjectType.LANTERN) {
+                Lantern lantern = Lantern.of(last.areaId(), target);
+                if (s.flag(lantern.litFlag()) != 0) {
+                    return rest(s, lantern);
+                }
+            }
+            openDialogue(s, target.property("dialogue"));        // a cold Lantern: its cold or kindling message
             return persistAndView(s);
         }
     }
@@ -456,7 +474,7 @@ public class GameEngine {
                 s.setBattle(null);
                 s.setFinishedBattle(battle);
                 if (battle.creepRef() != null) {
-                    endCreepBattle(s, battle.creepRef(), outcome);
+                    endCreepBattle(s, battle, outcome);
                 } else {
                     endDialogueBattle(s, battle.encounterId(), outcome);
                 }
@@ -484,40 +502,21 @@ public class GameEngine {
                     throw new ActionNotAllowedException("Not enough FP for " + skill.name() + ".");
                 }
             }
-            case ITEM -> {
-                if (action.itemId() == null || !(s.inventory().get(action.itemId()) instanceof Consumable)) {
-                    throw new ActionNotAllowedException("You have no usable item like that.");
-                }
-            }
+            case ITEM -> requireUsable(s, action.itemId());
             case STRIKE, GUARD -> { }
         }
     }
 
-    private void endCreepBattle(GameState s, String creepRef, BattleOutcome outcome) {
+    private void endCreepBattle(GameState s, BattleState battle, BattleOutcome outcome) {
+        String creepRef = battle.creepRef();
         switch (outcome) {
             case WON -> s.creeps().markDefeated(creepRef);
             case FLED -> s.creeps().markFled(creepRef, clock.millis());
-            case LOST -> wakeAtRespawn(s);
+            case LOST -> death.apply(s, clock.millis()).forEach(battle::close);   // read before Continue (P-62)
             case ONGOING -> throw new IllegalStateException("The battle is still on");
         }
         s.setMode(Mode.WORLD);
         s.moveTo(s.position(), clock.millis());          // walking time counts from here
-    }
-
-    /**
-     * Defeat by a creep until Lanterns exist (P-55): the player wakes at the
-     * region's respawn point with full HP and FP, the creeps respawn with new
-     * levels, and held Shards are kept. V5 changes the place (last Lantern)
-     * and turns the held Shards into Lost Shards.
-     */
-    private void wakeAtRespawn(GameState s) {
-        String region = world.area(s.position().areaId()).region();
-        World.Place place = world.regions().get(region).respawn();
-        AreaMap map = world.mapOf(place.area());
-        s.moveTo(WorldPosition.at(place.area(), map, map.spawn(place.spawn()).orElseThrow()), clock.millis());
-        s.stats().restoreAll();
-        s.creeps().respawn(world, s.rng());
-        s.addToast(new Toast("BATTLE", "You wake at home, bruised."));
     }
 
     /** A dialogue fight (P-37) goes on in its dialogue; a loss leaves the player at half HP (P-55). */
@@ -534,6 +533,118 @@ public class GameEngine {
         };
         s.setMode(Mode.DIALOGUE);
         enterNode(s, next);
+    }
+
+    // =====================================================================
+    // Lanterns and Lost Shards (V2_SPEC §4.1, §4.3, §4.4, P-61, P-62)
+    // =====================================================================
+
+    /**
+     * Rest at a lit Lantern (P-61), one transaction: HP, FP and the Lantern
+     * Draught full; the creeps respawn with new levels; the Lantern becomes the
+     * respawn point; slot 0 is written with the run; the Lantern menu opens.
+     */
+    private SessionView rest(GameState s, Lantern lantern) {
+        s.stats().restoreAll();
+        s.refillFlasks();
+        s.creeps().respawn(world, s.rng());
+        s.setLastLantern(lantern.id());
+        s.setMode(Mode.LANTERN);
+        reseedAndPersist(s);
+        if (saves != null) {
+            saves.save(s.playerId(), AUTOSAVE_SLOT, snapshots.save(s), snapshots.areaOf(s));
+        }
+        return views.build(s);
+    }
+
+    /** What raising these attributes would do (P-61); nothing changes. */
+    public LevelPreviewView previewLevelUp(GameState s, Map<Attribute, Integer> raises) {
+        synchronized (s) {
+            requireMode(s, Mode.LANTERN, "Rest at a Lantern to level up.");
+            LevelUp.Plan plan = plan(s, raises);
+            Weapon weapon = s.inventory().equippedWeapon();
+            return new LevelPreviewView(plan.before().level(), plan.after().level(), plan.cost(),
+                    s.stats().shards() - plan.cost(), plan.affordable(),
+                    ViewBuilder.statsOf(new PlayerStats(plan.before(), content.progression()), weapon),
+                    ViewBuilder.statsOf(new PlayerStats(plan.after(), content.progression()), weapon));
+        }
+    }
+
+    /** Buys the levels of these raises in one go (P-61): 409 if the Shards do not cover them. */
+    public SessionView levelUp(GameState s, Map<Attribute, Integer> raises) {
+        synchronized (s) {
+            requireMode(s, Mode.LANTERN, "Rest at a Lantern to level up.");
+            LevelUp.Plan plan = plan(s, raises);
+            if (plan.levels() == 0) {
+                throw new ActionNotAllowedException("Choose at least one attribute to raise.");
+            }
+            if (!plan.affordable()) {
+                throw new ActionNotAllowedException("You need " + plan.cost() + " Shards for that.");
+            }
+            s.stats().applyLevelUp(plan);
+            s.bus().publish(GameEvent.of(EventType.LEVEL_UP, "Level " + plan.after().level(),
+                    "level", String.valueOf(plan.after().level())));
+            return persistAndView(s);
+        }
+    }
+
+    private LevelUp.Plan plan(GameState s, Map<Attribute, Integer> raises) {
+        try {
+            return levelUp.plan(s.stats().attributes(), raises, s.stats().shards());
+        } catch (IllegalArgumentException e) {
+            throw new ActionNotAllowedException(e.getMessage());
+        }
+    }
+
+    /** Sets the four skill slots at a Lantern (P-61): known skills, each at most once, or empty. */
+    public SessionView setLoadout(GameState s, List<@Nullable String> slots) {
+        synchronized (s) {
+            requireMode(s, Mode.LANTERN, "Change your skills at a Lantern.");
+            if (slots.size() != GameState.LOADOUT_SLOTS) {
+                throw new ActionNotAllowedException("The loadout has " + GameState.LOADOUT_SLOTS + " slots.");
+            }
+            Set<String> placed = new HashSet<>();
+            for (String skill : slots) {
+                if (skill != null && (!s.knownSkills().contains(skill) || !placed.add(skill))) {
+                    throw new ActionNotAllowedException("Each slot takes a skill you know, once.");
+                }
+            }
+            s.restoreSkills(s.knownSkills(), slots);
+            return persistAndView(s);
+        }
+    }
+
+    /** Leaves the Lantern menu for the world. */
+    public SessionView leaveLantern(GameState s) {
+        synchronized (s) {
+            requireMode(s, Mode.LANTERN, "You are not at a Lantern.");
+            s.setMode(Mode.WORLD);
+            s.moveTo(s.position(), clock.millis());          // walking time counts from here
+            return persistAndView(s);
+        }
+    }
+
+    /**
+     * The player stepped within one tile of their Lost Shards (V2_SPEC §4.4, P-62): after checks
+     * 1–4 the Shards come back.
+     */
+    public SessionView recover(GameState s, int x, int y, Facing facing) {
+        synchronized (s) {
+            WorldPosition last = s.position();
+            AreaMap map = requireWorld(s);
+            int[] tile = worldEvents.checkPosition(map, WorldObjects.collision(s, last.areaId(), map), last,
+                    clock.millis() - s.lastWorldEventMillis(), x, y);
+            LostShards lost = s.lostShards();
+            if (lost == null || !lost.areaId().equals(last.areaId())
+                    || Math.max(Math.abs(tile[0] - lost.tileX()), Math.abs(tile[1] - lost.tileY())) > 1) {
+                throw new WorldEventRejectedException("There is nothing to pick up there.", last);
+            }
+            s.moveTo(new WorldPosition(last.areaId(), x, y, facing), clock.millis());
+            s.setLostShards(null);
+            Rewards.grantShards(s, s.bus(), lost.amount());
+            s.addToast(new Toast("SHARDS", "Shards recovered"));
+            return persistAndView(s);
+        }
     }
 
     // =====================================================================
@@ -556,13 +667,24 @@ public class GameEngine {
     public SessionView use(GameState s, String itemId) {
         synchronized (s) {
             requireOutsideBattle(s, "Use items from the BAG during a battle.");
-            Item item = s.inventory().get(itemId);
-            if (!(item instanceof Consumable consumable)) {
-                throw new ActionNotAllowedException("That item cannot be used.");
+            switch (requireUsable(s, itemId)) {
+                case Flask flask -> Rewards.useFlask(s, s.bus(), flask);
+                case Consumable consumable -> Rewards.useConsumable(s, s.bus(), consumable);
+                default -> throw new IllegalStateException("Unusable item " + itemId);
             }
-            Rewards.useConsumable(s, s.bus(), consumable);
             return persistAndView(s);
         }
+    }
+
+    /** A consumable in the bag, or a flask with a charge left (409 otherwise, D27). */
+    private Item requireUsable(GameState s, @Nullable String itemId) {
+        Item item = itemId == null ? null : s.inventory().get(itemId);
+        if (item instanceof Flask flask && s.flaskCharges(flask.id()) > 0 || item instanceof Consumable) {
+            return item;
+        }
+        throw new ActionNotAllowedException(item instanceof Flask flask
+                ? "The " + flask.name() + " is empty. Rest at a Lantern to refill it."
+                : "You have no usable item like that.");
     }
 
     // =====================================================================
@@ -725,7 +847,7 @@ public class GameEngine {
     }
 
     private static void requireOutsideBattle(GameState s, String message) {
-        if (s.mode() != Mode.WORLD && s.mode() != Mode.DIALOGUE) {
+        if (s.mode() != Mode.WORLD && s.mode() != Mode.DIALOGUE && s.mode() != Mode.LANTERN) {
             throw new ActionNotAllowedException(message);
         }
     }

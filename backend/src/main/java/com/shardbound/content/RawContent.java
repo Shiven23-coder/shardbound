@@ -48,13 +48,15 @@ public record RawContent(
 
     /** Exactly one of weapon / consumable is non-null for those types; both null for KEY. */
     public record ItemDef(String id, String name, String type, String description, int price,
-                          WeaponDef weapon, ConsumableDef consumable) { }
+                          WeaponDef weapon, ConsumableDef consumable, FlaskDef flask) { }
 
     /** Scaling grades are S … E, or null where the weapon does not scale. */
     public record WeaponDef(String tier, int base, int critPct, @Nullable String strGrade, @Nullable String dexGrade,
                             @Nullable String arcGrade, @Nullable String ability) { }
 
     public record ConsumableDef(int heal, int fp) { }
+
+    public record FlaskDef(int charges, int healPct) { }
 
     /** A dialogue fight: one enemy from creeps.json at a fixed level (P-37, P-54). */
     public record EncounterDef(String id, String name, boolean canFlee, String creepId, int level) { }

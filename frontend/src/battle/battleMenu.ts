@@ -55,8 +55,9 @@ export function menuItems(page: MenuPage, menu: MenuView): MenuItem[] {
     case 'bag':
       return [
         ...menu.bag.map((item): MenuItem => ({
-          id: `item-${item.id}`, label: `${item.name} ×${item.qty}`, detail: itemDetail(item.heal, item.fp),
-          disabled: false, action: { kind: 'ITEM', slot: 0, itemId: item.id },
+          // A flask (P-63) shows its charges, "2/3", and cannot be drunk empty.
+          id: `item-${item.id}`, label: item.maxQty ? `${item.name} ${item.qty}/${item.maxQty}` : `${item.name} ×${item.qty}`,
+          detail: itemDetail(item.heal, item.fp), disabled: item.qty === 0, action: { kind: 'ITEM', slot: 0, itemId: item.id },
         })),
         BACK,
       ];
@@ -66,6 +67,7 @@ export function menuItems(page: MenuPage, menu: MenuView): MenuItem[] {
 /** What an intent does: a new menu state, and an action to send when one was taken. */
 export function menuStep(state: MenuState, menu: MenuView, intent: Intent): { state: MenuState; action?: BattleRequest } {
   const items = menuItems(state.page, menu);
+  if (intent.kind === 'left' || intent.kind === 'right') return { state };     // the level-up screen's − and +
   if (intent.kind === 'back') return { state: state.page === 'root' ? state : ROOT };
   if (intent.kind === 'up' || intent.kind === 'down') {
     return { state: { ...state, highlight: nextEnabled(items, state.highlight, intent.kind === 'up' ? -1 : 1) } };

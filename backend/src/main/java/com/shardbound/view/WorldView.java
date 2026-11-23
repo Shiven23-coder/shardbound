@@ -2,6 +2,8 @@ package com.shardbound.view;
 
 import com.shardbound.world.Facing;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.List;
 
 /**
@@ -14,9 +16,16 @@ import java.util.List;
  * @param hiddenObjects names of objects not present now (by showIf/hideIf, or a once-only trigger that fired)
  */
 public record WorldView(String areaId, String areaName, String regionId, String mapKey, String lightState,
-                        PlayerView player, List<NpcView> npcs, List<CreepView> creeps, List<String> hiddenObjects) {
+                        PlayerView player, List<NpcView> npcs, List<CreepView> creeps, List<String> hiddenObjects,
+                        List<LanternView> lanterns, @Nullable LostShardsView lostShards) {
 
     public record PlayerView(int x, int y, Facing facing) { }
+
+    /** A Lantern (P-61): {@code id} is the map object name, x/y its tile centre in pixels; lit or cold. */
+    public record LanternView(String id, String lanternId, String name, int x, int y, boolean lit) { }
+
+    /** The Shards the last death dropped, in this area (P-62): tile centre in pixels and the amount. */
+    public record LostShardsView(int x, int y, int amount) { }
 
     /** An NPC standing at a map object: {@code id} is the object name, {@code npcId} picks the sprite. */
     public record NpcView(String id, String npcId, int x, int y) { }

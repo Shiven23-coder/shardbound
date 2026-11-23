@@ -12,7 +12,8 @@
     { "id": "corvin",  "name": "Corvin the Merchant", "shortName": "Corvin", "faction": "ASHEN" },
     { "id": "lyra",    "name": "Warden Lyra",         "shortName": "Lyra",   "faction": "SYLVAN" },
     { "id": "hale",    "name": "Captain Hale",        "shortName": "Hale",   "faction": "CROWN" },
-    { "id": "brann",   "name": "Brann the Smith",     "shortName": "Brann",  "faction": "ELDMERE" }
+    { "id": "brann",   "name": "Brann the Smith",     "shortName": "Brann",  "faction": "ELDMERE" },
+    { "id": "osric",   "name": "Osric the Lamplighter", "shortName": "Osric", "faction": "ELDMERE" }
   ],
   "affinityCues": { "warmer": "{name} will remember that.", "colder": "{name} will not forget that." },
 
@@ -45,9 +46,9 @@
       "description": "The three shards made whole. It hums a note only you can hear.",
       "weapon": { "tier": "SSS", "base": 82, "scaling": { "STR": "C", "DEX": "C", "ARC": "B" }, "critPct": 20, "ability": "Shardstorm" } },
 
-    { "id": "healing_draught", "name": "Healing Draught", "type": "CONSUMABLE", "price": 10,
-      "description": "Bitter herbs in honey. Restores 40 HP.",
-      "consumable": { "heal": 40, "fp": 0 } },
+    { "id": "lantern_draught", "name": "Lantern Draught", "type": "FLASK", "price": 0,
+      "description": "A stoppered flask that fills with warm gold light whenever you rest at a Lantern. Each draught restores 40% of your HP.",
+      "flask": { "charges": 3, "healPct": 40 } },
     { "id": "energy_tonic", "name": "Azure Tonic", "type": "CONSUMABLE", "price": 15,
       "description": "Fizzing blue water from the forest springs. Restores 10 FP.",
       "consumable": { "heal": 0, "fp": 10 } },

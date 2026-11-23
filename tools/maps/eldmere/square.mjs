@@ -89,7 +89,7 @@ export default function square() {
       { name: 'neighbour_window', type: 'light', x: 14, y: 3, props: { radius: 2.0, color: '#ffb35c', intensity: 0.6 } },
       { name: 'stall_lantern', type: 'light', x: 24, y: 5, props: { radius: 3.2, color: '#ffc46b', intensity: 0.95 } },
       { name: 'forge_glow', type: 'light', x: 28, y: 15, props: { radius: 3.4, color: '#ff7a3c', intensity: 1.0 } },
-      { name: 'maren_nook', type: 'reserved', x: 3, y: 4, props: { for: 'chest', phase: 'V5' } },
+      { name: 'maren_nook', type: 'reserved', x: 3, y: 4, props: { for: 'chest', phase: 'V6' } },
     ],
   });
 }

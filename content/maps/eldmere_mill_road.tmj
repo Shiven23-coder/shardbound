@@ -4904,7 +4904,7 @@
     {
      "id": 8,
      "name": "field_creep_a",
-     "type": "reserved",
+     "type": "creep_spawn",
      "x": 336,
      "y": 112,
      "width": 16,
@@ -4913,21 +4913,31 @@
      "visible": true,
      "properties": [
       {
-       "name": "for",
+       "name": "template",
        "type": "string",
-       "value": "creep"
+       "value": "furrow_mole"
       },
       {
-       "name": "phase",
-       "type": "string",
-       "value": "V4"
+       "name": "levelMin",
+       "type": "float",
+       "value": 2
+      },
+      {
+       "name": "levelMax",
+       "type": "float",
+       "value": 3
+      },
+      {
+       "name": "aggroRadius",
+       "type": "float",
+       "value": 1
       }
      ]
     },
     {
      "id": 9,
      "name": "field_creep_b",
-     "type": "reserved",
+     "type": "creep_spawn",
      "x": 368,
      "y": 144,
      "width": 16,
@@ -4936,14 +4946,24 @@
      "visible": true,
      "properties": [
       {
-       "name": "for",
+       "name": "template",
        "type": "string",
-       "value": "creep"
+       "value": "hedge_adder"
       },
       {
-       "name": "phase",
-       "type": "string",
-       "value": "V4"
+       "name": "levelMin",
+       "type": "float",
+       "value": 2
+      },
+      {
+       "name": "levelMax",
+       "type": "float",
+       "value": 3
+      },
+      {
+       "name": "aggroRadius",
+       "type": "float",
+       "value": 2
       }
      ]
     },
@@ -4966,7 +4986,7 @@
       {
        "name": "phase",
        "type": "string",
-       "value": "V5"
+       "value": "V6"
       }
      ]
     },

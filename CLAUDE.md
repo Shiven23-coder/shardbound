@@ -7,7 +7,7 @@ Souls-like progression: rest at Lanterns, spend Shards on six attributes and wea
 It is a public, mobile-first web game and a flagship portfolio piece: guest and Google accounts, anonymous telemetry, a balance simulator and a playtest bot.
 
 **Specs:** `docs/V2_SPEC.md` is the source of truth. `docs/PROJECT_SPEC.md` is the historical v1 spec; its engine rules (conditions, ConditionGroup, effects, quest state machine, combat, endings) still apply where V2_SPEC does not override them. Read the sections for the current phase before writing code. If a spec and a request conflict, ask before acting.
-Decision history: `docs/DECISIONS.md` (P-01 … P-60 win over older entries).
+Decision history: `docs/DECISIONS.md` (P-01 … P-64 win over older entries).
 
 ## Tech
 - Backend: **Spring Boot 4.1** on **Java 25**; **JdbcClient** with hand-written SQL; **Flyway via Spring**; springdoc-openapi; JUnit 5, **Testcontainers**, ArchUnit.
@@ -30,6 +30,7 @@ The project is judged as a product: players on phones, and reviewers reading a p
 9. **Conventional Commits**, one branch and one PR per phase, green CI before merge, semver releases with a CHANGELOG.
 10. **Libraries are chosen on merit.** Name every new runtime dependency with its reason and get my OK before adding it.
 11. **Mobile-first UI:** touch controls, landscape responsive layout, touch targets ≥ 48 px, the V2_SPEC §4.13 performance budget.
+13. **Phaser is our own build (P-60).** Any Phaser class, game object, factory or plugin used for the first time must be added to `frontend/src/world/phaserBuild.cjs` and covered by an e2e or scene test: a missing module fails only at runtime.
 12. **Report every phase:** files changed and why, how to run it, what was verified, and known gaps.
 
 ## Environment
@@ -66,4 +67,4 @@ docker compose up -d
 - End each phase with the rule 12 report.
 
 ## Current phase
-**V5 — next** (V4 Battles merged via PR #18 and released as 0.4.0; maintenance round on `chore/maintenance`; start V5 in plan mode when I say so) (update this line as we progress)
+**V5 — Progression** (in progress on `v5-progression`; maintenance merged via PR #20) (update this line as we progress)

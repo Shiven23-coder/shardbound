@@ -137,7 +137,8 @@ public class BattleContentReader {
                 b.get("guard").get("normal").asDouble(), b.get("guard").get("telegraphed").asDouble(),
                 b.get("statusChanceCap").asInt(), flee.get("basePct").asInt(), flee.get("pctPerSpeed").asInt(),
                 flee.get("minPct").asInt(), flee.get("maxPct").asInt(), flee.get("ignoreTiles").asInt(),
-                b.get("defensiveGuardBelowPct").asInt(), b.get("dialogueLossHpPct").asInt());
+                b.get("defensiveGuardBelowPct").asInt(), b.get("dialogueLossHpPct").asInt(),
+                b.get("victoryFpPct").asInt());
     }
 
     public ProgressionRules readProgression() {
@@ -151,7 +152,12 @@ public class BattleContentReader {
                 p.get("speed").get("dexPerPoint").asInt(), p.get("crit").get("dexPerPct").asInt(),
                 p.get("crit").get("maxBonusPct").asInt(), p.get("spellPower").get("base").asDouble(),
                 p.get("spellPower").get("range").asDouble(), grades, p.get("upgrade").get("base").asDouble(),
-                p.get("upgrade").get("scaling").asDouble());
+                p.get("upgrade").get("scaling").asDouble(), levels(p.get("levels")));
+    }
+
+    private static ProgressionRules.LevelRules levels(JsonNode l) {
+        return new ProgressionRules.LevelRules(l.get("costBase").asDouble(), l.get("costExponent").asDouble(),
+                l.get("maxLevel").asInt(), l.get("attributeMax").asInt());
     }
 
     private static Curve curve(JsonNode curves, String name) {

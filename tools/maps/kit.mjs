@@ -115,6 +115,8 @@ export const STAMPS = {
   crates: prop('house', 559),
   // Shardbound's own props
   lanternPost: { tileset: 'props', rows: [[0], [1]], above: 1, solid: [1], shadow: 'prop' },
+  // a Lantern's post (P-61): the scene draws its top, lit or cold
+  lanternBase: { tileset: 'props', rows: [[1]], solid: [0], shadow: 'prop' },
   millstone: prop('props', 3),
 };
 

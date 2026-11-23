@@ -9,6 +9,7 @@ import com.shardbound.support.SharedPostgres;
 import com.shardbound.support.TestClockConfig;
 import com.shardbound.support.TestApi;
 import com.shardbound.support.TestApi.Response;
+import com.shardbound.world.AreaMap;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -17,6 +18,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ObjectNode;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -85,6 +87,36 @@ class ActiveRunIT {
         assertEquals(withoutToasts(hit.body()), withoutToasts(resumed.body()));
         assertEquals("BATTLE", resumed.body().get("mode").asString(), "still in the battle: " + inFight.get("battle"));
         TestApi.expect(200, second.post("/api/battle/action", session, Map.of("kind", "STRIKE", "slot", 0)));
+    }
+
+    @Test
+    void aGameSurvivesARestartAtALantern() {
+        TestApi first = startServer();
+        int player = first.profile("restart-at-lantern");
+        Response created = first.post("/api/game/new", null, Map.of("playerId", player, "demoMode", false));
+        String session = created.body().get("sessionId").asString();
+        MutableClock clock = servers.get(0).getBean(MutableClock.class);
+        new QuickRouteDriver(first, content(), clock, session).playUntil(created.body(),
+                QuickRoute.STEPS.subList(0, 6), view -> false);               // back in the lane with the Heartshard
+        AreaMap lane = content().world().mapOf("eldmere_cottage_lane");
+        var rest = lane.spawn("junction_rest").orElseThrow();
+        Map<String, Object> atLantern = Map.of("targetId", "junction_lantern", "x", lane.centre(rest.x()),
+                "y", lane.centre(rest.y()), "facing", "RIGHT");
+        clock.advance(Duration.ofMinutes(1));
+        Response kindle = first.post("/api/world/interact", session, atLantern);
+        int warm = kindle.body().get("dialogue").get("choices").get(0).get("id").asInt();
+        TestApi.expect(200, first.post("/api/dialogue/choose", session, Map.of("choiceId", warm)));
+        clock.advance(Duration.ofMinutes(1));
+        Response rested = first.post("/api/world/interact", session, atLantern);
+        assertEquals("LANTERN", rested.body().get("mode").asString());
+        servers.get(0).close();                                            // the deploy
+
+        TestApi second = startServer();
+        Response resumed = second.get("/api/game", session);
+        TestApi.expect(200, resumed);
+        assertEquals("LANTERN", resumed.body().get("mode").asString(), "still at the Lantern (P-61)");
+        assertEquals("Junction Lantern", resumed.body().get("lantern").get("name").asString());
+        TestApi.expect(200, second.post("/api/lantern/leave", session, Map.of()));
     }
 
     @Test

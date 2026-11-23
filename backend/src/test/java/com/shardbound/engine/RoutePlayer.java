@@ -19,7 +19,7 @@ import java.util.function.Predicate;
  */
 public final class RoutePlayer {
 
-    private static final String DRAUGHT = "healing_draught";
+    private static final String DRAUGHT = "lantern_draught";
 
     /** Long enough to walk anywhere in an area. */
     public static final Duration WALK = Duration.ofMinutes(1);
@@ -114,7 +114,7 @@ public final class RoutePlayer {
     private SessionView fight() {
         while (view.mode() == Mode.BATTLE) {
             boolean low = state.stats().hp() * 100 < state.stats().maxHp() * 40;
-            view = engine.battleAction(state, low && state.inventory().count(DRAUGHT) > 0
+            view = engine.battleAction(state, low && state.flaskCharges(DRAUGHT) > 0
                     ? BattleAction.item(DRAUGHT) : BattleAction.of(BattleAction.Kind.STRIKE));
         }
         return view;

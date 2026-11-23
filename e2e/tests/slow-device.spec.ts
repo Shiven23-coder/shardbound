@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import * as backend from '../support/backend';
 import {
-  activeObstacles, choose, inArea, interact, loadMap, newGame, settle, status, tap, taps, tileOf, walkTo, withObstacles, type Dir,
+  activeObstacles, choose, inArea, interact, loadMap, newGame, restAtLantern, settle, status, tap, taps, tileOf,
+  toTheLanternWithTheShard, walkTo, withObstacles, type Dir,
 } from '../support/world';
 
 // Tile steps (P-51) on a CPU slowed like a budget phone: the same taps reach
@@ -175,5 +176,22 @@ for (const rate of [4, 8]) {
       }
     }
     await expect(box).toBeHidden();
+  });
+}
+
+// Level-up presses on a slow CPU (P-61): every + lands, none waits on the server.
+for (const rate of [4, 8]) {
+  test(`at ${rate}× CPU every + on the level-up screen counts`, async ({ page }) => {
+    await toTheLanternWithTheShard(page, 'keyboard', `slowl${rate}-${Date.now() % 1e9}`);
+    await throttle(page, rate);
+    await restAtLantern(page, 'keyboard');
+    const box = page.locator('.lantern-box');
+    await page.keyboard.press('e');                                  // Level up
+    for (let i = 0; i < 5; i++) await page.keyboard.press('d');
+    await expect(box.locator('.lantern-attribute').first()).toContainText('+5');
+    await page.keyboard.press('s');                                  // Mind
+    for (let i = 0; i < 3; i++) await page.keyboard.press('d');
+    await expect(box.locator('.lantern-attribute').nth(1)).toContainText('+3');
+    await expect(box.locator('.lantern-cost')).toBeVisible({ timeout: 15_000 });   // the preview catches up
   });
 }

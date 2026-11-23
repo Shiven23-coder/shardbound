@@ -18,6 +18,7 @@ export function makeView(overrides: Partial<SessionView> = {}): SessionView {
       npcs: [{ id: 'maren', npcId: 'maren', x: 120, y: 104 }],
       creeps: [],
       hiddenObjects: [],
+      lanterns: [],
     },
     dialogue: {
       nodeId: 'start',

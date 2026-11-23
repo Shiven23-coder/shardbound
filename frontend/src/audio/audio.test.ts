@@ -23,9 +23,12 @@ describe('audio levels from the settings', () => {
       .toEqual({ master: 0, music: 0.6, effects: 0.8 });
   });
 
-  it('puts every effect in exactly one pack (P-59)', () => {
-    const packed = [audioPacks.initial, ...Object.values(audioPacks.regions), audioPacks.battle].flatMap((p) => p.effects);
-    expect([...packed].sort()).toEqual(Object.keys(manifest.effects).sort());
+  it('loads every effect in some pack; initial and battle effects in exactly one, region packs may share (P-59, P-64)', () => {
+    const regional = new Set(Object.values(audioPacks.regions).flatMap((p) => p.effects));
+    const once = [...audioPacks.initial.effects, ...audioPacks.battle.effects];
+    expect(new Set(once).size).toBe(once.length);
+    expect(once.filter((effect) => regional.has(effect))).toEqual([]);
+    expect([...new Set([...once, ...regional])].sort()).toEqual(Object.keys(manifest.effects).sort());
   });
 
   it("loads a region's own music with its pack, and the battle track only with the battle pack (P-57, P-59)", () => {

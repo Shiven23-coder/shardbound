@@ -10,7 +10,7 @@
  "tileheight": 16,
  "infinite": false,
  "nextlayerid": 9,
- "nextobjectid": 19,
+ "nextobjectid": 21,
  "properties": [
   {
    "name": "area",
@@ -1907,7 +1907,7 @@
     0,
     0,
     0,
-    0,
+    2634,
     0,
     0,
     0,
@@ -2624,7 +2624,7 @@
     0,
     0,
     0,
-    0,
+    2637,
     0,
     0,
     0,
@@ -4775,7 +4775,7 @@
     0,
     0,
     0,
-    0,
+    178,
     0,
     0,
     0,
@@ -5097,6 +5097,18 @@
     },
     {
      "id": 4,
+     "name": "junction_rest",
+     "type": "spawn_point",
+     "x": 336,
+     "y": 208,
+     "width": 16,
+     "height": 16,
+     "rotation": 0,
+     "visible": true,
+     "properties": []
+    },
+    {
+     "id": 5,
      "name": "to_ruins",
      "type": "exit",
      "x": 304,
@@ -5119,7 +5131,7 @@
      ]
     },
     {
-     "id": 5,
+     "id": 6,
      "name": "to_square",
      "type": "exit",
      "x": 496,
@@ -5142,7 +5154,7 @@
      ]
     },
     {
-     "id": 6,
+     "id": 7,
      "name": "corvin",
      "type": "npc",
      "x": 416,
@@ -5170,7 +5182,7 @@
      ]
     },
     {
-     "id": 7,
+     "id": 8,
      "name": "forest_sign",
      "type": "interact",
      "x": 96,
@@ -5188,7 +5200,7 @@
      ]
     },
     {
-     "id": 8,
+     "id": 9,
      "name": "cottage_door",
      "type": "interact",
      "x": 112,
@@ -5206,7 +5218,7 @@
      ]
     },
     {
-     "id": 9,
+     "id": 10,
      "name": "flooded_road",
      "type": "obstacle",
      "x": 16,
@@ -5229,7 +5241,7 @@
      ]
     },
     {
-     "id": 10,
+     "id": 11,
      "name": "cottage_window",
      "type": "light",
      "x": 128,
@@ -5257,7 +5269,7 @@
      ]
     },
     {
-     "id": 11,
+     "id": 12,
      "name": "cottage_door",
      "type": "light",
      "x": 112,
@@ -5285,7 +5297,7 @@
      ]
     },
     {
-     "id": 12,
+     "id": 13,
      "name": "corvin_lantern",
      "type": "light",
      "x": 432,
@@ -5313,9 +5325,9 @@
      ]
     },
     {
-     "id": 13,
-     "name": "first_lantern",
-     "type": "reserved",
+     "id": 14,
+     "name": "junction_lantern",
+     "type": "lantern",
      "x": 352,
      "y": 208,
      "width": 16,
@@ -5324,19 +5336,67 @@
      "visible": true,
      "properties": [
       {
-       "name": "for",
+       "name": "lanternId",
        "type": "string",
-       "value": "lantern"
+       "value": "junction"
       },
       {
-       "name": "phase",
+       "name": "name",
        "type": "string",
-       "value": "V5"
+       "value": "Junction Lantern"
+      },
+      {
+       "name": "spawn",
+       "type": "string",
+       "value": "junction_rest"
+      },
+      {
+       "name": "dialogue",
+       "type": "string",
+       "value": "junction_lantern"
+      },
+      {
+       "name": "radius",
+       "type": "float",
+       "value": 3.6
+      },
+      {
+       "name": "color",
+       "type": "string",
+       "value": "#ffc46b"
+      },
+      {
+       "name": "intensity",
+       "type": "float",
+       "value": 1.05
       }
      ]
     },
     {
-     "id": 14,
+     "id": 15,
+     "name": "osric",
+     "type": "npc",
+     "x": 368,
+     "y": 208,
+     "width": 16,
+     "height": 16,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "npcId",
+       "type": "string",
+       "value": "osric"
+      },
+      {
+       "name": "dialogue",
+       "type": "string",
+       "value": "osric"
+      }
+     ]
+    },
+    {
+     "id": 16,
      "name": "meadow_creep_a",
      "type": "creep_spawn",
      "x": 272,
@@ -5354,12 +5414,12 @@
       {
        "name": "levelMin",
        "type": "float",
-       "value": 2
+       "value": 1
       },
       {
        "name": "levelMax",
        "type": "float",
-       "value": 3
+       "value": 1
       },
       {
        "name": "aggroRadius",
@@ -5369,7 +5429,7 @@
      ]
     },
     {
-     "id": 15,
+     "id": 17,
      "name": "meadow_creep_b",
      "type": "creep_spawn",
      "x": 144,
@@ -5392,7 +5452,7 @@
       {
        "name": "levelMax",
        "type": "float",
-       "value": 2
+       "value": 1
       },
       {
        "name": "aggroRadius",
@@ -5402,7 +5462,7 @@
      ]
     },
     {
-     "id": 16,
+     "id": 18,
      "name": "clearing_chest",
      "type": "reserved",
      "x": 448,
@@ -5420,12 +5480,12 @@
       {
        "name": "phase",
        "type": "string",
-       "value": "V5"
+       "value": "V6"
       }
      ]
     },
     {
-     "id": 17,
+     "id": 19,
      "name": "hidden_gap",
      "type": "reserved",
      "x": 400,
@@ -5443,7 +5503,7 @@
      ]
     },
     {
-     "id": 18,
+     "id": 20,
      "name": "cottage_6_4",
      "type": "building",
      "x": 96,

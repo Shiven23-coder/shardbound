@@ -1,12 +1,12 @@
 // Cottage Lane (32 × 22): home, the storm, the road out.
 //  - home: the cottage (its door barred against the storm) and its fenced garden, warm window and door light
 //  - the north path to the Old Ruins
-//  - the junction: reserved for Eldmere's first Lantern (V5)
+//  - the junction: the Junction Lantern (P-61), with Osric the Lamplighter beside it
 //  - Corvin's stop on the east lane, under his lantern
 //  - the flooded west road toward the Whispering Wood: dead trees, water, a sign; the flood
 //    closes the way until the Wood opens (an obstacle, P-45)
 //  - the south meadow: two creeps (V4, P-54): a Storm Rat and a Mire Slime
-//  - a secret clearing behind the south-east tree wall: reserved chest
+//  - a secret clearing behind the south-east tree wall: reserved chest (V6)
 import {
   build, cluster, forestBorder, forestFill, makeTerrain, noise, paintEllipse, paintPath, paintRect, pathEdges, smooth,
 } from '../kit.mjs';
@@ -51,6 +51,8 @@ export default function cottageLane() {
     ['roundTree', 13, 3], ['paleTree', 15, 4], ['roundTree', 14, 6],
     // east of the north path: a pair with a rock, leaving the bend open
     ['roundTree', 23, 4], ['pine', 25, 5], ['rock', 24, 7],
+    // the Junction Lantern's post (the scene draws its top, lit or cold)
+    ['lanternBase', 22, 13],
     // Corvin's stop: the lantern post, stumps and a log, sheltered by a tree
     ['lanternPost', 27, 8], ['stump', 25, 10], ['log', 26, 10], ['rockBrown', 29, 10], ['roundTree', 28, 6],
     // the flooded west road: dead trees close in, the warning sign
@@ -85,6 +87,7 @@ export default function cottageLane() {
       { name: 'home', type: 'spawn_point', x: 7, y: 10, props: { main: true } },
       { name: 'from_ruins', type: 'spawn_point', x: 20, y: 1 },
       { name: 'from_square', type: 'spawn_point', x: 30, y: 11 },
+      { name: 'junction_rest', type: 'spawn_point', x: 21, y: 13 },
       { name: 'to_ruins', type: 'exit', x: 19, y: 0, w: 2, h: 1, props: { toArea: 'eldmere_old_ruins', toSpawn: 'from_lane' } },
       { name: 'to_square', type: 'exit', x: 31, y: 10, w: 1, h: 2, props: { toArea: 'eldmere_square', toSpawn: 'from_lane' } },
       { name: 'corvin', type: 'npc', x: 26, y: 9, props: { npcId: 'corvin', dialogue: 'corvin_storm', showIf: 'storm_night' } },
@@ -96,10 +99,13 @@ export default function cottageLane() {
       { name: 'cottage_door', type: 'light', x: 7, y: 9, props: { radius: 3.2, color: '#ff9a3c', intensity: 0.8 } },
       { name: 'corvin_lantern', type: 'light', x: 27, y: 8, props: { radius: 3.4, color: '#ffc46b', intensity: 1.0 } },
       // purpose kept for later phases (map rule 2)
-      { name: 'first_lantern', type: 'reserved', x: 22, y: 13, props: { for: 'lantern', phase: 'V5' } },
-      { name: 'meadow_creep_a', type: 'creep_spawn', x: 17, y: 17, props: { template: 'storm_rat', levelMin: 2, levelMax: 3, aggroRadius: 2 } },
-      { name: 'meadow_creep_b', type: 'creep_spawn', x: 9, y: 17, props: { template: 'mire_slime', levelMin: 1, levelMax: 2, aggroRadius: 1 } },
-      { name: 'clearing_chest', type: 'reserved', x: 28, y: 18, props: { for: 'chest', phase: 'V5' } },
+      { name: 'junction_lantern', type: 'lantern', x: 22, y: 13,
+        props: { lanternId: 'junction', name: 'Junction Lantern', spawn: 'junction_rest', dialogue: 'junction_lantern',
+          radius: 3.6, color: '#ffc46b', intensity: 1.05 } },
+      { name: 'osric', type: 'npc', x: 23, y: 13, props: { npcId: 'osric', dialogue: 'osric' } },
+      { name: 'meadow_creep_a', type: 'creep_spawn', x: 17, y: 17, props: { template: 'storm_rat', levelMin: 1, levelMax: 1, aggroRadius: 2 } },
+      { name: 'meadow_creep_b', type: 'creep_spawn', x: 9, y: 17, props: { template: 'mire_slime', levelMin: 1, levelMax: 1, aggroRadius: 1 } },
+      { name: 'clearing_chest', type: 'reserved', x: 28, y: 18, props: { for: 'chest', phase: 'V6' } },
       { name: 'hidden_gap', type: 'reserved', x: 25, y: 15, w: 1, h: 3, props: { for: 'secret' } },
     ],
   });

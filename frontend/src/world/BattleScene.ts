@@ -14,6 +14,7 @@ import type { Effect } from '../audio/audio';
 import type { BattleView, HitView } from '../api/types';
 import type { WorldBridge } from './bridge';
 import { battleBackdrop, battleEffects, effectArt, sheetLayout } from './content';
+import { reducedMotion } from './motion';
 
 export const BATTLE_SCENE = 'battle';
 /** The backdrop strip's texture key; the world scene loads it with the battle effects. */
@@ -283,8 +284,4 @@ function createEffectAnimations(scene: Phaser.Scene): void {
       frameRate: fx.frameRate,
     });
   }
-}
-
-function reducedMotion(): boolean {
-  return typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }

@@ -8,7 +8,7 @@
     "kit": {
       "weapon": "rusty_shortsword",
       "skills": ["rending_cut", "crystal_pulse"],
-      "bag": [{ "item": "healing_draught", "qty": 3 }],
+      "bag": [{ "item": "lantern_draught", "qty": 1 }],
       "gold": 15
     }
   },

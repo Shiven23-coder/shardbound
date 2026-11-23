@@ -2001,3 +2001,314 @@ body:has(.layout-landscape) .toast-layer {
 body:has(.in-battle) .toast:not([data-kind='ERROR']) {
   display: none;
 }
+
+/* ---------- Lantern menu (P-61) ---------- */
+/* Over a dimmed world: a full-height sheet upright, a centred panel sideways and on desktop. */
+.lantern-box {
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-solid);
+  box-shadow: 0 0 0 100vmax rgba(5, 4, 8, 0.6), var(--shadow);
+  color: var(--text);
+  overflow-y: auto;
+}
+
+.lantern-desktop {
+  top: 50%;
+  left: 50%;
+  width: min(48rem, 94vw);
+  max-height: 92dvh;
+  transform: translate(-50%, -50%);
+}
+
+.lantern-landscape {
+  inset: max(0.5rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right))
+    max(0.5rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+  padding: 0.6rem 0.9rem;
+}
+
+.lantern-portrait {
+  inset: 0;
+  border: none;
+  border-radius: 0;
+  padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+}
+
+/* Upright, the first page is a sheet over the deck: the lit Lantern stays in view above it. */
+.lantern-portrait.lantern-page-root {
+  top: auto;
+  border-top: 2px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.lantern-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+}
+
+.lantern-title {
+  margin: 0;
+  font-family: var(--font-story);
+  font-size: 1.35rem;
+  color: var(--gold);
+}
+
+.lantern-summary {
+  display: flex;
+  gap: 1rem;
+  margin: 0;
+  font-weight: 700;
+}
+
+.lantern-shards { color: #8fe3b0; }
+
+.lantern-menu {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lantern-option {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.4rem 0.9rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-small);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lantern-option-highlighted,
+.lantern-attribute-highlighted {
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 14%, transparent);
+}
+
+.lantern-option-detail {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+/* Level up: the attributes beside the preview; stacked upright. */
+.lantern-level {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(11rem, 1fr);
+  grid-template-areas: 'attributes preview' 'actions actions';
+  gap: 0.75rem;
+}
+
+.lantern-portrait .lantern-level {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'preview' 'attributes' 'actions';
+}
+
+.lantern-attributes {
+  grid-area: attributes;
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lantern-attribute {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px 3.6rem 48px;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 52px;
+  padding: 0.15rem 0.4rem 0.15rem 0.7rem;
+  border: 2px solid transparent;
+  border-radius: var(--radius-small);
+}
+
+.lantern-attribute-name {
+  display: flex;
+  flex-direction: column;
+  font-weight: 700;
+}
+
+.lantern-attribute-name small {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+.lantern-attribute-value {
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.lantern-attribute-value em {
+  display: block;
+  font-size: 0.75rem;
+  font-style: normal;
+  color: #8fe3b0;
+}
+
+.lantern-step {
+  width: 48px;
+  height: 48px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-small);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-size: 1.4rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.lantern-step:disabled { opacity: 0.35; cursor: default; }
+
+.lantern-preview {
+  grid-area: preview;
+  align-self: start;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.lantern-portrait .lantern-preview { grid-template-columns: 1fr 1fr; column-gap: 1rem; }
+
+.lantern-preview-row {
+  display: grid;
+  grid-template-columns: 3.5rem 2.6rem 1rem 2.6rem;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.lantern-preview-row > span:first-child { color: var(--text-dim); }
+.lantern-preview-changed > span:last-child { color: #8fe3b0; font-weight: 700; }
+.lantern-preview-warn > span:last-child { color: var(--danger); }
+
+.lantern-cost {
+  grid-column: 1 / -1;
+  margin: 0.1rem 0;
+  font-size: 0.85rem;
+  color: var(--gold);
+}
+
+.lantern-cost-short { color: var(--danger); }
+
+.lantern-actions {
+  grid-area: actions;
+  display: flex;
+  gap: 0.6rem;
+}
+
+.lantern-actions .btn {
+  flex: 1;
+  min-height: 48px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lantern-box { animation: lantern-in 0.22s ease-out; }
+}
+
+@keyframes lantern-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.lantern-desktop { animation-name: lantern-in-centred; }
+
+@keyframes lantern-in-centred {
+  from { opacity: 0; transform: translate(-50%, -48%); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+.lantern-tip {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.4rem 0.4rem 0.4rem 0.8rem;
+  border-left: 3px solid var(--gold);
+  border-radius: var(--radius-small);
+  background: rgba(245, 197, 66, 0.08);
+  font-size: 0.9rem;
+}
+
+.lantern-tip .hint-skip {
+  flex: none;
+  min-width: 48px;
+  min-height: 48px;
+}
+
+/* At a Lantern, as in a battle, the menu tells everything; only errors still show. */
+body:has(.lantern-box) .toast:not([data-kind='ERROR']) {
+  display: none;
+}
+
+/* Sideways there is little height: the attributes in two columns of three, the preview beside them. */
+.lantern-landscape .lantern-level {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(10.5rem, 0.8fr);
+  grid-template-areas: 'attributes attributes preview' 'actions actions preview';
+  gap: 0.5rem 0.75rem;
+}
+
+.lantern-landscape .lantern-attributes {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.3rem 0.6rem;
+}
+
+.lantern-landscape .lantern-attribute { min-height: 50px; padding-left: 0.5rem; }
+.lantern-landscape .lantern-head { margin-bottom: -0.25rem; }
+.lantern-landscape .lantern-preview-row { grid-template-columns: 3.2rem 2.4rem 0.9rem 2.4rem; font-size: 0.9rem; }
+.lantern-landscape .lantern-actions { align-self: end; }
+
+/* ---------- Shards counter (V2_SPEC §1, P-61) ---------- */
+.shards-counter {
+  position: absolute;
+  right: max(0.75rem, env(safe-area-inset-right));
+  bottom: 0.75rem;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(10, 8, 6, 0.55);
+  color: #8fe3b0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.layout-landscape .shards-counter {
+  top: calc(max(0.5rem, env(safe-area-inset-top)) + 3.5rem);
+  bottom: auto;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .shards-changed { animation: shards-pulse 0.6s ease-out; }
+}
+
+@keyframes shards-pulse {
+  from { color: #fff; text-shadow: 0 0 8px #8fe3b0; }
+  to { color: inherit; text-shadow: none; }
+}

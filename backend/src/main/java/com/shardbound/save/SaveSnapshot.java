@@ -21,6 +21,9 @@ import java.util.Map;
  * @param creeps      the run's creeps (levels, defeated, fled); null in an upgraded save (rolled anew)
  * @param quests      quest id → status name, e.g. "ACTIVE"
  * @param history     oldest step first
+ * @param flaskCharges flask item id → charges left (P-63)
+ * @param lastLantern  the Lantern rested at last, or null (P-61)
+ * @param lostShards   the Shards the last death dropped, or null (P-62)
  */
 public record SaveSnapshot(
         @Nullable String currentNode,
@@ -43,7 +46,10 @@ public record SaveSnapshot(
         List<StepEntry> history,
         long rngSeed,
         boolean demoMode,
-        int playSeconds) {
+        int playSeconds,
+        Map<String, Integer> flaskCharges,
+        @Nullable String lastLantern,
+        @Nullable LostShardsEntry lostShards) {
 
     public SaveSnapshot {
         inventory = List.copyOf(inventory);
@@ -55,7 +61,11 @@ public record SaveSnapshot(
         affinity = Map.copyOf(affinity);
         quests = Map.copyOf(quests);
         history = List.copyOf(history);
+        flaskCharges = flaskCharges == null ? Map.of() : Map.copyOf(flaskCharges);
     }
+
+    /** Lost Shards: the area, the tile and the amount. */
+    public record LostShardsEntry(String area, int x, int y, int amount) { }
 
     /**
      * Where the player stands. A save upgraded from format 1 names a spawn
