@@ -286,6 +286,7 @@ Defence is now a **ratio** (100 / (100 + DEF)) instead of v1's subtraction, so i
 - **Boss bar** at the bottom-centre: name + long HP bar with a phase-2 tick mark.
 - **"FOE VANQUISHED"** banner on victory, then the Shards reward and loot.
 - Boss defeat is recorded in the run's defeated-bosses set and is permanent.
+- **The Ashen Herald (V7, P-67):** the phase is derived from HP; Flee is disabled; a guarded telegraph leaves the Herald **Exposed** (DEF −50 %) for its next turn. Pending telegraphs show a persistent warning on the boss bar or the enemy's info box, and a wind-up pose, for creeps too.
 
 Bosses on the critical path: Ashen Herald (Eldmere) · Thornmother (Whispering Wood) · Bone Warden, The Hollow King (Hollow Deep) · Ser Calder the Gilded (Valdren City) · Cinder Matriarch, Ashborn Wyrm (Ashen Wastes) · The Shard Sovereign (Crystal Spire). The optional elite **Dragonbone Revenant** (side content) is not counted among the 8.
 
@@ -799,6 +800,19 @@ The harsher case (dying mid-region with a full purse, or under-levelled) is cove
 - Boss targets are the **player level** expected on a first attempt; each boss's own level is one higher (§10.1).
 
 **Measured in V5 (P-64):** `balance/EldmereProgressionTest` plays Eldmere's real route (storm night, kindle and rest, Ember at dawn, Mill Road, the Hired Blade, the ruins, rests and greedy level-ups) over 1,000 seeds with the real battle engine: the first level-up is affordable after fight 3 and not before, the median level before the boss is **4**, creep fights take a median of 3–6 turns, and the boss stand-in (the Hired Blade template at level 5 with **HP ×1.8**) is won on the first attempt in **84 %** of runs, inside the 70–85 % band. ×1.8 is the starting point for the Ashen Herald in V7.
+
+### 10.3 Difficulty curve (P-67)
+
+Targets per region, measured by the balance runner (and from V10a by the simulator and the playtest bot). Creep deaths count every creep battle lost on the way; boss attempts count the tries until the boss falls.
+
+| Region | Creep deaths per run | Boss first-attempt win | Boss attempts per run |
+|---|---|---|---|
+| Eldmere | ~0.1 | 70–85 % | ~1.2–1.4 |
+| Whispering Wood | ~0.2 | 65–80 % | ~1.3–1.5 |
+| Hollow Deep | ~0.3 | 60–75 % | ~1.4–1.7 |
+| Valdren City | ~0.3 | 60–75 % | ~1.4–1.7 |
+| Ashen Wastes | ~0.4 | 55–70 % | ~1.5–1.9 |
+| Crystal Spire | ~0.4 | 50–65 % | ~1.6–2.0 |
 
 **Measured in V6a (P-65):** with the Woodcutter's Hatchet from the ruins chest the route still ends at level 4 (creep fights at a median of 3–5 turns); the ×1.8 stand-in is won 99 %, and the 70–85 % band returns at **HP ×2.8** (81 %), V7's new starting point. The secret Hunter's Longbow (base 26) wins 87 % at ×2.8.
 

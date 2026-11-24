@@ -1648,3 +1648,46 @@ The audio engine fetches a pack's files when its moment comes and decodes each e
 **Supersedes** the ALPHA parts of P-17 (order, feedback button), P-20 (V2c), P-27 (Alpha 2 and the order after ALPHA) and P-32 (an ALPHA checklist item, now LAUNCH), and the ALPHA milestone. **Reads as LAUNCH** wherever P-11 ("at alpha") and P-25 ("before ALPHA") name the alpha.
 
 **Spec.** §1, §4.10, §4.15, §6, §7, §11, §12, §13.
+
+## P-67 — Eldmere's finale: the Ashen Herald
+
+**Problem.** Every Eldmere route except the merchant's fell into V3's stub `p11` "The Cult Raid", whose resolver always picked `END_WANDERER`. Under P-66 V7 ends Eldmere in an epilogue and free roam, so the region needs its own finale.
+
+**Decision.**
+- **The trigger, "The Ash Falls":** `p11` is rewritten in place, so all seven routes into it (Maren, Corvin's "Go home", the alley loss, the millstone, the forest sign) lead to the Herald. Maren sends the player to the rubble north of the crater; the choice sets `herald_risen`. The merchant route (`END_QUICK`, "The Merchant's Bargain") is untouched. `finale.json` now starts at `c5_resolver`: the five resolver endings are parked for V11d.
+- **The way in:** the Old Ruins' north rubble becomes an obstacle hidden by `herald_risen`, and `arena_way` becomes the exit to a new area, **The Ash Rise** (edge `gateFlag: herald_risen`).
+- **The Ruins Lantern,** a few steps from the Rise, kindles from the crater's lingering warmth from dawn, **without the Heartshard**, so the retry loop is short for every player, including one who sold the stone.
+- **Retry loop:** a death goes through `Death` like any creep battle (Lost Shards on the battle tile, wake at the last Lantern). The intro never replays; a retry shows only the boss name banner, then the fight.
+- **The boss** (`content/bosses.json`): the **Ashen Herald**, level 5, family Ashen (Fire and Burn immune, Crystal resisted, Bleed works), drawn with the pack's **Red Tengu** (its transformation plays at phase 2).
+  - Phase 1: weighted Cinder Lash, Ash Veil (Bleed) and the telegraphed **Cinderfall** (×2.0, at most every 3rd turn).
+  - Phase 2 at HP ≤ 50 %: a transition line, Stun immunity for 1 turn, speed +1; Searing Wing (Burn), Cinder Lash and the telegraphed **Pyre Descent** (×2.4, at most every 2nd turn).
+  - Flee is disabled, status chances are halved, and a Stun gives 3 turns of Stun immunity (§4.5). The phase is derived from HP, so nothing new is saved for it.
+- **The mechanic, "Guard the fall":** Guarding a telegraphed blow cuts it to ×0.25 (as for creeps) and, against the Herald, **cracks its ash mantle**: the Herald is **Exposed** (DEF −50 %) for its next turn. It rewards what every Eldmere creep taught: watch for the telegraph, then Guard. Data: `bosses.json` `onGuardedTelegraph`, status `EXPOSED`.
+- **Telegraphs are visible** (creeps and bosses): while one is pending, a persistent warning ("⚠ Cinderfall next turn") sits on the boss bar or the enemy's info box until it lands, and the sprite holds a wind-up pose or tint (no flash under reduce motion). The battle text line stays.
+- **The intro's first line** depends on the Heartshard: holding it, "Little lamp-bearer. You carry what was ours."; sold, "Little lamp-bearer. You carried what was ours. The stink of it is on you still."
+- **Presentation:** a boss bar bottom-centre just above the battle text (at the top of the deck in portrait; in battle there is no D-pad or Ⓐ on touch) with the name, a long HP bar, the phase-2 tick and the telegraph warning; a name banner at the start of every attempt; **FOE VANQUISHED** on victory. Boss music in its own pack, loaded on entering the Rise, with its own budget (P-64).
+- **Reward:** `5 · creepShards(5)` = 1,805 Shards and the **Iron Longsword** (C; the Herald's raiders took it from Brann's rack). Never empty (P-65): if it is already owned, the fallback is Shards of one level-5 creep (361). **Whispering Wood's balance assumes the player holds the Iron Longsword after the Herald.**
+- **After victory:** FOE VANQUISHED, the rewards, then the epilogue cutscene: the ash stops falling (Eldmere's light state `ash_lifted`) and the flood on the west road starts to drop. Free roam returns with the post-boss state saved (`herald_defeated`, set only by the engine): the Rise is quiet; Osric, Maren and Brann have new lines; Lanterns, creeps, chests and refights keep working. Cottage Lane's flooded road gives way to mud and ends at a stop at the map's edge, "The far bank is still sodden; tomorrow, perhaps.", which the WW phase removes. No end screen and no credits (V11d).
+- **Balance** (`EldmereProgressionTest`, 1,000 seeds, the real Herald): first-attempt wins **70–85 %** at level 4 with the hatchet on the Vig/Str route (asserted); the Dex build with the longbow (target ≤ about 90 %) and the Rusty Shortsword only (reported); creep deaths per run and boss attempts per run reported against §10.3.
+- **Save:** no format bump. The slot document's shape does not change (boss defeat, seen cutscenes and the Ruins Lantern are flags; Exposed is a status); the active run gains an optional `cutscene` id that older runs read as null.
+- **e2e:** an `e2e` Spring profile (off in production) adds `POST /api/debug/ready-for-the-herald`, used only by the win test; a test proves the production profile answers 404, and the bundle grep keeps its path out of the frontend.
+
+**Why.** Eldmere gets a real ending that teaches its last lesson, without an end screen, and the region's routes all converge on it while the merchant's secret stays secret.
+
+**Supersedes** D3 (the raid folds into the resolver) and V3's interim finale; amends P-61 (a Lantern may kindle without the Heartshard).
+
+**Spec.** §4.7, §8, §9, §10, §12.
+
+## P-68 — Data-driven cutscenes
+
+**Problem.** The boss intro and the epilogue need staging (movement, camera, music, lines) that dialogue alone cannot express, and the art stays CC0-pack only.
+
+**Decision.**
+- `content/cutscenes/<id>.json` (schema-validated): actors (sprite, tile, facing) and steps `say` (with optional `conditions` variants), `move`, `face`, `camera` (pan, zoom, shake, follow), `music`, `sound`, `fade`, `flash`, `wait`, `light`; `then` is `battle:<bossId>` or `world`. Validated at startup (sprites, tiles, speakers, targets).
+- The server owns when a cutscene plays and what follows: a new `CUTSCENE` mode; `POST /api/cutscene/finish` (keyed) ends it, played out or skipped, records it as seen (engine flag `_seen_<id>`) and applies `then`. A seen cutscene never plays again in that run.
+- The client plays the steps with map sprites, the dialogue box and pack effects; no illustrated stills.
+- **Input:** tapping E or Ⓐ advances `say` steps; skipping needs a ~1 s hold with a visible progress ring, and the first press shows "Hold to skip"; a Skip button (≥ 48 px) also works. **Reduce motion** removes shake, flashes and camera moves (pans become cuts).
+
+**Why.** Staging is data like the rest of the content, the server keeps the rules, and a death never replays an intro.
+
+**Spec.** §4.7, §8, §9.
