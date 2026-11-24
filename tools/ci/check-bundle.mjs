@@ -18,7 +18,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const dist = path.resolve(process.argv[2] ?? path.join(ROOT, 'frontend', 'dist'));
 const budgets = JSON.parse(readFileSync(path.join(ROOT, 'content', 'balance.json'), 'utf8')).budgets;
 const sounds = JSON.parse(readFileSync(path.join(ROOT, 'content', 'audio', 'audio.json'), 'utf8'));
-const DEV_ONLY = ['/api/debug', 'chapter-select', '"Inspector"'];
+const DEV_ONLY = ['/api/debug', 'ready-for-the-herald', 'chapter-select', '"Inspector"'];
 const PHASER_CHUNK = /^startWorld-.*\.js$/;
 const ART_OR_MAP = /\.(png|tmj)$/;
 

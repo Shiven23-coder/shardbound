@@ -863,6 +863,55 @@ public class GameEngine {
     }
 
     // =====================================================================
+    // Rehearsals (e2e profile only)
+    // =====================================================================
+
+    /**
+     * Puts the run at a story point in one step (P-67): the rehearsal's flags, quests, standing, gear, skills and
+     * raises on top of what the run has, rested, standing at its spawn. Only the {@code e2e} profile calls it.
+     */
+    public SessionView rehearse(GameState s, Rehearsal r) {
+        synchronized (s) {
+            AreaMap map = world.mapOf(r.area());
+            MapObject spawn = map.spawn(r.spawn())
+                    .orElseThrow(() -> new IllegalArgumentException("No spawn " + r.spawn() + " in " + r.area()));
+            s.setBattle(null);
+            s.setCutscene(null);
+            s.setCurrentNode(null);
+            s.setMode(Mode.WORLD);
+            r.flags().forEach(s::setFlag);
+            r.quests().forEach(s::setQuestStatus);
+            r.reputation().forEach(s::addReputation);
+            r.affinity().forEach(s::addAffinity);
+            r.items().forEach(itemId -> s.inventory().add(item(itemId), 1));
+            if (!s.inventory().has(r.weapon())) {
+                s.inventory().add(item(r.weapon()), 1);
+            }
+            s.inventory().equip(r.weapon());
+            r.skills().forEach(s::learnSkill);
+            for (Attribute raise : r.raises()) {
+                LevelUp.Plan plan = levelUp.plan(s.stats().attributes(), Map.of(raise, 1), Integer.MAX_VALUE);
+                s.stats().addShards(plan.cost());
+                s.stats().applyLevelUp(plan);
+            }
+            s.setLastLantern(r.lantern());
+            s.stats().restoreAll();
+            s.refillFlasks();
+            s.creeps().respawn(world, s.rng());
+            s.moveTo(WorldPosition.at(r.area(), map, spawn), clock.millis());
+            return persistAndView(s);
+        }
+    }
+
+    private Item item(String itemId) {
+        Item item = content.items().get(itemId);
+        if (item == null) {
+            throw new IllegalArgumentException("No item " + itemId);
+        }
+        return item;
+    }
+
+    // =====================================================================
     // Inspector (dev profile only)
     // =====================================================================
 
