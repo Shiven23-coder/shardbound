@@ -114,8 +114,9 @@ export default function WorldScreen() {
     bridge.device = device;
   }, [bridge, device]);
 
-  // A cutscene plays while the server is in CUTSCENE mode; played out or skipped, it ends with a keyed request.
-  const cutscene = view?.mode === 'CUTSCENE' ? view.cutscene ?? null : null;
+  // A cutscene plays while the server is in CUTSCENE mode, once any battle before it has been read to its end
+  // (a boss's epilogue follows its last page); played out or skipped, it ends with a keyed request.
+  const cutscene = view?.mode === 'CUTSCENE' && battle === null ? view.cutscene ?? null : null;
   const cutscenePlayer = useCutscenePlayer(cutscene, bridge, (id) => void run((key) => api.finishCutscene(id, key)));
 
   // I opens and closes the Bag (P-47), except while typing, with a menu panel open, in a battle (it has its BAG)

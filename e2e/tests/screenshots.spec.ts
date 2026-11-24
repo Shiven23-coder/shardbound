@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 import path from 'node:path';
 import * as backend from '../support/backend';
 import {
-  chests, choose, inArea, interact, leaveLantern, newGame, openBag, press, restAtLantern, status, tap, toTheRuinsAtDawn, turnPage,
-  walkTo, winBattle, type Controls,
+  chests, choose, fightTheHerald, holdSkip, inArea, interact, leaveLantern, newGame, openBag, press, readyForTheHerald, restAtLantern,
+  status, tap, toTheHerald, toTheRuinsAtDawn, turnPage, walkTo, winBattle, type Controls,
 } from '../support/world';
 
 // Review screenshots of each layout (P-40): a dialogue page with its ▼
@@ -162,4 +162,54 @@ test('a chest opening, its loot and Compare in the Bag (P-65)', async ({ page },
   await expect(page.locator('.weapon-compare')).toBeVisible();
   await page.waitForTimeout(300);
   await shot('compare');
+});
+
+test('the Ashen Herald: the intro, the boss bar, phase two, its fall and the epilogue', async ({ page }, testInfo) => {
+  test.setTimeout(600_000);
+  const controls: Controls = testInfo.project.use.hasTouch ? 'touch' : 'keyboard';
+  const shot = (name: string) => page.screenshot({ path: path.join(SHOTS_DIR!, `${testInfo.project.name}-${name}.png`) });
+  await newGame(page, `shoth-${testInfo.project.name.slice(0, 7)}-${Date.now() % 1e9}`);
+  for (let turns = 0; turns < 60 && !(await page.locator('.dialogue-body > .choice-list').isVisible()); turns++) await turnPage(page);
+  await choose(page, 'Help Corvin lash down his wagon before the wind takes it');
+  await inArea(page, 'Cottage Lane');
+  await readyForTheHerald(page);
+  await toTheHerald(page, controls);
+
+  const line = page.locator('.cutscene-line');
+  await expect(line).toBeVisible({ timeout: 30_000 });
+  await page.waitForTimeout(2500);                                    // the first line typed out
+  await shot('herald-intro');
+  await holdSkip(page, controls, 550, () => shot('herald-intro-hold'));   // let go early: the ring, not a skip
+  await holdSkip(page, controls, 1400);                                // held: skipped into the fight
+  await expect(page.locator('.battle-box')).toBeVisible({ timeout: 20_000 });
+  await page.waitForTimeout(700);
+  await shot('herald-banner');
+
+  const shots = new Set<string>();
+  const once = async (name: string, wait: number) => {
+    if (shots.has(name)) return;
+    shots.add(name);
+    if (controls === 'keyboard') await page.mouse.move(1, 1);
+    await page.waitForTimeout(wait);
+    await shot(name);
+  };
+  const won = await fightTheHerald(page, controls, 3, async () => {
+    if (await page.locator('.boss-bar-warning').isVisible() && await page.locator('.battle-menu').isVisible()) {
+      await once('herald-telegraph', 300);
+    }
+    if (await page.locator('.boss-bar.boss-phase-2').isVisible()) await once('herald-phase-two', 350);
+    if (await page.locator('.boss-banner-vanquished').isVisible()) await once('herald-vanquished', 500);
+  });
+  expect(won, 'the Herald fell (a loss leaves no epilogue to show)').toBe(true);
+
+  await expect(line).toBeVisible({ timeout: 30_000 });
+  await page.waitForTimeout(2500);
+  await shot('herald-epilogue');
+  for (let turns = 0; turns < 20 && (await line.isVisible()); turns++) {
+    await press(line);
+    await page.waitForTimeout(400);
+  }
+  await expect(page.locator('.hud-cluster')).toBeVisible({ timeout: 20_000 });
+  await page.waitForTimeout(1500);
+  await shot('herald-after');
 });

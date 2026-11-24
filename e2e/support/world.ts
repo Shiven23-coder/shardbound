@@ -533,3 +533,131 @@ export async function loseBattle(page: Page): Promise<string> {
   }
   throw new Error('The battle did not end');
 }
+
+/**
+ * Puts the run at the Herald's door (the e2e profile's rehearsal, P-67): the Ash Falls heard, the Ruins Lantern
+ * rested at, level 4 with the hatchet. The page reloads into the run, at the Ruins Lantern.
+ */
+export async function readyForTheHerald(page: Page): Promise<void> {
+  const status = await page.evaluate(async () => {
+    const response = await fetch('/api/debug/ready-for-the-herald', {
+      method: 'POST',
+      headers: { 'X-Session': sessionStorage.getItem('shardbound.sessionId') ?? '', 'Idempotency-Key': crypto.randomUUID() },
+    });
+    return response.status;
+  });
+  expect(status, 'the backend runs the e2e profile').toBe(200);
+  await page.reload();
+  await inArea(page, 'The Old Ruins');
+}
+
+/** Holds E (keyboard) or the Skip button (touch) for `ms`; `during` runs while it is held. */
+export async function holdSkip(page: Page, controls: Controls, ms: number, during?: () => Promise<void>): Promise<void> {
+  const skip = page.getByRole('button', { name: 'Skip the cutscene (hold)' });
+  if (controls === 'keyboard') await page.keyboard.down('e');
+  else await skip.dispatchEvent('pointerdown', { pointerType: 'touch', isPrimary: true });
+  await page.waitForTimeout(ms);
+  await during?.();
+  if (controls === 'keyboard') await page.keyboard.up('e');
+  else if (await skip.isVisible()) await skip.dispatchEvent('pointerup', { pointerType: 'touch', isPrimary: true });
+}
+
+/** Up from the Ruins Lantern onto the Ash Rise and onto the Herald's trigger (P-67). */
+export async function toTheHerald(page: Page, controls: Controls): Promise<void> {
+  await walkTo(page, controls, 'arena_way');
+  await inArea(page, 'The Ash Rise');
+  await walkTo(page, controls, 'herald_trigger');
+}
+
+/**
+ * Fights the Herald through its menu (P-67): Guard while the boss bar warns of a
+ * telegraphed blow, else Strike; a draught below 60 % HP while any are left. A
+ * loss wakes the player at the Ruins Lantern, and the fight is taken again from
+ * there (no intro), up to `attempts` fights. `watch` runs at every step (the
+ * screenshots). Returns whether the Herald fell.
+ */
+export async function fightTheHerald(page: Page, controls: Controls, attempts = 3, watch?: () => Promise<void>): Promise<boolean> {
+  const box = page.locator('.battle-box');
+  const epilogue = page.locator('.cutscene-line');
+  let draughts = true;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    if (attempt > 0) {
+      await inArea(page, 'The Old Ruins');
+      await toTheHerald(page, controls);
+    }
+    await expect(box).toBeVisible({ timeout: 20_000 });
+    for (let step = 0; step < 600 && (await box.isVisible()); step++) {
+      await watch?.();
+      const continueButton = box.getByRole('button', { name: 'Continue' });
+      if (await continueButton.isVisible()) {
+        await expect(epilogue, 'the epilogue waits for the battle to close').toBeHidden();
+        await press(continueButton);
+        continue;
+      }
+      const menu = box.locator('.battle-menu');
+      if (!(await menu.isVisible())) {
+        await page.waitForTimeout(150);                    // the text plays out: phase two and the fall are seen
+        continue;
+      }
+      const warned = await page.locator('.boss-bar-warning').isVisible();
+      const hp = Number(await page.locator('.battle-info-player [aria-label="HP"]').getAttribute('aria-valuenow'));
+      const maxHp = Number(await page.locator('.battle-info-player [aria-label="HP"]').getAttribute('aria-valuemax'));
+      const label = await menu.getAttribute('aria-label');
+      if (label === 'Battle menu') {
+        const bag = menu.getByRole('button', { name: /^Bag/ });
+        const drink = draughts && hp * 100 < maxHp * 60 && (await bag.isEnabled());
+        await press(drink ? bag : menu.getByRole('button', { name: /^Attack/ }));
+      } else if (label === 'attack') {
+        await press(menu.getByRole('button', { name: warned ? /^Guard/ : /^Strike/ }));
+      } else if (label === 'bag') {
+        const draught = menu.getByRole('button', { name: /^Lantern Draught/ });
+        draughts = await draught.isEnabled();
+        await press(draughts ? draught : menu.getByRole('button', { name: /^Back/ }));
+      } else {
+        await press(menu.getByRole('button', { name: /^Back/ }));
+      }
+      await page.waitForTimeout(120);
+    }
+    await expect(box).toBeHidden();
+    // Won: the epilogue plays on the Rise. Lost: the player wakes at the Ruins Lantern.
+    await expect(epilogue.or(page.locator('.world-screen[data-area-name="The Old Ruins"]'))).toBeVisible({ timeout: 30_000 });
+    if (await epilogue.isVisible()) return true;
+    draughts = true;                                       // the Lantern refilled them
+  }
+  return false;
+}
+
+/**
+ * The elder's path played through the UI to the Herald (P-67): the storm night and the Heartshard, Maren at dawn,
+ * "The Ash Falls", then the Ruins Lantern kindled and rested at. Returns at the Lantern, the menu closed.
+ */
+export async function toTheRuinsLanternAfterTheAshFalls(page: Page, controls: Controls, username: string): Promise<void> {
+  await toTheLanternWithTheShard(page, controls, username);
+  await walkTo(page, controls, 'to_square');
+  await inArea(page, 'Eldmere Square');
+  await choose(page, 'Look around the square');                    // the Square at Dawn, on arrival
+  await walkTo(page, controls, 'maren');
+  await interact(page, controls);
+  await choose(page, 'Follow her inside');
+  await choose(page, 'Promise');
+  await expect(page.getByRole('heading', { name: 'The Ash Falls' })).toBeVisible({ timeout: 15_000 });
+  await choose(page, 'Go to the ruins');
+  await walkTo(page, controls, 'to_lane');
+  await inArea(page, 'Cottage Lane');
+  await walkTo(page, controls, 'to_ruins');
+  await inArea(page, 'The Old Ruins');
+  await walkToTile(page, controls, RUINS_REST);
+  await expect.poll(async () => {
+    await tap(page, controls, 'LEFT', 1);                            // a tap toward the Lantern only turns the player
+    return (await status(page))?.facing;
+  }, { timeout: 10_000 }).toBe('LEFT');
+  await interact(page, controls);
+  await choose(page, 'Warm your hands');                             // kindled from the crater's warmth
+  await expect(page.locator('.dialogue-box')).toBeHidden();
+  await interact(page, controls);
+  await expect(page.locator('.lantern-box')).toBeVisible({ timeout: 15_000 });
+  await leaveLantern(page);
+}
+
+/** The Ruins Lantern's rest spawn, east of it (P-67). */
+export const RUINS_REST: [number, number] = [13, 5];
