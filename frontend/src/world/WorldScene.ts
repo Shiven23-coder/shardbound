@@ -24,6 +24,7 @@ import { artUrl, tilesetUrl } from './art';
 import { BACKDROP_KEY, BATTLE_SCENE, BattleScene, createEffectAnimations } from './BattleScene';
 import { createBossAnimations, preloadBosses } from './bossSprites';
 import type { CutsceneCast } from './bridge';
+import type { AshSettings } from './content';
 import type { CutsceneStepView } from '../api/types';
 import { reducedMotion } from './motion';
 import type { LightState, RegionLighting } from './content';
@@ -117,6 +118,8 @@ export class WorldScene extends Phaser.Scene {
   /** The tiles NPCs stand on: the player cannot step onto them. */
   private npcTiles = new Set<string>();
   private lighting: Phaser.GameObjects.GameObject[] = [];
+  /** The falling ash (P-67), kept apart from the lighting so a change of light fades it rather than cutting it. */
+  private ash: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private props: Phaser.GameObjects.Image[] = [];
   /** Each Lantern's top, drawn lit or cold (P-61). */
   private lanternTops = new Map<string, Phaser.GameObjects.Image>();
@@ -192,6 +195,7 @@ export class WorldScene extends Phaser.Scene {
     this.nearCreeps = new Set();
     this.npcTiles = new Set();
     this.lighting = [];
+    this.ash = null;
     this.props = [];
     this.playerLight = null;
   }
@@ -1177,6 +1181,47 @@ export class WorldScene extends Phaser.Scene {
       this.lighting.push(this.playerLight);
     }
     if (state.rain) this.buildRain(region);
+    this.updateAsh(region, state);
+  }
+
+  /**
+   * Ash falls while the light state says so (P-67): slow grey flecks, drifting, over the whole map, already
+   * spread across it when they start. When a state without ash follows (the epilogue's ash_lifted), they fade
+   * out over the region's fadeMs and stay off. Reduce motion: fewer flecks, falling more slowly.
+   */
+  private updateAsh(region: RegionLighting | undefined, state: LightState): void {
+    const settings = region?.ash;
+    const falling = Boolean(settings && state.ash);
+    this.game.canvas.dataset.ash = falling ? 'falling' : '';       // for automation such as the e2e check
+    if (falling && !this.ash) {
+      this.ash = this.buildAsh(settings!);
+    } else if (!falling && this.ash) {
+      const ash = this.ash;
+      this.ash = null;
+      ash.stop();
+      this.tweens.add({ targets: ash, alpha: 0, duration: settings?.fadeMs ?? 1000, onComplete: () => ash.destroy() });
+    }
+  }
+
+  private buildAsh(settings: AshSettings): Phaser.GameObjects.Particles.ParticleEmitter {
+    const share = reducedMotion() ? settings.reducedShare : 1;
+    const screenArea = REFERENCE_SCREEN_TILES.x * REFERENCE_SCREEN_TILES.y * TILE * TILE;
+    const alive = Math.max(1, Math.round((settings.flecksPerScreen * share * this.mapWidth * this.mapHeight) / screenArea));
+    const fall = { min: settings.fall[0]! * share, max: settings.fall[1]! * share };
+    // A fleck lives as long as the slowest takes to cross the map, and one starts as often as keeps `alive` in the air.
+    const lifespan = Math.round(((this.mapHeight + 2 * TILE) / fall.min) * 1000);
+    return this.add.particles(0, 0, 'fx:ash', {
+      x: { min: -TILE, max: this.mapWidth + TILE },
+      y: -TILE,
+      lifespan,
+      speedY: fall,
+      speedX: { min: settings.drift[0]! * share, max: settings.drift[1]! * share },
+      alpha: { min: settings.opacity * 0.5, max: settings.opacity },
+      scale: { min: 0.6, max: 1 },
+      frequency: lifespan / alive,
+      quantity: 1,
+      advance: lifespan,
+    }).setDepth(DEPTH.rain);
   }
 
   private addLight(x: number, y: number, radius: number, colour: string, alpha: number): Phaser.GameObjects.Image {
@@ -1419,6 +1464,12 @@ function createEffectTextures(scene: Phaser.Scene): void {
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, LIGHT_TEXTURE_SIZE, LIGHT_TEXTURE_SIZE);
     canvas.refresh();
+  }
+  if (!scene.textures.exists('fx:ash')) {
+    const g = scene.make.graphics({}, false);
+    g.fillStyle(0xd6d0c8, 1).fillRect(0, 0, 2, 2);
+    g.generateTexture('fx:ash', 2, 2);
+    g.destroy();
   }
   if (!scene.textures.exists('fx:rain')) {
     const g = scene.make.graphics({}, false);

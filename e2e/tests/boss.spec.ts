@@ -81,6 +81,8 @@ test('a win: FOE VANQUISHED, the epilogue, then free roam and the west road stop
   test.skip(testInfo.project.name === 'phone-landscape', 'desktop and portrait cover the win; the first test covers landscape');
   const controls = controlsOf(testInfo.project.use.hasTouch);
   await rehearsedAtTheHerald(page, controls, `e2e-heraldw-${testInfo.project.name.slice(0, 7)}-${Date.now() % 1e9}`);
+  const canvas = page.getByTestId('world-canvas').locator('canvas');
+  await expect(canvas, 'the ash falls on the Rise before the fight').toHaveAttribute('data-ash', 'falling');
   await expect(page.locator('.cutscene-line')).toBeVisible({ timeout: 30_000 });
   await holdSkip(page, controls, 1400);
 
@@ -111,6 +113,7 @@ test('a win: FOE VANQUISHED, the epilogue, then free roam and the west road stop
     await page.waitForTimeout(300);
   }
   await expect(page.locator('.hud-cluster')).toBeVisible({ timeout: 20_000 });
+  await expect(canvas, 'the ash has stopped falling').toHaveAttribute('data-ash', '');
   // The objective that changed with the victory shows once the epilogue is over, not under it.
   await expect(page.locator('.objective-line')).toContainText('The road west is drying.', { timeout: 15_000 });
   await expect(page.getByTestId('world-canvas').locator('canvas')).not.toHaveAttribute('data-bosses', /ashen_herald/);

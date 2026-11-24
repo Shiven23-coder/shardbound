@@ -111,13 +111,27 @@ export interface LightState {
   ambient: number;
   tint: number[];
   rain: boolean;
+  /** Ash falls (P-67). */
+  ash?: boolean;
   playerLight: boolean;
+}
+
+/** A region's falling ash (P-67): flecks per typical screen, fall and drift speeds in pixels a second. */
+export interface AshSettings {
+  opacity: number;
+  flecksPerScreen: number;
+  fall: number[];
+  drift: number[];
+  /** Under reduce motion: this share of the flecks, falling at this share of the speed. */
+  reducedShare: number;
+  fadeMs: number;
 }
 
 export interface RegionLighting {
   states: Record<string, LightState>;
   lightRadiusScale: number;
   playerLight: { radius: number; color: string; intensity: number };
+  ash?: AshSettings;
   rain: { opacity: number; dropsPerScreen: number; length: number[]; angle: number[]; splashes: boolean };
 }
 

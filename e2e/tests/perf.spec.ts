@@ -3,11 +3,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as backend from '../support/backend';
-import { choose, inArea, newGame, walkTo } from '../support/world';
+import { choose, inArea, newGame, toTheRuinsLanternAfterTheAshFalls, walkTo, walkToTile } from '../support/world';
 
 // The mobile performance budget (§4.13, P-24, P-38): with the CPU slowed down
 // as on a mid-range phone, walking every Eldmere area keeps the main-thread
-// CPU time of each frame and the JS heap within budget. A frame's CPU time is
+// CPU time of each frame and the JS heap within budget, and so does walking
+// through the falling ash of the Old Ruins and the Ash Rise (P-67). A frame's CPU time is
 // the sum of the animation-frame callbacks Chrome runs for it (Phaser's update
 // and render), read from a DevTools trace. GPU cost is left to the real-device
 // check: CI browsers draw WebGL in software. Nightly and before releases only
@@ -129,4 +130,29 @@ test('a battle is on screen within the battle start budget of the encounter', as
   });
   test.info().annotations.push({ type: 'perf', description: `battle on screen ${startMs.toFixed(0)} ms after the encounter's answer` });
   expect(startMs, 'battle start (ms)').toBeLessThanOrEqual(budget.battleStartMs);
+});
+
+test('walking through the falling ash stays within the frame CPU budget (P-67)', async ({ page }) => {
+  test.setTimeout(480_000);
+  await toTheRuinsLanternAfterTheAshFalls(page, 'keyboard', `perfa-${Date.now() % 1e9}`);   // the ash falls from here on
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: budget.cpuThrottle });
+  const events: TraceEvent[] = [];
+  cdp.on('Tracing.dataCollected', ({ value }) => events.push(...(value as TraceEvent[])));
+  await cdp.send('Tracing.start', { categories: 'devtools.timeline', transferMode: 'ReportEvents' });
+
+  await walkTo(page, 'keyboard', 'arena_way');
+  await inArea(page, 'The Ash Rise');
+  await walkToTile(page, 'keyboard', [10, 8]);                       // across the Rise, short of the Herald's trigger
+  await walkTo(page, 'keyboard', 'to_ruins');
+  await inArea(page, 'The Old Ruins');
+
+  const done = new Promise((resolve) => cdp.once('Tracing.tracingComplete', resolve));
+  await cdp.send('Tracing.end');
+  await done;
+  const frames = frameCpuTimes(events).sort((a, b) => a - b);
+  expect(frames.length, 'frames traced').toBeGreaterThan(150);
+  const p95 = frames[Math.floor(frames.length * 0.95)]!;
+  test.info().annotations.push({ type: 'perf', description: `ash: ${frames.length} frames, p95 CPU ${p95.toFixed(1)} ms per frame` });
+  expect(p95, '95th-percentile CPU time per frame in the ash (ms)').toBeLessThanOrEqual(budget.p95FrameCpuMs);
 });

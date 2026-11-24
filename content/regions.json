@@ -16,7 +16,7 @@
     {
       "id": "eldmere", "name": "Eldmere", "music": "eldmere",
       "respawn": { "area": "eldmere_cottage_lane", "spawn": "home" },
-      "lightStates": [{ "id": "storm_night", "flag": "storm_night" }, { "id": "ash_lifted", "flag": "herald_defeated" }, { "id": "dawn" }]
+      "lightStates": [{ "id": "storm_night", "flag": "storm_night" }, { "id": "ash_lifted", "flag": "herald_defeated" }, { "id": "ash_falling", "flag": "herald_risen" }, { "id": "dawn" }]
     }
   ],
   "areas": [

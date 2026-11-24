@@ -44,6 +44,7 @@ interface BattleSceneData {
 const LIGHTS: Record<string, { sky: [number, number]; tint: number }> = {
   storm_night: { sky: [0x0b1018, 0x1c2633], tint: 0x6a7890 },
   dawn: { sky: [0x3a3550, 0x8a6f72], tint: 0xf0d8c8 },
+  ash_falling: { sky: [0x3a3438, 0x7a6a64], tint: 0xd8cfc8 },
   ash_lifted: { sky: [0x5a6a8a, 0xc8b49a], tint: 0xfff0e0 },
 };
 /** A boss stands this many creep-heights tall in the arena (P-67). */

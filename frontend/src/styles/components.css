@@ -2336,10 +2336,12 @@ body:has(.side-panels) .toast:not([data-kind='ERROR']) { display: none; }
   width: 100%;
 }
 
+/* In the open ground between the fighters: below the Herald's feet (42 % of the arena), above the player's head;
+   the arena is the view less the battle text's cover (BattleScene ENEMY_AT, PLAYER_AT). */
 .boss-banner {
   position: absolute;
-  top: 34%;
-  left: 50%;
+  top: calc((100% - var(--battle-cover, 0%)) * 0.56);
+  left: 49%;
   z-index: 13;
   margin: 0;
   font-family: var(--font-story);
