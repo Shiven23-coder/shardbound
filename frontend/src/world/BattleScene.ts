@@ -6,14 +6,18 @@
 // the target, the target flashes, a number floats up, and a critical hit
 // shakes the camera. Skipping the text plays what is left at once, quickly. A
 // won battle fades the enemy into smoke after the last blow's lines, a lost
-// one the player. The info boxes, text and menus are React's. Reduce
-// motion turns off the shake, flashes and lunges.
+// one the player. A pending telegraph holds the enemy in a wind-up (a boss's
+// raised wings, a creep's tint); a boss turning to its second phase plays its
+// transformation on that line (P-67). The info boxes, text and menus are
+// React's. Reduce motion turns off the shake, flashes and lunges.
 import Phaser from 'phaser';
 import { audio } from '../audio/audio';
 import type { Effect } from '../audio/audio';
 import type { BattleView, HitView } from '../api/types';
 import type { WorldBridge } from './bridge';
-import { battleBackdrop, battleEffects, effectArt, sheetLayout } from './content';
+import { battleBackdrop, battleEffects, bossArt, bossTexture, effectArt, sheetLayout } from './content';
+import type { BossArt } from './content';
+import { createBossAnimations } from './bossSprites';
 import { reducedMotion } from './motion';
 
 export const BATTLE_SCENE = 'battle';
@@ -37,7 +41,12 @@ interface BattleSceneData {
 const LIGHTS: Record<string, { sky: [number, number]; tint: number }> = {
   storm_night: { sky: [0x0b1018, 0x1c2633], tint: 0x6a7890 },
   dawn: { sky: [0x3a3550, 0x8a6f72], tint: 0xf0d8c8 },
+  ash_lifted: { sky: [0x5a6a8a, 0xc8b49a], tint: 0xfff0e0 },
 };
+/** A boss stands this many creep-heights tall in the arena (P-67). */
+const BOSS_HEIGHT_IN_CREEPS = 2.4;
+/** The tint of a fighter winding up a telegraphed blow (P-67): warm, never a flash. */
+const WIND_UP_TINT = 0xffb89a;
 
 export class BattleScene extends Phaser.Scene {
   private bridge!: WorldBridge;
@@ -54,6 +63,12 @@ export class BattleScene extends Phaser.Scene {
   /** How many of the round's hits have played. */
   private played = 0;
   private outcomePlayed = false;
+  /** The enemy's boss art, or null for a creep. */
+  private bossArt: BossArt | null = null;
+  private bossKey = '';
+  private windingUp = false;
+  /** The round whose phase-2 transformation has played. */
+  private phasePlayedRound = -1;
   private scale$ = 4;
   private readonly unsubscribe: (() => void)[] = [];
 
@@ -69,19 +84,31 @@ export class BattleScene extends Phaser.Scene {
     this.outcomePlayed = false;
     this.shadows = [];
     this.rain = null;
+    this.bossArt = null;
+    this.bossKey = '';
+    this.windingUp = false;
+    this.phasePlayedRound = -1;
   }
 
   create(): void {
     createEffectAnimations(this);
+    createBossAnimations(this);
     cutBackdrop(this);
     this.backdrop = this.add.graphics();
     this.ground = this.add.tileSprite(0, 0, 1, 1, BACKDROP_GROUND).setOrigin(0, 0);
     this.treeline = this.add.tileSprite(0, 0, 1, 1, BACKDROP_TREELINE).setOrigin(0, 1);
     this.platforms = this.add.graphics();
     const first = this.bridge.latestBattle!.battle;
-    this.enemy = this.add.sprite(0, 0, first.enemy.sprite, frame('DOWN')).setOrigin(0.5, 0.9);
+    this.bossArt = bossArt(first.enemy.sprite) ?? null;
+    this.bossKey = first.enemy.sprite;
+    if (this.bossArt) {
+      this.enemy = this.add.sprite(0, 0, bossTexture(this.bossKey, 'idle'), 0).setOrigin(0.5, 0.85);
+      this.enemy.play(`${this.bossKey}:idle`);
+    } else {
+      this.enemy = this.add.sprite(0, 0, first.enemy.sprite, frame('DOWN')).setOrigin(0.5, 0.9);
+      this.enemy.anims.play({ key: `${first.enemy.sprite}:walk:DOWN`, frameRate: 4 });
+    }
     this.player = this.add.sprite(0, 0, first.player.sprite, frame('UP')).setOrigin(0.5, 0.9);
-    this.enemy.anims.play({ key: `${first.enemy.sprite}:walk:DOWN`, frameRate: 4 });
     this.layout();
     this.cameras.main.setBackgroundColor('#07060a');
     if (!reducedMotion()) this.cameras.main.flash(260, 255, 255, 255);
@@ -136,7 +163,8 @@ export class BattleScene extends Phaser.Scene {
       g.fillStyle(0x10140c, 0.3).fillEllipse(at.x, at.y, w, w * 0.32);
       return this.add.ellipse(at.x, at.y - 1, TILE * this.scale$ * 0.9, TILE * this.scale$ * 0.22, 0x000000, 0.35);
     });
-    this.enemy.setPosition(enemyAt.x, enemyAt.y).setScale(this.scale$).setDepth(2);
+    const enemyScale = this.bossArt ? (this.scale$ * TILE * BOSS_HEIGHT_IN_CREEPS) / this.bossArt.frameSize : this.scale$;
+    this.enemy.setPosition(enemyAt.x, enemyAt.y).setScale(enemyScale).setDepth(2);
     this.player.setPosition(playerAt.x, playerAt.y).setScale(this.scale$ + 1).setDepth(3);
     if (lightState === 'storm_night' && !this.rain && this.textures.exists('fx:rain')) {
       this.rain = this.add.particles(0, 0, 'fx:rain', {
@@ -155,6 +183,7 @@ export class BattleScene extends Phaser.Scene {
     this.played = 0;
     this.outcomePlayed = false;
     if (previous && battle.player.hp > previous.player.hp) this.playEffect(battleEffects.heal, this.player, 'heal');
+    this.windUp(battle.telegraphMove != null && !battle.outcome);
     this.catchUp();
   }
 
@@ -172,12 +201,49 @@ export class BattleScene extends Phaser.Scene {
       this.time.delayedCall(due++ * CATCH_UP_GAP_MS, () => this.playHit(hit));
       this.played++;
     }
+    const phaseLine = battle.boss?.phaseLine;
+    if (phaseLine != null && shown.line >= phaseLine && this.phasePlayedRound !== battle.round) {
+      this.phasePlayedRound = battle.round;
+      this.time.delayedCall(due * CATCH_UP_GAP_MS, () => this.playTransformation());
+    }
     const lastBlow = battle.hits.at(-1)?.line ?? -1;
     if (battle.outcome && !this.outcomePlayed && this.played === battle.hits.length && shown.line > lastBlow) {
       this.outcomePlayed = true;
       const outcome = battle.outcome;
       this.time.delayedCall(due * CATCH_UP_GAP_MS + 300, () => this.playOutcome(outcome));
     }
+  }
+
+  /**
+   * A telegraphed blow is pending (P-67): a boss holds its wind-up frame, a creep keeps moving; both take a
+   * warm tint until the blow lands. No flash, so it holds under reduce motion too.
+   */
+  private windUp(on: boolean): void {
+    if (on === this.windingUp) return;
+    this.windingUp = on;
+    if (on) {
+      if (this.bossArt) {
+        this.enemy.anims.stop();
+        this.enemy.setTexture(bossTexture(this.bossKey, 'attack'), this.bossArt.windUpFrame);
+      }
+      this.enemy.setTint(WIND_UP_TINT);
+    } else {
+      this.enemy.clearTint();
+      if (this.bossArt) this.enemy.play(`${this.bossKey}:idle`);
+    }
+  }
+
+  /** The boss turns to its second phase: its transformation, a sting and (with motion) a flash. */
+  private playTransformation(): void {
+    if (!this.bossArt) return;
+    audio.play('heraldPhase');
+    if (!reducedMotion()) this.cameras.main.flash(320, 255, 200, 150);
+    this.windingUp = false;
+    this.enemy.clearTint().play(`${this.bossKey}:transform`);
+    this.enemy.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+      if (this.battle?.telegraphMove) this.windUp(true);
+      else this.enemy.play(`${this.bossKey}:idle`);
+    });
   }
 
   private playHit(hit: HitView): void {

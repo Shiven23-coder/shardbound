@@ -11,8 +11,8 @@ import java.util.List;
  */
 public record CutsceneView(String id, List<ActorView> actors, List<StepView> steps) {
 
-    /** A sprite (an art manifest key) placed at a tile for the cutscene. */
-    public record ActorView(String id, String sprite, int x, int y, String facing) { }
+    /** A sprite (an art manifest key) placed at a tile for the cutscene; {@code name} titles its lines. */
+    public record ActorView(String id, String sprite, int x, int y, String facing, @Nullable String name) { }
 
     public record TileView(int x, int y) { }
 

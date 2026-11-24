@@ -1427,6 +1427,9 @@
           "id" : {
             "type" : "string"
           },
+          "name" : {
+            "type" : "string"
+          },
           "sprite" : {
             "type" : "string"
           },

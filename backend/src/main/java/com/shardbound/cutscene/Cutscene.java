@@ -25,8 +25,8 @@ public record Cutscene(String id, String area, List<Actor> actors, List<Step> st
         return then.startsWith(THEN_BATTLE) ? then.substring(THEN_BATTLE.length()) : null;
     }
 
-    /** A sprite placed for the cutscene at a tile, facing a way; steps name it by {@code id}. */
-    public record Actor(String id, String sprite, int x, int y, String facing) { }
+    /** A sprite placed for the cutscene at a tile, facing a way; steps name it by {@code id}; {@code name} titles its lines. */
+    public record Actor(String id, String sprite, int x, int y, String facing, @Nullable String name) { }
 
     public record Tile(int x, int y) { }
 

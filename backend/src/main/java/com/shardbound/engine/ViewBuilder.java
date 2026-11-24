@@ -95,7 +95,7 @@ public class ViewBuilder {
     private CutsceneView cutscene(GameState s) {
         Cutscene c = content.cutscenes().get(s.cutscene());
         List<CutsceneView.ActorView> actors = c.actors().stream()
-                .map(a -> new CutsceneView.ActorView(a.id(), a.sprite(), a.x(), a.y(), a.facing())).toList();
+                .map(a -> new CutsceneView.ActorView(a.id(), a.sprite(), a.x(), a.y(), a.facing(), a.name())).toList();
         List<CutsceneView.StepView> steps = new ArrayList<>();
         for (Cutscene.Step step : c.steps()) {
             String text = step.variants().stream().filter(v -> v.conditions().test(s)).map(Cutscene.Variant::text)

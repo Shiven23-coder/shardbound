@@ -2,7 +2,7 @@
 // React sends the server's world view and corrections; the scene reports
 // the world events the player causes. Neither side imports the other, and
 // this file imports no Phaser, so it stays in the small initial bundle.
-import type { BattleView, Facing, LastPosition, WorldView } from '../api/types';
+import type { BattleView, CutsceneActorView, CutsceneStepView, Facing, LastPosition, WorldView } from '../api/types';
 import type { InputDevice } from '../input/inputMode';
 
 export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
@@ -23,6 +23,14 @@ export interface SceneEvents {
   moved: undefined;
   /** The player walked under the HUD (true) or out from under it (false). */
   hudCovered: boolean;
+  /** The scene finished staging the cutscene step it was given (P-68). */
+  cutsceneStepDone: undefined;
+}
+
+/** A cutscene's cast (P-68): the scene places these sprites and stages its steps with them. */
+export interface CutsceneCast {
+  id: string;
+  actors: CutsceneActorView[];
 }
 
 /** A rectangle in CSS pixels, relative to the game view's top-left corner. */
@@ -51,6 +59,10 @@ export interface ReactCommands {
   battle: { battle: BattleView; cover: number } | null;
   /** The round's text line now on screen (Infinity once read): the arena plays the hits up to it. */
   battleLine: BattleLine;
+  /** A cutscene starts with this cast, or the one playing ends (null, P-68). */
+  cutscene: CutsceneCast | null;
+  /** A step for the scene to stage; it answers cutsceneStepDone. */
+  cutsceneStep: CutsceneStepView;
 }
 
 export interface BattleLine {
@@ -102,6 +114,8 @@ export class WorldBridge {
   latestBattle: { battle: BattleView; cover: number } | null = null;
   /** The battle text line on screen, for a scene that gets the round after the line was sent. */
   latestBattleLine: BattleLine = { round: -1, line: 0 };
+  /** The cutscene playing, for a scene that starts after it began. */
+  latestCutscene: CutsceneCast | null = null;
 
   sendView(view: WorldView): void {
     this.latestView = view;
@@ -124,6 +138,12 @@ export class WorldBridge {
     if (round === this.latestBattleLine.round && line === this.latestBattleLine.line) return;
     this.latestBattleLine = { round, line };
     this.toScene.emit('battleLine', this.latestBattleLine);
+  }
+
+  setCutscene(cast: CutsceneCast | null): void {
+    if (cast?.id === this.latestCutscene?.id) return;
+    this.latestCutscene = cast;
+    this.toScene.emit('cutscene', cast);
   }
 
   setDialogue(cover: number | null): void {

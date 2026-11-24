@@ -15,11 +15,14 @@ import { KeyboardInput } from './keyboardInput';
 import { nextTile, Stepper, type StepWorld, type Tile } from './stepper';
 import { zoomFor } from './zoom';
 import {
-  actorArt, actorKeys, actorShadow, battleBackdrop, chestArt, effectArt, frameSize, interactRange, lightingFor, mapUrl, sheetLayout,
-  stepTiming,
+  actorArt, actorKeys, actorShadow, battleBackdrop, bossArt, bossTexture, chestArt, effectArt, frameSize, interactRange, lightingFor,
+  mapUrl, sheetLayout, stepTiming,
 } from './content';
 import { artUrl, tilesetUrl } from './art';
 import { BACKDROP_KEY, BATTLE_SCENE, BattleScene, createEffectAnimations } from './BattleScene';
+import { createBossAnimations, preloadBosses } from './bossSprites';
+import type { CutsceneCast } from './bridge';
+import type { CutsceneStepView } from '../api/types';
 import { reducedMotion } from './motion';
 import type { LightState, RegionLighting } from './content';
 
@@ -36,6 +39,10 @@ const USABLE = new Set(['npc', 'interact', 'obstacle', 'lantern', 'chest']);
 const PROPS_FRAME = { lanternLit: 0, lanternCold: 4, lostShards: 5 } as const;
 /** A kindled Lantern's green core glow (P-61), in tiles; it does not fade with daylight. */
 const LANTERN_CORE = { radius: 0.9, colour: '#8fe3b0', alpha: 0.6 } as const;
+/** A boss drawn on the map and in cutscenes (P-67): its 82 px frames at about three tiles tall. */
+const BOSS_WORLD_SCALE = 0.55;
+/** A cutscene actor walks a tile in this long; a boss, more slowly (P-68). */
+const CUTSCENE_STEP_MS = { actor: 300, boss: 420 } as const;
 /** The chest sprite (P-65) and its frames. */
 const CHEST_KEY = 'chest';
 const CHEST_FRAME = { closed: 0, open: 1 } as const;
@@ -112,6 +119,13 @@ export class WorldScene extends Phaser.Scene {
   /** Each Lantern's top, drawn lit or cold (P-61). */
   private lanternTops = new Map<string, Phaser.GameObjects.Image>();
   private chests = new Map<string, Phaser.GameObjects.Sprite>();
+  private bosses = new Map<string, Phaser.GameObjects.Sprite>();
+  /** The cutscene's actors by id while one plays (P-68). */
+  private cutsceneActors = new Map<string, Phaser.GameObjects.Sprite>();
+  /** The light state a cutscene shows instead of the view's (it keeps the old light until its LIGHT step). */
+  private lightOverride: string | null = null;
+  /** The light state last built. */
+  private shownLight = '';
   /** The Lost Shards marker in this area (P-62). */
   private lostMarker: Phaser.GameObjects.Image | null = null;
   private keyboard!: KeyboardInput;
@@ -160,6 +174,10 @@ export class WorldScene extends Phaser.Scene {
     this.npcs = new Map();
     this.lanternTops = new Map();
     this.chests = new Map();
+    this.bosses = new Map();
+    this.cutsceneActors = new Map();
+    this.lightOverride = null;
+    this.shownLight = '';
     this.lostMarker = null;
     this.creeps = new Map();
     this.disarmed = new Set();
@@ -188,6 +206,7 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     if (!this.textures.exists('actor-shadow')) this.load.image('actor-shadow', artUrl(actorShadow));
+    preloadBosses(this);
     if (!this.textures.exists(CHEST_KEY)) {
       this.load.spritesheet(CHEST_KEY, artUrl(chestArt.sheet), { frameWidth: chestArt.frameWidth, frameHeight: chestArt.frameHeight });
     }
@@ -204,11 +223,13 @@ export class WorldScene extends Phaser.Scene {
     createEffectTextures(this);
     createWalkAnimations(this);
     createEffectAnimations(this);
+    createBossAnimations(this);
     this.buildMap();
     this.createPlayer();
     this.showNpcs(this.view.npcs);
     this.showLanterns();
     this.showChests([]);
+    this.showBosses();
     this.showLostShards();
     this.showCreeps(this.view.creeps);
     this.showProps();
@@ -229,6 +250,8 @@ export class WorldScene extends Phaser.Scene {
       this.bridge.toScene.on('press', (direction) => this.press(direction)),
       this.bridge.toScene.on('dialogue', (cover) => this.frameDialogue(cover)),
       this.bridge.toScene.on('battle', (battle) => this.showBattle(battle !== null)),
+      this.bridge.toScene.on('cutscene', (cast) => (cast ? this.startCutscene(cast) : this.endCutscene())),
+      this.bridge.toScene.on('cutsceneStep', (step) => this.stageStep(step)),
     );
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.unsubscribe.splice(0).forEach((off) => off());
@@ -241,6 +264,7 @@ export class WorldScene extends Phaser.Scene {
     if (this.bridge.latestView && this.bridge.latestView !== this.view) this.applyView(this.bridge.latestView);
     if (this.bridge.dialogueCover !== null) this.frameDialogue(this.bridge.dialogueCover);
     if (this.bridge.latestBattle) this.showBattle(true);
+    if (this.bridge.latestCutscene) this.startCutscene(this.bridge.latestCutscene);
   }
 
   /** A battle takes the whole canvas in its own scene; the world sleeps until it is over (P-57). */
@@ -458,6 +482,7 @@ export class WorldScene extends Phaser.Scene {
     if (this.collisionLayer?.hasTileAt(tile.x, tile.y)) return true;
     if (this.npcTiles.has(tileKey(tile))) return true;
     if (this.view.chests.some((c) => tileKey(tileAt(c.x, c.y)) === tileKey(tile))) return true;
+    if (this.view.bosses.some((b) => tileKey(tileAt(b.x, b.y)) === tileKey(tile))) return true;
     return this.objects.some((o) => o.type === 'obstacle' && this.isActive(o) && covers(o, tile));
   }
 
@@ -687,6 +712,7 @@ export class WorldScene extends Phaser.Scene {
     this.showCreeps(view.creeps);
     this.showLanterns();
     this.showChests(opened);
+    this.showBosses();
     this.showLostShards();
     if (kindled.length > 0) audio.play('lanternKindle');
     if (opened.length > 0) audio.play('chestOpen');
@@ -777,6 +803,201 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  /** The bosses standing on the map now (P-67), each on its idle loop; a fallen boss is gone. */
+  private showBosses(): void {
+    for (const [id, sprite] of this.bosses) {
+      if (!this.view.bosses.some((b) => b.id === id)) {
+        sprite.destroy();
+        this.bosses.delete(id);
+      }
+    }
+    for (const boss of this.view.bosses) {
+      if (this.bosses.has(boss.id)) continue;
+      this.bosses.set(boss.id, this.bossSprite(boss.sprite, boss.x, boss.y));
+    }
+    this.game.canvas.dataset.bosses = this.view.bosses.map((b) => b.id).join(',');
+  }
+
+  private bossSprite(key: string, x: number, y: number): Phaser.GameObjects.Sprite {
+    return this.add.sprite(x, y, bossTexture(key, 'idle'), 0).setOrigin(0.5, 0.8).setScale(BOSS_WORLD_SCALE)
+      .setDepth(DEPTH.actors + y / 10000).play(`${key}:idle`);
+  }
+
+  // ---------------------------------------------------------------------
+  // cutscenes (P-68): React plays the lines and the music; the scene stages the rest
+
+  /** A cutscene begins: its cast takes the stage, the camera stops following, and the light holds. */
+  private startCutscene(cast: CutsceneCast): void {
+    this.endCutscene();
+    this.lightOverride = this.shownLight || this.view.lightState;
+    this.cameras.main.stopFollow();
+    for (const actor of cast.actors) {
+      const at = centreOf({ x: actor.x, y: actor.y });
+      const sprite = bossArt(actor.sprite)
+        ? this.bossSprite(actor.sprite, at.x, at.y)
+        : this.add.sprite(at.x, at.y, actor.sprite, idleFrame(actor.facing as Facing)).setOrigin(0.5, 0.75)
+          .setDepth(DEPTH.actors + at.y / 10000);
+      this.cutsceneActors.set(actor.id, sprite);
+    }
+    this.game.canvas.dataset.cutscene = cast.id;
+  }
+
+  /** The cutscene ended (played or skipped): the cast leaves, the light and the camera follow the world again. */
+  private endCutscene(): void {
+    this.cutsceneActors.forEach((sprite) => {
+      this.tweens.killTweensOf(sprite);
+      sprite.destroy();
+    });
+    this.cutsceneActors.clear();
+    delete this.game.canvas.dataset.cutscene;
+    if (this.lightOverride !== null) {
+      this.lightOverride = null;
+      this.buildLighting();
+    }
+    this.cameras.main.resetFX();
+    this.cameras.main.startFollow(this.player, true, 0.2, 0.2);
+  }
+
+  /** Stages one step, then tells React it is done. Reduce motion drops shakes, flashes and camera moves (P-68). */
+  private stageStep(step: CutsceneStepView): void {
+    const done = () => this.bridge.toReact.emit('cutsceneStepDone', undefined);
+    const motion = !reducedMotion();
+    const camera = this.cameras.main;
+    const ms = step.ms ?? 0;
+    switch (step.kind) {
+      case 'MOVE':
+        this.moveActor(step, done);
+        return;
+      case 'FACE': {
+        const actor = step.actor ? this.cutsceneActors.get(step.actor) : undefined;
+        if (actor && !bossArt(String(actor.texture.key).split('#')[0]!) && step.facing) {
+          actor.setFrame(idleFrame(step.facing as Facing));
+        }
+        done();
+        return;
+      }
+      case 'CAMERA':
+        this.stageCamera(step, motion, done);
+        return;
+      case 'FADE':
+        // A fade stays under reduce motion, as a short cross-fade.
+        if (step.state === 'out') camera.fadeOut(motion ? ms : Math.min(ms, 200));
+        else camera.fadeIn(motion ? ms : Math.min(ms, 200));
+        this.time.delayedCall(motion ? ms : Math.min(ms, 200), done);
+        return;
+      case 'FLASH':
+        if (motion) camera.flash(ms, 255, 240, 220);
+        this.time.delayedCall(motion ? ms : 0, done);
+        return;
+      case 'WAIT':
+        this.time.delayedCall(ms, done);
+        return;
+      case 'LIGHT':
+        this.lightOverride = step.state ?? null;
+        this.buildLighting();
+        done();
+        return;
+      case 'VANISH':
+        this.vanishActor(step, motion, done);
+        return;
+      default:
+        done();                                 // lines, music and sounds are React's
+    }
+  }
+
+  private moveActor(step: CutsceneStepView, done: () => void): void {
+    const actor = step.actor ? this.cutsceneActors.get(step.actor) : undefined;
+    if (!actor || step.path.length === 0) {
+      done();
+      return;
+    }
+    const key = String(actor.texture.key).split('#')[0]!;
+    const boss = Boolean(bossArt(key));
+    const stepMs = boss ? CUTSCENE_STEP_MS.boss : CUTSCENE_STEP_MS.actor;
+    const walk = (from: { x: number; y: number }, to: { x: number; y: number }) => {
+      if (boss) return `${key}:walk`;
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const facing: Facing = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'LEFT' : 'RIGHT') : dy < 0 ? 'UP' : 'DOWN';
+      return `${key}:walk:${facing}`;
+    };
+    const tiles = step.path.map((t) => centreOf(t));
+    const next = (i: number) => {
+      if (i >= tiles.length) {
+        if (boss) actor.play(`${key}:idle`);
+        else actor.anims.stop();
+        done();
+        return;
+      }
+      const to = tiles[i]!;
+      actor.play(walk({ x: actor.x, y: actor.y }, to), true);
+      this.tweens.add({
+        targets: actor, x: to.x, y: to.y, duration: stepMs, ease: 'Linear',
+        onUpdate: () => actor.setDepth(DEPTH.actors + actor.y / 10000),
+        onComplete: () => next(i + 1),
+      });
+    };
+    next(0);
+  }
+
+  private stageCamera(step: CutsceneStepView, motion: boolean, done: () => void): void {
+    const camera = this.cameras.main;
+    const ms = step.ms ?? 800;
+    switch (step.camera) {
+      case 'pan': {
+        const actor = step.actor ? this.cutsceneActors.get(step.actor) : undefined;
+        const at = actor ? { x: actor.x, y: actor.y } : centreOf({ x: step.x ?? 0, y: step.y ?? 0 });
+        camera.stopFollow();
+        if (motion) {
+          camera.pan(at.x, at.y, ms, 'Sine.easeInOut', true);
+          this.time.delayedCall(ms, done);
+        } else {
+          camera.centerOn(at.x, at.y);         // a cut, not a move
+          done();
+        }
+        return;
+      }
+      case 'zoom':
+        if (motion && step.zoom) {
+          camera.zoomTo(step.zoom, ms);
+          this.time.delayedCall(ms, done);
+        } else {
+          if (step.zoom) camera.setZoom(step.zoom);
+          done();
+        }
+        return;
+      case 'shake':
+        if (motion) camera.shake(ms, 0.008);
+        this.time.delayedCall(motion ? ms : 0, done);
+        return;
+      default:
+        camera.startFollow(this.player, true, 0.2, 0.2);
+        done();
+    }
+  }
+
+  private vanishActor(step: CutsceneStepView, motion: boolean, done: () => void): void {
+    const actor = step.actor ? this.cutsceneActors.get(step.actor) : undefined;
+    if (!actor) {
+      done();
+      return;
+    }
+    const effect = step.effect ?? '';
+    if (motion && this.anims.exists(`${effect}:play`)) {
+      const smoke = this.add.sprite(actor.x, actor.y - TILE, effect).setDepth(DEPTH.above);
+      smoke.play(`${effect}:play`);
+      smoke.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => smoke.destroy());
+    }
+    this.tweens.add({
+      targets: actor, alpha: 0, duration: motion ? step.ms ?? 600 : 0,
+      onComplete: () => {
+        actor.destroy();
+        if (step.actor) this.cutsceneActors.delete(step.actor);
+        done();
+      },
+    });
+  }
+
   /** The Lost Shards (P-62): a pulsing glow on the tile where the player fell, until recovered. */
   private showLostShards(): void {
     const lost = this.view.lostShards;
@@ -851,7 +1072,8 @@ export class WorldScene extends Phaser.Scene {
       o.destroy();
     });
     this.playerLight = null;
-    const { region, state } = lightingFor(this.view.regionId, this.view.lightState);
+    this.shownLight = this.lightOverride ?? this.view.lightState;
+    const { region, state } = lightingFor(this.view.regionId, this.shownLight);
     const darkness = this.add.rectangle(0, 0, this.mapWidth, this.mapHeight, ambientColour(state))
       .setOrigin(0, 0).setDepth(DEPTH.dark).setBlendMode(Phaser.BlendModes.MULTIPLY);
     this.lighting.push(darkness);

@@ -59,6 +59,10 @@
               "LEFT",
               "RIGHT"
             ]
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
           }
         }
       }

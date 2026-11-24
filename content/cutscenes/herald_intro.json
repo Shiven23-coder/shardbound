@@ -9,7 +9,8 @@
       "sprite": "boss.ashen_herald",
       "x": 10,
       "y": 1,
-      "facing": "DOWN"
+      "facing": "DOWN",
+      "name": "The Ashen Herald"
     }
   ],
   "steps": [

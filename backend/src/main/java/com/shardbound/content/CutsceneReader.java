@@ -42,7 +42,7 @@ public final class CutsceneReader {
             List<Cutscene.Actor> actors = new ArrayList<>();
             for (JsonNode a : n.path("actors")) {
                 actors.add(new Cutscene.Actor(a.get("id").asString(), a.get("sprite").asString(), a.get("x").asInt(),
-                        a.get("y").asInt(), a.path("facing").asString("DOWN")));
+                        a.get("y").asInt(), a.path("facing").asString("DOWN"), text(a, "name")));
             }
             List<RawStep> steps = new ArrayList<>();
             for (JsonNode s : n.get("steps")) {

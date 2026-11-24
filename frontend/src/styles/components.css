@@ -2196,6 +2196,222 @@ body:has(.side-panels) .toast:not([data-kind='ERROR']) { display: none; }
   .battle-info { min-width: 9rem; padding: 0.35rem 0.55rem; }
 }
 
+/* ---------- Bosses (P-67): the boss bar, the telegraph warning, the banners ---------- */
+/* A pending telegraphed blow: a warning that stays until it lands (shape and words, not colour alone). */
+.battle-warning {
+  margin: 0.35rem 0 0;
+  padding: 0.15rem 0.45rem;
+  border-left: 3px solid var(--gold);
+  background: rgba(245, 197, 66, 0.12);
+  color: var(--gold);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.status-crack {
+  clip-path: polygon(0 20%, 40% 0, 55% 35%, 100% 25%, 80% 60%, 100% 100%, 45% 80%, 20% 100%, 25% 55%);
+  background: #f08a6a;
+}
+
+/* Bottom-centre above the battle text; at the top of the deck in portrait. */
+.boss-bar {
+  width: min(34rem, calc(100% - 1.5rem));
+  padding: 0.4rem 0.75rem 0.5rem;
+  border: 2px solid #7a3b2a;
+  border-radius: var(--radius-small);
+  background: rgba(20, 12, 10, 0.9);
+  color: var(--text);
+  font-family: var(--font-ui);
+  box-shadow: var(--shadow);
+}
+
+/* Over the arena it sits on the right of the battle text's top edge, clear of the player's sprite. */
+.battle-hud .boss-bar {
+  position: absolute;
+  right: max(calc((100% - min(52rem, calc(100% - 1.5rem))) / 2), env(safe-area-inset-right));
+  bottom: calc(var(--battle-cover, 0%) + 0.6rem);
+  width: min(30rem, 52%);
+}
+
+.boss-bar-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-story);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.boss-bar-phase {
+  display: grid;
+  place-items: center;
+  min-width: 1.6rem;
+  height: 1.3rem;
+  padding: 0 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+}
+
+.boss-phase-2 .boss-bar-phase {
+  border-color: var(--hp-2);
+  color: var(--hp-2);
+}
+
+.boss-bar-statuses {
+  margin: 0 0 0 auto;
+}
+
+.boss-bar-track {
+  position: relative;
+  height: 0.7rem;
+  margin-top: 0.35rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.boss-bar-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--hp), var(--hp-2));
+  transition: width 0.7s ease-out;
+}
+
+.boss-bar-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--text);
+  opacity: 0.8;
+}
+
+/* A boss has no info box: the player's box takes its place top-left, so nothing covers the arena's middle. */
+.in-battle:has(.boss-bar) .battle-info-player {
+  top: max(0.75rem, env(safe-area-inset-top));
+  left: max(0.75rem, env(safe-area-inset-left));
+  right: auto;
+  bottom: auto;
+}
+
+.control-deck:has(.boss-bar) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.control-deck .boss-bar {
+  width: 100%;
+}
+
+.boss-banner {
+  position: absolute;
+  top: 34%;
+  left: 50%;
+  z-index: 13;
+  margin: 0;
+  font-family: var(--font-story);
+  font-size: clamp(1.5rem, 5vw, 2.6rem);
+  letter-spacing: 0.12em;
+  text-shadow: 0 2px 8px #000, 0 0 2px #000;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: boss-banner 2.6s ease forwards;   /* BANNER_MS in BossBanner.tsx */
+}
+
+.boss-banner-name { color: var(--hp-2); }
+
+.boss-banner-vanquished {
+  color: var(--gold);
+  text-transform: uppercase;
+}
+
+@keyframes boss-banner {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(1.08); }
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ---------- Cutscenes (P-68): the line box and the held Skip button ---------- */
+.cutscene-line { cursor: pointer; }
+
+.cutscene-more { pointer-events: none; }
+
+.cutscene-skip {
+  position: absolute;
+  top: max(0.75rem, env(safe-area-inset-top));
+  right: max(0.75rem, env(safe-area-inset-right));
+  z-index: 14;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cutscene-hint {
+  margin: 0;
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius-small);
+  background: rgba(7, 6, 10, 0.8);
+  font-size: 0.85rem;
+}
+
+.cutscene-skip-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(7, 6, 10, 0.75);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.cutscene-ring {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+
+.cutscene-ring-track,
+.cutscene-ring-fill {
+  fill: none;
+  stroke-width: 4;
+}
+
+.cutscene-ring-track { stroke: rgba(255, 255, 255, 0.2); }
+
+.cutscene-ring-fill {
+  stroke: var(--accent);
+  stroke-linecap: round;
+}
+
+.cutscene-skip-label { position: relative; }
+
+@media (prefers-reduced-motion: reduce) {
+  .boss-banner { animation-name: boss-banner-fade; }
+  .boss-bar-fill { transition: none; }
+}
+
+@keyframes boss-banner-fade {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* In a battle the battle text tells everything; only errors (a lost connection) still show. */
 body:has(.in-battle) .toast:not([data-kind='ERROR']) {
   display: none;
