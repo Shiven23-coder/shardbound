@@ -12,7 +12,14 @@ import java.util.List;
  */
 public record BattleView(FighterView enemy, FighterView player, int round, List<String> text,
                          @Nullable String telegraph, MenuView menu, List<HitView> hits, @Nullable String outcome,
-                         @Nullable RewardsView rewards) {
+                         @Nullable RewardsView rewards, @Nullable String telegraphMove, @Nullable BossBarView boss) {
+
+    /**
+     * A boss fight's bar (P-67): the boss's phase, where its second phase begins (% of HP, the tick on the
+     * bar), and the index in this round's text of the line where it turned (the client plays its
+     * transformation there), else null.
+     */
+    public record BossBarView(String name, int phase, int phase2Pct, @Nullable Integer phaseLine) { }
 
     /** One side: {@code family} is null for the player. */
     public record FighterView(String name, int level, int hp, int maxHp, List<StatusView> statuses, String sprite,

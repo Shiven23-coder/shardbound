@@ -10,7 +10,7 @@
  "tileheight": 16,
  "infinite": false,
  "nextlayerid": 9,
- "nextobjectid": 3,
+ "nextobjectid": 5,
  "properties": [
   {
    "name": "area",
@@ -2123,6 +2123,57 @@
        "name": "toSpawn",
        "type": "string",
        "value": "from_rise"
+      }
+     ]
+    },
+    {
+     "id": 3,
+     "name": "ashen_herald",
+     "type": "boss",
+     "x": 160,
+     "y": 64,
+     "width": 16,
+     "height": 16,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "bossId",
+       "type": "string",
+       "value": "ashen_herald"
+      },
+      {
+       "name": "showIf",
+       "type": "string",
+       "value": "_seen_herald_intro"
+      },
+      {
+       "name": "hideIf",
+       "type": "string",
+       "value": "herald_defeated"
+      }
+     ]
+    },
+    {
+     "id": 4,
+     "name": "herald_trigger",
+     "type": "trigger",
+     "x": 96,
+     "y": 112,
+     "width": 144,
+     "height": 16,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "boss",
+       "type": "string",
+       "value": "ashen_herald"
+      },
+      {
+       "name": "hideIf",
+       "type": "string",
+       "value": "herald_defeated"
       }
      ]
     }

@@ -38,6 +38,10 @@ export default function ashRise() {
     objects: [
       { name: 'from_ruins', type: 'spawn_point', x: 10, y: 12, props: { main: true } },
       { name: 'to_ruins', type: 'exit', x: 9, y: 13, w: 2, h: 1, props: { toArea: 'eldmere_old_ruins', toSpawn: 'from_rise' } },
+      // the Herald on the rise, once its intro has played, until it falls (P-67)
+      { name: 'ashen_herald', type: 'boss', x: 10, y: 4, props: { bossId: 'ashen_herald', showIf: '_seen_herald_intro', hideIf: 'herald_defeated' } },
+      // stepping onto the scorched floor: the intro the first time, else the fight with the name banner
+      { name: 'herald_trigger', type: 'trigger', x: 6, y: 7, w: 9, h: 1, props: { boss: 'ashen_herald', hideIf: 'herald_defeated' } },
     ],
   });
 }

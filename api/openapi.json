@@ -124,6 +124,67 @@
         "tags" : [ "game" ]
       }
     },
+    "/api/cutscene/finish" : {
+      "post" : {
+        "operationId" : "finishCutscene",
+        "parameters" : [ {
+          "description" : "A new UUID per action (P-56)",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CutsceneRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionView"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "security" : [ {
+          "session" : [ ]
+        } ],
+        "summary" : "End the cutscene playing, played out or skipped (keyed)",
+        "tags" : [ "cutscene" ]
+      }
+    },
     "/api/debug/inspector" : {
       "get" : {
         "operationId" : "inspect",
@@ -1357,6 +1418,29 @@
         },
         "required" : [ "description", "hidden", "id", "title", "unlocked" ]
       },
+      "ActorView" : {
+        "type" : "object",
+        "properties" : {
+          "facing" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "sprite" : {
+            "type" : "string"
+          },
+          "x" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "y" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "facing", "id", "sprite", "x", "y" ]
+      },
       "AffinityView" : {
         "type" : "object",
         "properties" : {
@@ -1439,6 +1523,9 @@
       "BattleView" : {
         "type" : "object",
         "properties" : {
+          "boss" : {
+            "$ref" : "#/components/schemas/BossBarView"
+          },
           "enemy" : {
             "$ref" : "#/components/schemas/FighterView"
           },
@@ -1467,6 +1554,9 @@
           "telegraph" : {
             "type" : "string"
           },
+          "telegraphMove" : {
+            "type" : "string"
+          },
           "text" : {
             "type" : "array",
             "items" : {
@@ -1475,6 +1565,53 @@
           }
         },
         "required" : [ "enemy", "hits", "menu", "player", "round", "text" ]
+      },
+      "BossBarView" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "phase" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "phase2Pct" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "phaseLine" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "name", "phase", "phase2Pct" ]
+      },
+      "BossView" : {
+        "type" : "object",
+        "properties" : {
+          "bossId" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "sprite" : {
+            "type" : "string"
+          },
+          "x" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "y" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "bossId", "id", "name", "sprite", "x", "y" ]
       },
       "ChestView" : {
         "type" : "object",
@@ -1566,6 +1703,38 @@
           }
         },
         "required" : [ "aggroRadius", "id", "level", "name", "rearmTiles", "sprite", "template", "wary", "x", "y" ]
+      },
+      "CutsceneRequest" : {
+        "type" : "object",
+        "properties" : {
+          "cutsceneId" : {
+            "type" : "string",
+            "maxLength" : 64,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "cutsceneId" ]
+      },
+      "CutsceneView" : {
+        "type" : "object",
+        "properties" : {
+          "actors" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ActorView"
+            }
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "steps" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/StepView"
+            }
+          }
+        },
+        "required" : [ "actors", "id", "steps" ]
       },
       "DialogueView" : {
         "type" : "object",
@@ -2409,6 +2578,9 @@
           "battle" : {
             "$ref" : "#/components/schemas/BattleView"
           },
+          "cutscene" : {
+            "$ref" : "#/components/schemas/CutsceneView"
+          },
           "demoMode" : {
             "type" : "boolean"
           },
@@ -2435,7 +2607,7 @@
           },
           "mode" : {
             "type" : "string",
-            "enum" : [ "WORLD", "DIALOGUE", "BATTLE", "LANTERN", "ENDED" ]
+            "enum" : [ "WORLD", "DIALOGUE", "BATTLE", "LANTERN", "CUTSCENE", "ENDED" ]
           },
           "objective" : {
             "type" : "string"
@@ -2581,6 +2753,75 @@
         },
         "required" : [ "icon", "id", "letter", "name", "turns" ]
       },
+      "StepView" : {
+        "type" : "object",
+        "properties" : {
+          "actor" : {
+            "type" : "string"
+          },
+          "camera" : {
+            "type" : "string"
+          },
+          "effect" : {
+            "type" : "string"
+          },
+          "facing" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "ms" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "path" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TileView"
+            }
+          },
+          "speaker" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "text" : {
+            "type" : "string"
+          },
+          "track" : {
+            "type" : "string"
+          },
+          "x" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "y" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "zoom" : {
+            "type" : "number",
+            "format" : "double"
+          }
+        },
+        "required" : [ "kind", "path" ]
+      },
+      "TileView" : {
+        "type" : "object",
+        "properties" : {
+          "x" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "y" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "x", "y" ]
+      },
       "ToastView" : {
         "type" : "object",
         "properties" : {
@@ -2650,6 +2891,12 @@
           "areaName" : {
             "type" : "string"
           },
+          "bosses" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BossView"
+            }
+          },
           "chests" : {
             "type" : "array",
             "items" : {
@@ -2696,7 +2943,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "areaId", "areaName", "chests", "creeps", "hiddenObjects", "lanterns", "lightState", "mapKey", "npcs", "player", "regionId" ]
+        "required" : [ "areaId", "areaName", "bosses", "chests", "creeps", "hiddenObjects", "lanterns", "lightState", "mapKey", "npcs", "player", "regionId" ]
       }
     },
     "securitySchemes" : {

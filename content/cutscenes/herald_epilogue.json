@@ -1,0 +1,49 @@
+{
+  "$schema": "../schema/cutscene.schema.json",
+  "description": "After FOE VANQUISHED (P-67): the Herald falls to ash, the ash stops falling over Eldmere and the west road's flood begins to drop.",
+  "id": "herald_epilogue",
+  "area": "eldmere_ash_rise",
+  "actors": [
+    {
+      "id": "herald",
+      "sprite": "boss.ashen_herald",
+      "x": 10,
+      "y": 4,
+      "facing": "DOWN"
+    }
+  ],
+  "steps": [
+    {
+      "do": "flash",
+      "ms": 400
+    },
+    {
+      "do": "vanish",
+      "actor": "herald",
+      "effect": "fx.smoke",
+      "ms": 900
+    },
+    {
+      "do": "light",
+      "state": "ash_lifted"
+    },
+    {
+      "do": "music",
+      "track": "eldmere"
+    },
+    {
+      "do": "say",
+      "text": "The ash stops falling. For the first time since the storm, light comes clean through the clouds."
+    },
+    {
+      "do": "say",
+      "text": "Far to the west, past Cottage Lane, the floodwater on the old road begins to sink back into its banks."
+    },
+    {
+      "do": "fade",
+      "state": "out",
+      "ms": 600
+    }
+  ],
+  "then": "world"
+}

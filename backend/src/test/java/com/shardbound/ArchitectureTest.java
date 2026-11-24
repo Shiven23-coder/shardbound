@@ -22,7 +22,7 @@ class ArchitectureTest {
             "com.shardbound.rules..", "com.shardbound.dialogue..", "com.shardbound.item..",
             "com.shardbound.model..", "com.shardbound.ds..", "com.shardbound.event..",
             "com.shardbound.achievement..", "com.shardbound.content..", "com.shardbound.exception..",
-            "com.shardbound.save..", "com.shardbound.view..", "com.shardbound.world.."};
+            "com.shardbound.save..", "com.shardbound.view..", "com.shardbound.world..", "com.shardbound.cutscene.."};
 
     private static JavaClasses classes;
 

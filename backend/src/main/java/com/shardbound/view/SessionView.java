@@ -10,7 +10,7 @@ import java.util.List;
  * Built by engine.ViewBuilder; the client renders it as-is and never
  * computes game rules. The world is always present (it stays on screen
  * behind dialogues and battles). Nullable parts: dialogue (DIALOGUE),
- * battle (BATTLE, and once more on the view where a battle ends), ending (ENDED).
+ * battle (BATTLE, and once more on the view where a battle ends), cutscene (CUTSCENE), ending (ENDED).
  */
 public record SessionView(
         String sessionId,
@@ -27,6 +27,7 @@ public record SessionView(
         List<ToastView> toasts,
         @Nullable BattleView battle,
         @Nullable LanternMenuView lantern,
+        @Nullable CutsceneView cutscene,
         @Nullable EndingView ending,
         @Nullable String objective,
         boolean offerReload) {
