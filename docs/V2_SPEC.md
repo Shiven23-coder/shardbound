@@ -260,9 +260,9 @@ AR = base · tierMult · (1 + 0.08u)  +  Σ_{a ∈ Str,Dex,Arc} base · grade(a)
 **BAG.** Holds Lantern Draughts (3 charges, +1 per Glimmer Seed up to 8; heal 45 % max HP; refilled at Lanterns), consumables and status cures. Quick slots 1–4 bind BAG items, usable in battle and in the world.
 
 ### 4.7 Battle
-**V4 (P-54, P-57):** battles are 1 v 1. Creeps pick weighted moves (`creeps.json`) by AI strategy (`AGGRESSIVE`, `DEFENSIVE`, `AFFLICTER`); a creep move's raw damage is `atk × power`, and creeps crit at 5 %. Telegraphed heavy moves arrive with creeps in V4 (not only bosses). Guard lasts until the guarder's next turn; turn order is rebuilt each round from current speed. Round text auto-advances, a tap or E skips the round, holding E fast-forwards, and a Battle text speed setting (Slow/Normal/Fast/Instant, default Fast) sets the pace. Until V5 (P-55): attributes are fixed at 10, victories give held Shards and refill FP, HP does not regenerate, the starting bag holds 3 healing draughts, and defeat by a creep wakes the player at the region's `respawn` point with Shards kept and creeps reset.
+**V4 (P-54, P-57):** battles are 1 v 1. Creeps pick weighted moves (`creeps.json`) by AI strategy (`AGGRESSIVE`, `DEFENSIVE`, `AFFLICTER`); a creep move's raw damage is `atk × power`, and creeps crit at 5 %. Telegraphed heavy moves arrive with creeps in V4 (not only bosses). Turn order is rebuilt each round from current speed. **Guard goes first (V7, P-69):** whoever guards (player, creep or boss) raises it before anyone acts, and it lasts to the end of that round, so it blunts the hit that comes the same round; a creep decides its action as the round begins so its Guard can go first. Flasks, skills, attacks and Flee keep speed order. Round text auto-advances, a tap or E skips the round, holding E fast-forwards, and a Battle text speed setting (Slow/Normal/Fast/Instant, default Fast) sets the pace. Until V5 (P-55): attributes are fixed at 10, victories give held Shards and refill FP, HP does not regenerate, the starting bag holds 3 healing draughts, and defeat by a creep wakes the player at the region's `respawn` point with Shards kept and creeps reset.
 
-**Layout:** v1 `CombatEngine` turn order (`PriorityQueue` by speed; player first on ties).
+**Layout:** v1 `CombatEngine` turn order (`PriorityQueue` by speed; player first on ties), after any Guard (P-69).
 - Main menu: **ATTACK** (Strike / Guard) · **SKILLS** (4 slots) · **BAG** · **FLEE**.
 - FLEE is disabled in boss fights. Flee chance follows v1 §6.6, using the speed above.
 
@@ -273,7 +273,7 @@ elem     = chart[defender.family][move.element]                    W 1.5 · N 1 
 roll     = 0.9 + rng.nextDouble() · 0.2
 crit     = rng.nextInt(100) < crit% ? 1.5 : 1.0                    (status damage never crits)
 mitigate = 100 / (100 + DEF)                                        DEF after Frost −30 % if frosted
-guard    = guarding ? (incoming move telegraphed ? 0.25 : 0.5) : 1.0
+guard    = guarding this round ? (incoming move telegraphed ? 0.25 : 0.5) : 1.0      Guard goes first (P-69)
 damage   = elem == 0 ? 0 : max(1, round(raw · elem · roll · crit · mitigate · guard))
 status   = rng.nextInt(100) < procChance ? apply : —               (only if move.status set)
 ```
@@ -281,12 +281,13 @@ Defence is now a **ratio** (100 / (100 + DEF)) instead of v1's subtraction, so i
 
 **Bosses** (`content/bosses.json`):
 - 2 phases. Phase 2 starts at `hpPct ≤ phase2At` (default 50 %). It plays a transition line, can switch move table, family/element and speed, and is Stun-immune for 1 turn.
-- Moves are weighted (`weight`), chosen with the run's seeded RNG. A **telegraphed** move announces itself one boss turn earlier ("The Hollow King raises the bone crown…"), shown in the text box, and is executed on the boss's next turn. Guard reduces it to ×0.25.
+- Moves are weighted (`weight`), chosen with the run's seeded RNG. A **telegraphed** move announces itself one boss turn earlier ("The Hollow King raises the bone crown…"), shown in the text box, and is executed on the boss's next turn. Guard reduces it to ×0.25. Each phase has a cadence: every n-th of the boss's moves is its telegraph, which takes two turns (announced, then landed), so it is announced every (n + 1)-th round and the boss strikes ordinary blows in between (P-67).
+- While a telegraph is pending the battle teaches the answer (P-67): a warning from content ("⚠ Cinderfall next turn — Guard to brace") on one line, ATTACK and Guard in its amber, Guard's subtitle from content ("Brace — leaves it exposed"); the enemy glows and rises in a slow wind-up (a steady glow under reduce motion).
 - **Intro cutscene** plays on first entry. Skippable. Recorded in the run's seen-cutscenes set, so it is never replayed after a death.
-- **Boss bar** at the bottom-centre: name + long HP bar with a phase-2 tick mark.
+- **Boss bar** just above the battle text, at its right edge so it never covers the player's sprite (at the top of the deck in portrait): name, phase marker, long HP bar with a phase-2 tick mark, statuses and the telegraph warning. A boss has no enemy info box; the player's box takes its top-left place (P-67).
 - **"FOE VANQUISHED"** banner on victory, then the Shards reward and loot.
 - Boss defeat is recorded in the run's defeated-bosses set and is permanent.
-- **The Ashen Herald (V7, P-67):** the phase is derived from HP; Flee is disabled; a guarded telegraph leaves the Herald **Exposed** (DEF −50 %) for its next turn. Pending telegraphs show a persistent warning on the boss bar or the enemy's info box, and a wind-up pose, for creeps too.
+- **The Ashen Herald (V7, P-67):** level 5, base HP 132, ATK 15, DEF 8, SPD 7; Cinderfall (×1.6) every 3rd move, Pyre Descent (×1.9) every 2nd in phase 2. The phase is derived from HP; Flee is disabled; a guarded telegraph leaves the Herald **Exposed** (DEF −50 %) for 2 turns, and its line reads "The Herald staggers — EXPOSED!". Phase 2 escalates: an ember flash and a short shake (one soft flash under reduce motion), an ember glow and a hotter bar, and the boss track steps up.
 
 Bosses on the critical path: Ashen Herald (Eldmere) · Thornmother (Whispering Wood) · Bone Warden, The Hollow King (Hollow Deep) · Ser Calder the Gilded (Valdren City) · Cinder Matriarch, Ashborn Wyrm (Ashen Wastes) · The Shard Sovereign (Crystal Spire). The optional elite **Dragonbone Revenant** (side content) is not counted among the 8.
 
@@ -557,7 +558,7 @@ There is no v1 → v2 conversion: v1 never ran in production, so no v1 saves exi
   - *Keyboard and mouse:* no touch controls; the game view fills the screen.
   - *Phone portrait (the main phone layout):* the game view with the HUD cluster on top, a control deck below (D-pad, interact A, menu, bag). An open dialogue renders inside the deck.
   - *Phone landscape:* the desktop layout plus translucent touch controls (about 40 % opacity idle, full while pressed).
-  - On touch, quick slots sit behind the bag button; the boss bar is bottom-centre (V7).
+  - On touch, quick slots sit behind the bag button; the boss bar sits above the battle text, or at the top of the deck in portrait (V7).
 - **Interaction marker (P-46):** the key or button for the device in use (E, gamepad A, a tap icon) floats above the nearest NPC or object in reach.
 - **Arrival (P-49):** the area title card first (about 2 s), then any opening dialogue, then the objective banner, then hints; never two at once.
 - **Layout polish (P-47):** the portrait deck takes about 28–30 % of the height, with pill-shaped Bag and Menu; the area name is a title card when entering an area; desktop shows Bag and Menu as icon buttons with key hints (I, Esc); in landscape Bag and Menu are translucent until pressed.
@@ -807,7 +808,7 @@ Targets per region, measured by the balance runner (and from V10a by the simulat
 
 | Region | Creep deaths per run | Boss first-attempt win | Boss attempts per run |
 |---|---|---|---|
-| Eldmere | ~0.1 | 70–85 % | ~1.2–1.4 |
+| Eldmere | ~0.1 | 70–85 % (guarding); ~35–50 % never guarding | ~1.2–1.4 |
 | Whispering Wood | ~0.2 | 65–80 % | ~1.3–1.5 |
 | Hollow Deep | ~0.3 | 60–75 % | ~1.4–1.7 |
 | Valdren City | ~0.3 | 60–75 % | ~1.4–1.7 |
@@ -815,6 +816,17 @@ Targets per region, measured by the balance runner (and from V10a by the simulat
 | Crystal Spire | ~0.4 | 50–65 % | ~1.6–2.0 |
 
 **Measured in V6a (P-65):** with the Woodcutter's Hatchet from the ruins chest the route still ends at level 4 (creep fights at a median of 3–5 turns); the ×1.8 stand-in is won 99 %, and the 70–85 % band returns at **HP ×2.8** (81 %), V7's new starting point. The secret Hunter's Longbow (base 26) wins 87 % at ×2.8.
+
+**Measured in V7 (P-67, P-69)** with the real Ashen Herald (base HP 132, ATK 15, DEF 8; Cinderfall ×1.6, Pyre Descent ×1.9), 1,000 seeds at level 4. The guarding bot Guards a pending telegraph and drinks below 40 %; the naive bot never Guards and drinks below 35 %; a loss rests at the Ruins Lantern and retries.
+
+| Route | First-attempt wins | Attempts per run | First fight: median turns · draughts |
+|---|---|---|---|
+| Hatchet, Vig/Str, guarding | 79 % | 1.26 | 11 · 2 |
+| Hatchet, Vig/Str, never guarding | 43 % | 2.21 | 9 · 2 |
+| Longbow, Dex, guarding | 84 % | 1.19 | 11 · 2 |
+| Rusty Shortsword only, guarding | 33 % | 2.62 | 17 · 3 |
+
+Creep deaths per run: 0.00 (hatchet), 0.06 (rusty), below the ~0.1 target because the bot never misplays (PLAYTEST 1 checks it). Creep fights: median 3 turns (the Barrow Skull 5).
 
 ---
 

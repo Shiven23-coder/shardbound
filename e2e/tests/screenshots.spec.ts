@@ -3,7 +3,7 @@ import path from 'node:path';
 import * as backend from '../support/backend';
 import {
   chests, choose, fightTheHerald, holdSkip, inArea, interact, leaveLantern, newGame, openBag, press, readyForTheHerald, restAtLantern,
-  status, tap, toTheHerald, toTheRuinsAtDawn, turnPage, walkTo, winBattle, type Controls,
+  status, tap, toTheRuinsAtDawn, turnPage, walkTo, winBattle, type Controls,
 } from '../support/world';
 
 // Review screenshots of each layout (P-40): a dialogue page with its ▼
@@ -173,7 +173,12 @@ test('the Ashen Herald: the intro, the boss bar, phase two, its fall and the epi
   await choose(page, 'Help Corvin lash down his wagon before the wind takes it');
   await inArea(page, 'Cottage Lane');
   await readyForTheHerald(page);
-  await toTheHerald(page, controls);
+  await walkTo(page, controls, 'arena_way');
+  await inArea(page, 'The Ash Rise');
+  await expect(page.locator('.area-title')).toBeHidden({ timeout: 10_000 });
+  await page.waitForTimeout(1500);
+  await shot('herald-rise-before');                                   // the ash falling before the fight
+  await walkTo(page, controls, 'herald_trigger');
 
   const line = page.locator('.cutscene-line');
   await expect(line).toBeVisible({ timeout: 30_000 });
@@ -194,10 +199,14 @@ test('the Ashen Herald: the intro, the boss bar, phase two, its fall and the epi
     await shot(name);
   };
   const won = await fightTheHerald(page, controls, 3, async () => {
-    if (await page.locator('.boss-bar-warning').isVisible() && await page.locator('.battle-menu').isVisible()) {
-      await once('herald-telegraph', 300);
-    }
-    if (await page.locator('.boss-bar.boss-phase-2').isVisible()) await once('herald-phase-two', 350);
+    const menuOpen = await page.locator('.battle-menu').isVisible();
+    const warned = await page.locator('.boss-bar-warning').isVisible();
+    const phaseTwo = await page.locator('.boss-bar.boss-phase-2').isVisible();
+    if (menuOpen && !warned && !phaseTwo) await once('herald-phase-one', 300);
+    if (menuOpen && warned && !phaseTwo) await once('herald-telegraph', 300);
+    if (menuOpen && warned && phaseTwo) await once('herald-phase-two-windup', 450);
+    if (menuOpen && !warned && phaseTwo) await once('herald-phase-two-rest', 300);
+    if (phaseTwo) await once('herald-phase-two', 350);
     if (await page.locator('.boss-banner-vanquished').isVisible()) await once('herald-vanquished', 500);
   });
   expect(won, 'the Herald fell (a loss leaves no epilogue to show)').toBe(true);

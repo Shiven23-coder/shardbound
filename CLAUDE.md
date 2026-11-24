@@ -7,7 +7,7 @@ Souls-like progression: rest at Lanterns, spend Shards on six attributes and wea
 It is a public, mobile-first web game and a flagship portfolio piece: guest and Google accounts, anonymous telemetry, a balance simulator and a playtest bot.
 
 **Specs:** `docs/V2_SPEC.md` is the source of truth. `docs/PROJECT_SPEC.md` is the historical v1 spec; its engine rules (conditions, ConditionGroup, effects, quest state machine, combat, endings) still apply where V2_SPEC does not override them. Read the sections for the current phase before writing code. If a spec and a request conflict, ask before acting.
-Decision history: `docs/DECISIONS.md` (P-01 … P-66 win over older entries).
+Decision history: `docs/DECISIONS.md` (P-01 … P-69 win over older entries).
 
 ## Tech
 - Backend: **Spring Boot 4.1** on **Java 25**; **JdbcClient** with hand-written SQL; **Flyway via Spring**; springdoc-openapi; JUnit 5, **Testcontainers**, ArchUnit.
