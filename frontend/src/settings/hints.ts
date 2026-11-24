@@ -44,3 +44,10 @@ export function hintText(hint: HintId, device: InputDevice, talk = false): strin
   if (device === 'touch') return `Tap Ⓐ to ${verb}.`;
   return `Press E to ${verb}.`;
 }
+
+/** Under a loot toast whose weapon beats the one equipped (P-65): where to compare it. */
+export function upgradeHint(device: InputDevice): string {
+  if (device === 'touch') return 'Better than your blade. Tap Bag to compare.';
+  if (device === 'gamepad') return 'Better than your blade. Open the Bag to compare.';
+  return 'Better than your blade. Press I to compare.';
+}

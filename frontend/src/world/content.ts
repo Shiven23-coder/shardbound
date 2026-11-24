@@ -65,6 +65,8 @@ export const effectArt = manifest.effects as Record<string, EffectArt>;
 export const battleEffects = manifest.battleEffects;
 /** The battle backdrop strip: a treeline above tileable grass (P-57). */
 export const battleBackdrop = manifest.battleBackdrop;
+/** The chest sprite (P-65): frame 0 closed, frame 1 open. */
+export const chestArt = manifest.chest;
 
 export interface LightState {
   ambient: number;

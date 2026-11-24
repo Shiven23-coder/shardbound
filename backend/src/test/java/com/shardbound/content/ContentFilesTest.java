@@ -53,9 +53,9 @@ class ContentFilesTest {
     }
 
     @Test
-    void weaponLadderMatchesSpec() {                            // spec §6.4
+    void weaponLadderMatchesSpec() {                            // spec §6.4, V2_SPEC §4.6 (P-65: longbow 26)
         String[][] ladder = {{"rusty_shortsword", "F", "20"}, {"woodcutter_hatchet", "E", "28"},
-                {"hunter_longbow", "D", "30"}, {"iron_longsword", "C", "36"}, {"thornwood_spear", "B", "44"},
+                {"hunter_longbow", "D", "26"}, {"iron_longsword", "C", "36"}, {"thornwood_spear", "B", "44"},
                 {"moonsteel_blade", "A", "52"}, {"kingsguard_halberd", "S", "60"},
                 {"dragonbone_greatsword", "SS", "70"}, {"aetherion", "SSS", "82"}};
         for (String[] row : ladder) {

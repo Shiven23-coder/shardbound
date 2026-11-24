@@ -6,7 +6,7 @@
 //  - the flooded west road toward the Whispering Wood: dead trees, water, a sign; the flood
 //    closes the way until the Wood opens (an obstacle, P-45)
 //  - the south meadow: two creeps (V4, P-54): a Storm Rat and a Mire Slime
-//  - a secret clearing behind the south-east tree wall: reserved chest (V6)
+//  - a secret clearing behind the south-east tree wall: the secret chest (V6a, P-65)
 import {
   build, cluster, forestBorder, forestFill, makeTerrain, noise, paintEllipse, paintPath, paintRect, pathEdges, smooth,
 } from '../kit.mjs';
@@ -62,6 +62,8 @@ export default function cottageLane() {
     ['deadTree', 20, 16], ['shrub2', 22, 17],
     // canopies hiding the gap into the secret clearing
     ['canopy', 24, 15], ['canopy', 25, 16],
+    // the tell at the gap (P-65): a snapped branch where someone once pushed through
+    ['brokenBranch', 25, 14],
   ];
 
   // Ground detail (map rule 3); storm debris only along path edges and corners.
@@ -105,7 +107,9 @@ export default function cottageLane() {
       { name: 'osric', type: 'npc', x: 23, y: 13, props: { npcId: 'osric', dialogue: 'osric' } },
       { name: 'meadow_creep_a', type: 'creep_spawn', x: 17, y: 17, props: { template: 'storm_rat', levelMin: 1, levelMax: 1, aggroRadius: 2 } },
       { name: 'meadow_creep_b', type: 'creep_spawn', x: 9, y: 17, props: { template: 'mire_slime', levelMin: 1, levelMax: 1, aggroRadius: 1 } },
-      { name: 'clearing_chest', type: 'reserved', x: 28, y: 18, props: { for: 'chest', phase: 'V6' } },
+      // the secret chest (P-65), never required
+      { name: 'clearing_chest', type: 'chest', x: 28, y: 18,
+        props: { item: 'hunter_longbow', qty: 1, flag: 'chest_clearing', fallbackItem: 'energy_tonic', fallbackQty: 1, showIf: 'dawn' } },
       { name: 'hidden_gap', type: 'reserved', x: 25, y: 15, w: 1, h: 3, props: { for: 'secret' } },
     ],
   });

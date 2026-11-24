@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { hintText, markHintSeen, seenHints } from './hints';
+import { hintText, markHintSeen, seenHints, upgradeHint } from './hints';
 
 /** The tests run in Node: a small in-memory localStorage stands in for the browser's. */
 function memoryStorage(): Pick<Storage, 'getItem' | 'setItem'> {
@@ -26,5 +26,13 @@ describe('hints (P-41, P-61)', () => {
     markHintSeen(7, 'levelup');
     expect([...seenHints(7)].sort()).toEqual(['lantern', 'levelup']);
     expect(seenHints(8).size).toBe(0);
+  });
+});
+
+describe('upgradeHint', () => {
+  it('names the way to the Bag on each device', () => {
+    expect(upgradeHint('keyboard')).toBe('Better than your blade. Press I to compare.');
+    expect(upgradeHint('touch')).toBe('Better than your blade. Tap Bag to compare.');
+    expect(upgradeHint('gamepad')).toBe('Better than your blade. Open the Bag to compare.');
   });
 });

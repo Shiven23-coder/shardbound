@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -45,6 +46,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * does not resist when it resists Strike) when it has the FP, else Strikes, and
  * buys every level it can afford in a fixed attribute order. A lost fight sends
  * it back to the Lantern to rest and pick its Shards up again, then it retries.
+ * <p>Gear (P-65): at dawn the bot opens the ruins chest on the main path and
+ * equips the Woodcutter's Hatchet; the rusty-sword route (a player who skipped
+ * the chest) is the stand-in's lower bound, and a third route also detours to
+ * the secret clearing for the Hunter's Longbow. After every rest the bot holds
+ * whichever weapon the server rates higher, as the Bag's Compare shows it.
  */
 class EldmereProgressionTest {
 
@@ -55,6 +61,17 @@ class EldmereProgressionTest {
     /** The boss stand-in: the Hired Blade at the Ashen Herald's level (§10.1) with this much more HP. */
     private static final int BOSS_LEVEL = 5;
     private static final double BOSS_HP_MULTIPLIER = 1.8;
+
+    /** What the bot carries: the starting sword only, the main-path hatchet, or the hatchet and the secret longbow. */
+    private enum Gear {
+        RUSTY(List.of()), HATCHET(List.of("woodcutter_hatchet")), HATCHET_AND_LONGBOW(List.of("woodcutter_hatchet", "hunter_longbow"));
+
+        private final List<String> chestWeapons;
+
+        Gear(List<String> chestWeapons) {
+            this.chestWeapons = chestWeapons;
+        }
+    }
 
     private final GameContent content = TestEngines.content();
     private final World world = content.world();
@@ -84,12 +101,13 @@ class EldmereProgressionTest {
         return s;
     }
 
-    private Run play(long seed, BattleEngine engine) {
+    private Run play(long seed, BattleEngine engine, Gear gear) {
         GameState s = newPlayer(seed);
         Map<String, List<Integer>> turns = new TreeMap<>();
         int[] deaths = {0};
         fightAll(s, engine, STORM_NIGHT, turns, deaths);
         int afterTwo = s.stats().shards();
+        gear.chestWeapons.forEach(id -> s.inventory().add(content.items().get(id), 1));   // dawn: the chests
         rest(s);                                                    // kindled: 70 Shards buy nothing yet
         s.learnSkill("ember");                                      // dawn: Brann
         fightAll(s, engine, MILL_ROAD.subList(0, 1), turns, deaths);
@@ -159,30 +177,73 @@ class EldmereProgressionTest {
         return fallback >= 0 ? BattleAction.skill(fallback) : BattleAction.of(BattleAction.Kind.STRIKE);
     }
 
+    /** Rests at the Lantern and, as the Bag's Compare would show it, holds the weapon with the higher attack rating. */
     private static void rest(GameState s) {
         s.stats().restoreAll();
         s.refillFlasks();
+        s.inventory().weaponsByTier().stream()
+                .max(Comparator.comparingDouble(w -> s.stats().derived().attackRating(w)))
+                .ifPresent(best -> s.inventory().equip(best.id()));
     }
 
-    /** Rests, then buys every level it can afford, one attribute at a time in the build order. */
+    /** Rests, buys every level it can afford one attribute at a time in the build order, then rests again. */
     private void restAndLevel(GameState s) {
         rest(s);
-        for (int i = 0; ; i++) {
+        while (true) {
             Attribute next = BUILD.get(s.stats().level() % BUILD.size());
             LevelUp.Plan plan = levelUp.plan(s.stats().attributes(), Map.of(next, 1), s.stats().shards());
             if (!plan.affordable()) {
-                return;
+                break;
             }
             s.stats().applyLevelUp(plan);
         }
+        rest(s);                                                    // the new attributes may favour another weapon
     }
 
-    private List<Run> runs(BattleEngine engine) {
+    private List<Run> runs(BattleEngine engine, Gear gear) {
         List<Run> runs = new ArrayList<>();
         for (long seed = 1; seed <= RUNS; seed++) {
-            runs.add(play(seed, engine));
+            runs.add(play(seed, engine, gear));
         }
         return runs;
+    }
+
+    private static Map<String, List<Integer>> turnsOf(List<Run> runs) {
+        Map<String, List<Integer>> turns = new TreeMap<>();
+        runs.forEach(run -> run.turns().forEach((creep, list) -> turns.computeIfAbsent(creep, k -> new ArrayList<>())
+                .addAll(list)));
+        return turns;
+    }
+
+    /** The share of runs, in %, that beat the boss stand-in with this HP multiplier on the first attempt. */
+    private int standInWinPct(Gear gear, double hpMultiplier) {
+        CreepTemplate blade = content.battle().creeps().get("hired_blade");
+        CreepTemplate standIn = new CreepTemplate("boss_stand_in", "Boss stand-in", blade.family(), blade.sprite(),
+                (int) Math.round(blade.baseHp() * hpMultiplier), blade.baseAtk(), blade.baseDef(), blade.baseSpd(),
+                blade.ai(), blade.moves(), List.of());
+        BattleEngine engine = new BattleEngine(content.battle(), content.items());
+        int wins = 0;
+        for (Run run : runs(engine, gear)) {
+            GameState s = run.state();
+            BattleState b = engine.start(s, standIn, BOSS_LEVEL, null, "boss", false);
+            TestBattles.begin(s, b);
+            for (int rounds = 0; b.outcome() == BattleOutcome.ONGOING && rounds < 80; rounds++) {
+                engine.act(s, choose(s, standIn, engine));
+            }
+            if (b.outcome() == BattleOutcome.WON) {
+                wins++;
+            }
+        }
+        return wins * 100 / RUNS;
+    }
+
+    /** The smallest HP multiplier, in steps of 0.1 from ×1.8, at which the stand-in is won at most 85 % of the time. */
+    private double restoringMultiplier(Gear gear) {
+        double multiplier = BOSS_HP_MULTIPLIER;
+        while (standInWinPct(gear, multiplier) > 85 && multiplier < 4) {
+            multiplier = Math.round((multiplier + 0.1) * 10) / 10.0;
+        }
+        return multiplier;
     }
 
     private static int median(List<Integer> values) {
@@ -204,7 +265,7 @@ class EldmereProgressionTest {
 
     @Test
     void theFirstLevelUpComesAfterTheThirdFight() {
-        for (Run run : runs(new BattleEngine(content.battle(), content.items()))) {
+        for (Run run : runs(new BattleEngine(content.battle(), content.items()), Gear.HATCHET)) {
             assertTrue(run.shardsAfterTwo() < levelUp.cost(1), "after two fights: " + run.shardsAfterTwo());
             assertTrue(run.shardsAfterThree() >= levelUp.cost(1), "after three fights: " + run.shardsAfterThree());
         }
@@ -212,16 +273,13 @@ class EldmereProgressionTest {
 
     @Test
     void eldmereEndsAtLevelFourAndEveryCreepFightTakesThreeToSixTurns() {
-        List<Run> runs = runs(new BattleEngine(content.battle(), content.items()));
+        List<Run> runs = runs(new BattleEngine(content.battle(), content.items()), Gear.HATCHET);
         int level = median(runs.stream().map(Run::levelBeforeBoss).toList());
         int deaths = runs.stream().mapToInt(Run::deaths).sum();
-        System.out.println("Eldmere: median level before the boss " + level + ", deaths per run "
+        System.out.println("Eldmere with the hatchet: median level before the boss " + level + ", deaths per run "
                 + String.format("%.2f", deaths / (double) RUNS));
         assertEquals(4, level, "§10.2: level 4 at the Ashen Herald");
-        Map<String, List<Integer>> turns = new TreeMap<>();
-        runs.forEach(run -> run.turns().forEach((creep, list) -> turns.computeIfAbsent(creep, k -> new ArrayList<>())
-                .addAll(list)));
-        turns.forEach((creep, list) -> {
+        turnsOf(runs).forEach((creep, list) -> {
             int median = median(list);
             System.out.println("  " + creep + ": median " + median + " turns over " + list.size() + " fights");
             if (!creep.equals("hired_blade")) {
@@ -231,38 +289,44 @@ class EldmereProgressionTest {
         assertTrue(deaths * 100 <= RUNS * 25, "a death in at most one run in four on the way: " + deaths);
     }
 
+    /** P-64's band, kept as the lower bound (P-65): a player who skipped the main-path chest. */
     @Test
-    void theBossStandInIsWonSeventyToEightyFivePercentOnTheFirstAttempt() {
-        CreepTemplate blade = content.battle().creeps().get("hired_blade");
-        CreepTemplate standIn = new CreepTemplate("boss_stand_in", "Boss stand-in", blade.family(), blade.sprite(),
-                (int) Math.round(blade.baseHp() * BOSS_HP_MULTIPLIER), blade.baseAtk(), blade.baseDef(), blade.baseSpd(),
-                blade.ai(), blade.moves(), List.of());
+    void theBossStandInIsWonSeventyToEightyFivePercentWithTheRustySword() {
+        int pct = standInWinPct(Gear.RUSTY, BOSS_HP_MULTIPLIER);
+        String report = "boss stand-in (Hired Blade Lv " + BOSS_LEVEL + ", HP ×" + BOSS_HP_MULTIPLIER
+                + ") with the Rusty Shortsword: " + pct + " % first-attempt wins";
+        System.out.println(report);
+        assertTrue(pct >= 70 && pct <= 85, report);
+    }
+
+    /** Reported for V7 (P-65): the main-path weapon's rate and the multiplier that brings the band back; the longbow's effect. */
+    @Test
+    void reportsTheStandInAndTheCreepsWithTheChestWeapons() {
         BattleEngine engine = new BattleEngine(content.battle(), content.items());
-        int wins = 0;
-        for (Run run : runs(engine)) {
-            GameState s = run.state();
-            BattleState b = engine.start(s, standIn, BOSS_LEVEL, null, "boss", false);
-            TestBattles.begin(s, b);
-            for (int rounds = 0; b.outcome() == BattleOutcome.ONGOING && rounds < 80; rounds++) {
-                engine.act(s, choose(s, standIn, engine));
-            }
-            if (b.outcome() == BattleOutcome.WON) {
-                wins++;
+        double mainPath = restoringMultiplier(Gear.HATCHET);
+        for (Gear gear : List.of(Gear.HATCHET, Gear.HATCHET_AND_LONGBOW)) {
+            List<Run> runs = runs(engine, gear);
+            int rate = standInWinPct(gear, BOSS_HP_MULTIPLIER);
+            double restoring = gear == Gear.HATCHET ? mainPath : restoringMultiplier(gear);
+            long longbow = runs.stream().filter(r -> "hunter_longbow".equals(r.state().inventory().equippedWeaponId())).count();
+            StringBuilder line = new StringBuilder(gear + ": stand-in at HP x" + BOSS_HP_MULTIPLIER + " won " + rate
+                    + " %; at the main-path HP x" + mainPath + " won " + standInWinPct(gear, mainPath)
+                    + " %; at most 85 % from HP x" + restoring + " (" + standInWinPct(gear, restoring) + " %)"
+                    + "; longbow held at the boss in " + longbow + " runs; median turns:");
+            turnsOf(runs).forEach((creep, list) -> line.append(' ').append(creep).append(' ').append(median(list)));
+            System.out.println(line);
+            if (gear == Gear.HATCHET_AND_LONGBOW) {
+                turnsOf(runs).forEach((creep, list) -> assertTrue(creep.equals("hired_blade") || median(list) >= 3,
+                        "the secret longbow leaves " + creep + " at a median of " + median(list) + " turns"));
             }
         }
-        String report = "boss stand-in (Hired Blade Lv " + BOSS_LEVEL + ", HP ×" + BOSS_HP_MULTIPLIER + "): "
-                + wins * 100 / RUNS + " % first-attempt wins";
-        System.out.println(report);
-        assertTrue(wins * 100 >= RUNS * 70 && wins * 100 <= RUNS * 85, report);
     }
 
     @Test
     void reportsTheFpAfterVictoryVariants() {
         for (int pct : new int[] {0, 25, 100}) {
-            List<Run> runs = runs(engine(pct));
-            Map<String, List<Integer>> turns = new TreeMap<>();
-            runs.forEach(run -> run.turns().forEach((creep, list) -> turns.computeIfAbsent(creep, k -> new ArrayList<>())
-                    .addAll(list)));
+            List<Run> runs = runs(engine(pct), Gear.HATCHET);
+            Map<String, List<Integer>> turns = turnsOf(runs);
             int deaths = runs.stream().mapToInt(Run::deaths).sum();
             StringBuilder line = new StringBuilder("FP after victory " + pct + " %: deaths per run "
                     + String.format("%.3f", deaths / (double) RUNS) + "; mean turns:");

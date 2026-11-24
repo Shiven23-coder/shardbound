@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 // The purse, bottom-right, shown for a moment whenever it changes (P-39).
-// Gold until Shards replace it as the currency (V5).
+// Gold is story money (P-64), always shown in gold (P-65).
 const SHOW_MS = 2500;
 
 interface CurrencyToastProps {

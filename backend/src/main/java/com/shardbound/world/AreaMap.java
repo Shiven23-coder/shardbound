@@ -31,11 +31,12 @@ public record AreaMap(String key, int width, int height, int tileSize, Collision
 
     /**
      * The tiles that block for a game: the collision layer, every building
-     * footprint, and every obstacle for which {@code obstacleActive} holds.
+     * footprint, and every obstacle (P-45) and chest (P-65) for which {@code active} holds.
      */
-    public CollisionGrid collisionWith(Predicate<MapObject> obstacleActive) {
+    public CollisionGrid collisionWith(Predicate<MapObject> active) {
         List<MapObject> blocking = objects.stream()
-                .filter(o -> o.type() == ObjectType.BUILDING || (o.type() == ObjectType.OBSTACLE && obstacleActive.test(o)))
+                .filter(o -> o.type() == ObjectType.BUILDING
+                        || ((o.type() == ObjectType.OBSTACLE || o.type() == ObjectType.CHEST) && active.test(o)))
                 .toList();
         return collision.blocking(blocking);
     }

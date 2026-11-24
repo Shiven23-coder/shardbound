@@ -29,7 +29,7 @@ export interface Status extends Position { facing: Dir; walking: boolean }
 
 const maps = new Map<string, WorldMap>();
 
-/** An area's map: `walls` is the collision layer alone, `blocked` adds the NPC tiles (the walker steers round them). */
+/** An area's map: `walls` is the collision layer alone, `blocked` adds the NPC, creep and chest tiles (the walker steers round them). */
 export function loadMap(area: string): WorldMap {
   const cached = maps.get(area);
   if (cached) return cached;
@@ -42,7 +42,7 @@ export function loadMap(area: string): WorldMap {
     }));
   const walls: boolean[] = collision.data.map((gid: number) => gid !== 0);
   const blocked = [...walls];
-  for (const actor of objects.filter((o) => o.type === 'npc' || o.type === 'creep_spawn')) blocked[actor.y * json.width + actor.x] = true;
+  for (const actor of objects.filter((o) => ['npc', 'creep_spawn', 'chest'].includes(o.type))) blocked[actor.y * json.width + actor.x] = true;
   const map = { width: json.width, height: json.height, blocked, walls, objects };
   maps.set(area, map);
   return map;
@@ -381,7 +381,9 @@ export async function winBattle(page: Page): Promise<string> {
     const label = await menu.getAttribute('aria-label');
     if (label === 'Battle menu') {
       const bag = menu.getByRole('button', { name: /^Bag/ });
-      await press(hp * 100 < maxHp * 40 && (await bag.isEnabled()) ? bag : menu.getByRole('button', { name: /^Attack/ }));
+      // Drink below 60 %: a telegraphed Frenzy can take 40 HP in a round, so the balance bot's 40 % is too late
+      // for a test that needs every fight won.
+      await press(hp * 100 < maxHp * 60 && (await bag.isEnabled()) ? bag : menu.getByRole('button', { name: /^Attack/ }));
     } else if (label === 'attack') {
       await press(menu.getByRole('button', { name: /^Strike/ }));
     } else if (label === 'bag') {
@@ -445,6 +447,32 @@ export async function toTheLanternWithTheShard(page: Page, controls: Controls, u
   await choose(page, 'Walk on');
   await walkTo(page, controls, 'to_lane');
   await inArea(page, 'Cottage Lane');
+}
+
+/** A new game played to the Old Ruins at dawn, just after taking the Heartshard (the ruins chest is there, P-65). */
+export async function toTheRuinsAtDawn(page: Page, controls: Controls, username: string): Promise<void> {
+  await newGame(page, username);
+  await choose(page, 'Help Corvin lash down his wagon before the wind takes it');
+  await inArea(page, 'Cottage Lane');
+  await walkTo(page, controls, 'to_ruins');
+  await inArea(page, 'The Old Ruins');
+  await walkTo(page, controls, 'crater_crystal');
+  await interact(page, controls);
+  await choose(page, 'Take the crystal in your bare hands');
+  await choose(page, 'Walk on');
+}
+
+/** Each chest of the area and whether it is open, as the scene publishes them (data-chests). */
+export async function chests(page: Page): Promise<Record<string, 'open' | 'closed'>> {
+  const published = await page.locator('[data-testid="world-canvas"] canvas').getAttribute('data-chests');
+  return Object.fromEntries((published ?? '').split(',').filter(Boolean).map((entry) => entry.split(':')));
+}
+
+/** Opens the Bag: I on a keyboard, its button on touch. */
+export async function openBag(page: Page, controls: Controls): Promise<void> {
+  if (controls === 'keyboard') await page.keyboard.press('i');
+  else await press(page.getByRole('button', { name: 'Bag' }));
+  await expect(page.getByRole('tablist', { name: 'Character panels' })).toBeVisible();
 }
 
 /** Beats the Mire Slime and the Storm Rat in the meadow (35 Shards each at level 1, P-64). */

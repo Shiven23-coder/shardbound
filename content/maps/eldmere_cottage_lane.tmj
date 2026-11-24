@@ -2659,7 +2659,7 @@
     0,
     0,
     0,
-    0,
+    2642,
     0,
     0,
     0,
@@ -5464,7 +5464,7 @@
     {
      "id": 18,
      "name": "clearing_chest",
-     "type": "reserved",
+     "type": "chest",
      "x": 448,
      "y": 288,
      "width": 16,
@@ -5473,14 +5473,34 @@
      "visible": true,
      "properties": [
       {
-       "name": "for",
+       "name": "item",
        "type": "string",
-       "value": "chest"
+       "value": "hunter_longbow"
       },
       {
-       "name": "phase",
+       "name": "qty",
+       "type": "float",
+       "value": 1
+      },
+      {
+       "name": "flag",
        "type": "string",
-       "value": "V6"
+       "value": "chest_clearing"
+      },
+      {
+       "name": "fallbackItem",
+       "type": "string",
+       "value": "energy_tonic"
+      },
+      {
+       "name": "fallbackQty",
+       "type": "float",
+       "value": 1
+      },
+      {
+       "name": "showIf",
+       "type": "string",
+       "value": "dawn"
       }
      ]
     },
@@ -5613,12 +5633,12 @@
    "firstgid": 2636,
    "name": "props",
    "image": "../art/shardbound/props.png",
-   "imagewidth": 64,
+   "imagewidth": 112,
    "imageheight": 16,
    "tilewidth": 16,
    "tileheight": 16,
-   "columns": 4,
-   "tilecount": 4,
+   "columns": 7,
+   "tilecount": 7,
    "margin": 0,
    "spacing": 0
   }

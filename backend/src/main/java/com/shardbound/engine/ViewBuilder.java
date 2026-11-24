@@ -8,6 +8,7 @@ import com.shardbound.progression.LevelUp;
 import com.shardbound.progression.PlayerStats;
 import com.shardbound.progression.ProgressionRules;
 import com.shardbound.view.LanternMenuView;
+import com.shardbound.world.Chest;
 import com.shardbound.world.Lantern;
 import com.shardbound.model.Stats;
 import com.shardbound.view.SessionView;
@@ -20,6 +21,7 @@ import com.shardbound.view.SessionView.JournalView;
 import com.shardbound.view.SessionView.QuestView;
 import com.shardbound.view.SessionView.ReputationView;
 import com.shardbound.view.ToastView;
+import com.shardbound.view.WeaponView;
 import com.shardbound.view.WorldView;
 import com.shardbound.battle.BattleContent;
 import com.shardbound.battle.BattleOutcome;
@@ -135,6 +137,7 @@ public class ViewBuilder {
         List<WorldView.CreepView> creeps = new ArrayList<>();
         List<String> hidden = new ArrayList<>();
         List<WorldView.LanternView> lanterns = new ArrayList<>();
+        List<WorldView.ChestView> chests = new ArrayList<>();
         for (MapObject o : map.objects()) {
             if (!WorldObjects.active(s, p.areaId(), o)
                     || (o.type() == ObjectType.CREEP_SPAWN && s.creeps().isDefeated(CreepRoster.key(p.areaId(), o.name())))) {
@@ -147,13 +150,16 @@ public class ViewBuilder {
                 Lantern lantern = Lantern.of(p.areaId(), o);
                 lanterns.add(new WorldView.LanternView(o.name(), lantern.id(), lantern.name(), map.centre(o.x()),
                         map.centre(o.y()), s.flag(lantern.litFlag()) != 0));
+            } else if (o.type() == ObjectType.CHEST) {
+                chests.add(new WorldView.ChestView(o.name(), map.centre(o.x()), map.centre(o.y()),
+                        s.flag(Chest.of(p.areaId(), o).flag()) != 0));
             }
         }
         LostShards lost = s.lostShards();
         WorldView.LostShardsView lostShards = lost == null || !lost.areaId().equals(p.areaId()) ? null
                 : new WorldView.LostShardsView(map.centre(lost.tileX()), map.centre(lost.tileY()), lost.amount());
         return new WorldView(area.id(), area.name(), area.region(), map.key(), lightState(s, world.regions().get(area.region())),
-                new WorldView.PlayerView(p.x(), p.y(), p.facing()), npcs, creeps, hidden, lanterns, lostShards);
+                new WorldView.PlayerView(p.x(), p.y(), p.facing()), npcs, creeps, hidden, lanterns, chests, lostShards);
     }
 
     private WorldView.CreepView creep(GameState s, String areaId, AreaMap map, CreepSpawn spawn) {
@@ -206,10 +212,16 @@ public class ViewBuilder {
     private HudView hud(GameState s) {
         var st = s.stats();
         Weapon weapon = s.inventory().equippedWeapon();
-        HudView.WeaponInfo weaponInfo = weapon == null ? null
-                : new HudView.WeaponInfo(weapon.id(), weapon.name(), weapon.tier().name(), weapon.base());
         return new HudView(st.hp(), st.maxHp(), st.fp(), st.maxFp(), st.gold(), st.shards(), st.level(),
-                (int) Math.round(st.derived().attackRating(weapon)), st.derived().defence(), weaponInfo);
+                (int) Math.round(st.derived().attackRating(weapon)), st.derived().defence(),
+                weapon == null ? null : weaponView(st.derived(), weapon));
+    }
+
+    /** A weapon with the attack rating and crit this player would have with it (P-65). */
+    public static WeaponView weaponView(PlayerStats p, Weapon weapon) {
+        return new WeaponView(weapon.id(), weapon.name(), weapon.tier().name(), weapon.description(), weapon.base(),
+                (int) Math.round(p.attackRating(weapon)), p.critPct(weapon),
+                weapon.strGrade(), weapon.dexGrade(), weapon.arcGrade());
     }
 
     /** Weapons best-first (Inventory.weaponsByTier), then everything else in pickup order. O(n log n). */
@@ -219,8 +231,8 @@ public class ViewBuilder {
         List<ItemView> items = new ArrayList<>();
         for (Weapon weapon : inv.weaponsByTier()) {
             items.add(new ItemView(weapon.id(), weapon.name(), "WEAPON", weapon.description(), 1,
-                    weapon.id().equals(inv.equippedWeaponId()), weapon.tier().name(), weapon.base(),
-                    weapon.critPct(), null, null, false, null));
+                    weapon.id().equals(inv.equippedWeaponId()), weaponView(s.stats().derived(), weapon),
+                    null, null, false, null));
         }
         for (ItemStack<Item> stack : inv.stacksView()) {
             Item item = stack.item();
@@ -230,7 +242,7 @@ public class ViewBuilder {
             if (item instanceof Flask flask) {
                 int charges = s.flaskCharges(flask.id());
                 items.add(new ItemView(flask.id(), flask.name(), item.type().name(), flask.description(), charges,
-                        false, null, null, null, flask.healFor(s.stats().maxHp()), 0, outsideBattle && charges > 0,
+                        false, null, flask.healFor(s.stats().maxHp()), 0, outsideBattle && charges > 0,
                         flask.charges()));
                 continue;
             }
@@ -238,7 +250,7 @@ public class ViewBuilder {
             Integer fp = item instanceof Consumable c ? c.fp() : null;
             boolean usable = outsideBattle && item instanceof Consumable;
             items.add(new ItemView(item.id(), item.name(), item.type().name(), item.description(), stack.qty(),
-                    false, null, null, null, heal, fp, usable, null));
+                    false, null, heal, fp, usable, null));
         }
         return new InventoryView(inv.usedSlots(), Inventory.CAPACITY, items);
     }
@@ -292,7 +304,7 @@ public class ViewBuilder {
         Queue<Toast> queue = s.toastQueue();
         while (!queue.isEmpty()) {
             Toast toast = queue.poll();
-            result.add(new ToastView(toast.kind(), toast.text()));
+            result.add(new ToastView(toast.kind(), toast.text(), toast.tier(), toast.subject(), toast.upgrade()));
         }
         return result;
     }

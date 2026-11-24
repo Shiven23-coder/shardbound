@@ -138,5 +138,11 @@
     "creepMove": "fx.claw",
     "heal": "fx.heal",
     "escape": "fx.smoke"
+  },
+  "chest": {
+    "description": "Chests on the map (P-65): frame 0 closed, frame 1 open with the lid thrown back (tools/art/chest.mjs).",
+    "sheet": "shardbound/chest-eldmere.png",
+    "frameWidth": 16,
+    "frameHeight": 16
   }
 }

@@ -1558,3 +1558,59 @@ The audio engine fetches a pack's files when its moment comes and decodes each e
 **Revises** P-54 (meadow levels) and P-59 (shared region effects).
 
 **Spec.** §4.2, §4.3, §10.
+
+## P-65 — V6 split; the gear slice (chests, tier colours, compare and equip)
+
+**Problem.** V7 tunes the Ashen Herald "for an unupgraded weapon", but every Eldmere player still fights with the Rusty Shortsword: no chest exists and the reserved chest spots are empty. Smith upgrades, materials and quick slots are large and can wait until after ALPHA. The Bag can equip a weapon but cannot show what changes, weapon cards never showed their attack, and tiers F–C were four near-identical greys.
+
+**Decision.**
+- **V6 splits.** **V6a Gear slice** comes now, before V7. **V6b Gear II** (smith upgrades +0..+10, materials, quick slots, the remaining chests) comes after ALPHA, first in the post-ALPHA order.
+- **Chests** use the map object `chest{item, qty, flag}` (V2_SPEC §9):
+  - **Opening:** through the keyed `POST /api/world/interact`, in WORLD mode and in range. It grants the item, sets the flag, and shows a `LOOT` toast carrying the item's tier.
+  - **Opened state** is the chest's flag. It's per run and saved with the other flags, like a lit Lantern (P-61), so the save format does not change. A v4 golden fixture and resume tests pin it.
+  - **A full bag** keeps the chest closed ("Your bag is full"), so nothing is lost.
+  - **Never empty:** every chest whose item doesn't stack names a fallback in content: `fallbackLevel` (Shards worth one creep of that level, from `balance.json` `creepShards`), or `fallbackItem`/`fallbackQty`. `MapValidator` requires it. If the player already owns the item, the chest grants the fallback, and a toast says so. This applies to every future chest.
+  - Contents are not sent to the client before the chest is opened.
+- **The two Eldmere chests** (both shown from dawn, so the storm night stays the tuned level-1 walk):
+
+  | Chest | Where | Weapon | Fallback | Why |
+  |---|---|---|---|---|
+  | `ruins_chest` (main path) | Old Ruins (24, 15), in view on the way out with the Heartshard and on every later trip | **Woodcutter's Hatchet** (E · 28 · Str C · crit 5) | Shards of one level-3 creep | One tier up (AR 20 → 31 at the start); Strength scaling suits the common Vig/Str build |
+  | `clearing_chest` (secret, never required) | Cottage Lane's hidden clearing (28, 18), through the gap behind the south-east trees | **Hunter's Longbow** (D · **26**, was 30 · Dex B · crit 10) | Azure Tonic | Slightly better and specialised: AR 31 at the start like the hatchet, but steep Dexterity scaling and double crit |
+
+  - **Finding the clearing** (all optional): a faint glint at the closed chest, visible through the treeline; a broken-branch decal at the gap; and one Osric hub choice from dawn ("Anything worth finding nearby?") mentioning an old poacher's path behind the south trees.
+  - **The alley spoils:** on the merchant route, if the player already owns the hatchet, "Take the hatchet" becomes "Take the tonic from his belt" (an Azure Tonic). It's not gold, which would change the merchant ending's 300-gold maths, and not Shards, which come from ash-touched things.
+  - The other reserved chest spots (Mill Road's stream nook, the Square's nook by Maren) wait for V6b.
+- **Weapon cards** show the tier badge, the name, the attack rating **as computed by the server for this player**, crit, Str/Dex/Arc grades and the description.
+  - **Tier colours:** F–C climb a metal ladder, F ash grey, E stone, D bronze, C silver with a still sheen, so early finds feel like upgrades; B green, A blue, S purple, SS gold shimmer, SSS animated rainbow (magenta where one colour is needed). No two tiers share a hue family (`tiers.test.ts`).
+  - Badge text keeps at least 4.5:1 contrast. Under reduced motion SS and SSS keep their gradients without the animation.
+- **Compare and equip** in the Bag, outside battle:
+  - The equipped weapon and the selected one side by side, with AR, crit and the three grades before → after, then **Equip** (the existing keyed `/api/inventory/equip`).
+  - All values come from the server's view, so the page never waits on the network.
+  - Keyboard, gamepad and touch in all three layouts, with targets ≥ 48 px. Walking pauses while the Bag is open.
+- **Balance:**
+  - `EldmereProgressionTest` takes and equips the hatchet at dawn. Creep fights must stay at a median of 3–6 turns.
+  - P-64's boss stand-in band (70–85 % at HP ×1.8) stays asserted for the **Rusty Shortsword** (the lower bound: a player who skipped the chest).
+  - The hatchet's rate and the multiplier that restores the band are reported here for V7, together with the secret longbow's effect.
+
+**Why.** V7 can then tune the first boss for the weapon every player actually carries. The chest rules (server-validated, keyed, never empty, never lost to a full bag) hold for every later chest. Showing the server's own numbers keeps the rules on the server (rule 1).
+
+- **After the first screenshots (approved review):**
+  - **Loot toasts:** the tier badge sits inline before the find's name, which takes the tier colour. When the server rates the find above the equipped weapon (`ToastView.upgrade`), a device-aware line says where to compare it ("Better than your blade. Press I to compare." / "Tap Bag to compare." / "Open the Bag to compare."). Sideways the toast is small and sits at the top centre, clear of the chest and the player.
+  - **The Bag:** its tabs share one row, the close button keeps the top-right corner, and the character sheet stacks so nothing overflows. Sideways, Compare has the panel to itself (Back returns to the sheet and tabs). Toasts other than errors stay hidden while the Bag is open.
+  - **Colours:** Shards are always the Heartshard's green and gold is always gold, wherever they show.
+  - **Chests:** an opened chest shows its lid thrown back and its empty inside, a little dimmer than a closed one (`tools/art/chest.mjs`); a closed chest glints.
+  - **The tier gallery** (`frontend/dev/tiers.html`, dev only) shows the real weapons from `world.json`, rated by the server through `GET /api/debug/weapons` (dev and test profiles only).
+- **Measured (V6a, `EldmereProgressionTest`, 1,000 seeds):**
+
+  | Route | Stand-in won at HP ×1.8 | Won at HP ×2.8 | The 70–85 % band returns at |
+  |---|---|---|---|
+  | Rusty Shortsword (skipped the chest; asserted) | 84 % | — | ×1.8 |
+  | **Woodcutter's Hatchet** (main path) | 99 % | 81 % | **×2.8**: V7's starting point for the Ashen Herald |
+  | Hatchet and the secret Longbow | 99 % | 87 % | ×2.9 |
+
+  With the hatchet, Eldmere still ends at level 4 and creep fights take a median of 3–5 turns (most at 3, the bottom of the band). The longbow was first measured at base 30: the bot held it in every run and won the ×2.8 stand-in 98 %, far more than "slightly better", so its base became **26**. At 26 the bot holds it in 645 of 1,000 runs and wins 87 % at ×2.8.
+
+**Revises** P-64's stand-in (now the rusty-sword lower bound), P-27's post-ALPHA order (V6 → V6b) and the Hunter's Longbow's base in §4.6 (30 → 26).
+
+**Spec.** §4.6, §9, §12.

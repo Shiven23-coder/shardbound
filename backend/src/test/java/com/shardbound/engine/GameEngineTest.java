@@ -9,8 +9,11 @@ import com.shardbound.support.MutableClock;
 import com.shardbound.support.QuickRoute;
 import com.shardbound.view.ChoiceView;
 import com.shardbound.view.SessionView;
+import com.shardbound.view.WeaponView;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -74,6 +77,31 @@ class GameEngineTest {
                 .findFirst().orElseThrow();
         assertEquals(3, flask.qty(), "the Lantern Draught starts full (P-63)");
         assertEquals(3, flask.maxQty());
+    }
+
+    @Test
+    void weaponViewsCarryTheServersAttackRatingCritAndGrades() {
+        SessionView v = newPlayer(false, 1L).view();
+        WeaponView equipped = v.hud().weapon();
+        assertEquals(20, equipped.attack(), "Rusty Shortsword: base 20 × F 1.00, no scaling at 10 (P-65)");
+        assertEquals(5, equipped.critPct());
+        assertEquals("D", equipped.str());
+        assertEquals("D", equipped.dex());
+        assertNull(equipped.arc());
+        SessionView.ItemView sword = v.inventory().items().stream().filter(i -> i.type().equals("WEAPON"))
+                .findFirst().orElseThrow();
+        assertEquals(equipped, sword.weapon(), "the Bag shows the same server numbers as the HUD");
+        assertNull(v.inventory().items().stream().filter(i -> i.id().equals("lantern_draught"))
+                .findFirst().orElseThrow().weapon());
+    }
+
+    @Test
+    void theWeaponLadderListsEveryWeaponBestFirstRatedForANewPlayer() {
+        List<WeaponView> ladder = engine.weaponLadder();
+        assertEquals(List.of("SSS", "SS", "S", "A", "B", "C", "D", "E", "F"), ladder.stream().map(WeaponView::tier).toList());
+        WeaponView sword = ladder.getLast();
+        assertEquals("rusty_shortsword", sword.id());
+        assertEquals(20, sword.attack(), "the same number a new player's Bag shows");
     }
 
     @Test

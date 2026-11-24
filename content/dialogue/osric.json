@@ -150,6 +150,25 @@
           ]
         },
         {
+          "label": "Anything worth finding nearby?",
+          "to": "osric_nearby",
+          "hiddenWhenLocked": true,
+          "conditions": [
+            {
+              "type": "FLAG",
+              "key": "dawn",
+              "op": ">=",
+              "value": 1
+            },
+            {
+              "type": "FLAG",
+              "key": "chest_clearing",
+              "op": "=",
+              "value": 0
+            }
+          ]
+        },
+        {
           "label": "I should go.",
           "to": "osric_bye"
         }
@@ -220,6 +239,25 @@
               "key": "osric_asked_world",
               "op": ">=",
               "value": 1
+            }
+          ]
+        },
+        {
+          "label": "Anything worth finding nearby?",
+          "to": "osric_nearby",
+          "hiddenWhenLocked": true,
+          "conditions": [
+            {
+              "type": "FLAG",
+              "key": "dawn",
+              "op": ">=",
+              "value": 1
+            },
+            {
+              "type": "FLAG",
+              "key": "chest_clearing",
+              "op": "=",
+              "value": 0
             }
           ]
         },
@@ -302,6 +340,22 @@
         {
           "label": "Leave",
           "end": true
+        }
+      ]
+    },
+    {
+      "id": "osric_nearby",
+      "title": "Osric the Lamplighter",
+      "speaker": "osric",
+      "text": "Osric's eyes narrow with an old man's mischief. \"There was a poacher in these parts when I was young. He kept an old path behind the south trees, where the lane bends east, and nobody's walked it since he died. Nobody but the foxes.\" [page] He taps the side of his nose. \"I never asked what he left back there. I never had to.\"",
+      "choices": [
+        {
+          "label": "Ask something else",
+          "to": "osric_more"
+        },
+        {
+          "label": "I should go.",
+          "to": "osric_bye"
         }
       ]
     }

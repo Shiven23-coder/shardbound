@@ -10,7 +10,8 @@
   "sheetLayout",
   "effects",
   "battleBackdrop",
-  "battleEffects"
+  "battleEffects",
+  "chest"
  ],
  "additionalProperties": false,
  "properties": {
@@ -227,6 +228,31 @@
     "escape": {
      "type": "string",
      "pattern": "^fx\\.[a-z0-9_]+$"
+    }
+   }
+  },
+  "chest": {
+   "type": "object",
+   "required": [
+    "sheet",
+    "frameWidth",
+    "frameHeight"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "description": {
+     "type": "string"
+    },
+    "sheet": {
+     "$ref": "#/$defs/png"
+    },
+    "frameWidth": {
+     "type": "integer",
+     "minimum": 8
+    },
+    "frameHeight": {
+     "type": "integer",
+     "minimum": 8
     }
    }
   }

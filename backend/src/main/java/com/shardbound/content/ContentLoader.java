@@ -14,8 +14,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -50,7 +52,10 @@ public class ContentLoader {
         BattleContent battle = battleReader.readBattle();
         ProgressionRules progression = battleReader.readProgression();
 
-        DialogueValidator dialogues = new DialogueValidator(raw, flagsReadBy(world), world.start().flags().keySet(),
+        Set<String> chestFlags = MapValidator.chestFlags(world);
+        Set<String> flagsSetByWorld = new HashSet<>(world.start().flags().keySet());
+        flagsSetByWorld.addAll(chestFlags);
+        DialogueValidator dialogues = new DialogueValidator(raw, flagsReadBy(world), flagsSetByWorld,
                 gateFlagsOf(world));
         if (!dialogues.validate()) {
             throw new ContentValidationException("Dialogue content failed validation", dialogues.errors());
@@ -60,7 +65,11 @@ public class ContentLoader {
         }
         Set<String> dialogueIds = raw.dialogues().stream().map(RawContent.DialogueDef::id).collect(Collectors.toSet());
         Set<String> npcIds = raw.npcs().stream().map(RawContent.NpcDef::id).collect(Collectors.toSet());
-        List<String> mapErrors = new MapValidator(world, dialogueIds, npcIds, battle.creeps().keySet()).validate();
+        Map<String, Boolean> itemsStack = raw.items().stream()
+                .collect(Collectors.toMap(RawContent.ItemDef::id, i -> "CONSUMABLE".equals(i.type())));
+        List<String> mapErrors = new ArrayList<>(
+                new MapValidator(world, dialogueIds, npcIds, battle.creeps().keySet(), itemsStack).validate());
+        mapErrors.addAll(chestFlagsSetByDialogue(raw, chestFlags));
         if (!mapErrors.isEmpty()) {
             throw new ContentValidationException("Maps failed validation", mapErrors);
         }
@@ -73,7 +82,16 @@ public class ContentLoader {
         return content;
     }
 
-    /** Flags the world reads: map objects' showIf/hideIf, gates and light states. */
+    /** A chest's flag records it as opened, so only the engine sets it (P-65). */
+    private static List<String> chestFlagsSetByDialogue(RawContent raw, Set<String> chestFlags) {
+        return raw.choices().stream()
+                .flatMap(c -> c.effects().stream()
+                        .filter(r -> "SET_FLAG".equals(r.type()) && chestFlags.contains(r.key()))
+                        .map(r -> "Choice " + c.id() + " sets chest flag " + r.key() + "; only opening the chest may"))
+                .toList();
+    }
+
+        /** Flags the world reads: map objects' showIf/hideIf, gates and light states. */
     private static Set<String> flagsReadBy(World world) {
         Set<String> flags = new HashSet<>();
         for (AreaMap map : world.maps().values()) {

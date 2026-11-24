@@ -274,6 +274,11 @@
   font-weight: 600;
 }
 
+.hud-shards {
+  color: var(--shards);
+  font-weight: 600;
+}
+
 .hud-small {
   color: var(--text-dim);
   font-size: 0.85rem;
@@ -483,6 +488,127 @@
   color: var(--text-dim);
 }
 
+.weapon-grade b {
+  color: var(--text);
+}
+
+/* ---------- The Bag's highlight and Compare (P-65) ---------- */
+.item-list > li.bag-highlighted {
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.btn.bag-highlighted {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.weapon-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.compare-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+/* Upright, the two cards stack: the panel is the full width of a narrow screen. */
+.layout-portrait .compare-cards {
+  grid-template-columns: 1fr;
+}
+
+/* Compare is about the numbers: the cards drop their descriptions, so Equip stays in view. */
+.weapon-compare .item-desc {
+  display: none;
+}
+
+.compare-caption {
+  margin: 0 0 0.2rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.compare-table th,
+.compare-table td {
+  padding: 0.3rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+}
+
+.compare-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.compare-better .compare-after {
+  color: #8fe3b0;
+  font-weight: 700;
+}
+
+.compare-worse .compare-after {
+  color: #f08a7a;
+  font-weight: 700;
+}
+
+.compare-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Sideways the panel is short: Compare tightens so both names, the rows and the buttons fit. */
+.layout-landscape .compare-caption,
+.layout-landscape .weapon-compare .weapon-stats {
+  display: none;                          /* the table below has the numbers */
+}
+
+/* Sideways, Compare has the panel to itself (Back returns to the sheet and tabs), clear of the close button. */
+.layout-landscape .side-panels-comparing .hud,
+.layout-landscape .side-panels-comparing .tabs {
+  display: none;
+}
+
+.layout-landscape .side-panels-comparing .compare-cards {
+  padding-right: 3rem;
+}
+
+.layout-landscape .weapon-compare .weapon-name {
+  font-size: 0.85rem;
+}
+
+.layout-landscape .weapon-compare .weapon-card-inner {
+  padding: 0.35rem 0.55rem;
+}
+
+.layout-landscape .compare-table {
+  font-size: 0.85rem;
+}
+
+.layout-landscape .compare-table th,
+.layout-landscape .compare-table td {
+  padding: 0.12rem 0.4rem;
+}
+
+.layout-landscape .weapon-compare {
+  gap: 0.35rem;
+}
+
+.compare-actions .btn {
+  flex: 1;
+  min-height: 48px;
+}
+
 .item-desc {
   font-size: 0.85rem;
   color: var(--text-dim);
@@ -676,8 +802,20 @@ body:has(.layout-portrait) .toast {
   font-size: 0.8rem;
 }
 
+/* Sideways the world is short and the camera can hold the player near any edge: a small toast at the
+   top centre, between the HUD and the buttons, leaves the chest and the player in view. */
 body:has(.layout-landscape) .toast-layer {
-  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 72px + 0.75rem);
+  top: max(0.5rem, env(safe-area-inset-top));
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: min(16rem, 38vw);
+}
+
+body:has(.layout-landscape) .toast {
+  padding: 0.3rem 0.55rem;
+  font-size: 0.75rem;
 }
 
 .toast {
@@ -704,6 +842,21 @@ body:has(.layout-landscape) .toast-layer {
 .toast[data-kind='LEVEL'],
 .toast[data-kind='XP'] { border-left-color: var(--xp); }
 .toast[data-kind='GOLD'] { border-left-color: var(--gold); }
+.toast[data-kind='SHARDS'] { border-left-color: var(--shards); }
+/* A chest's loot carries its tier colour (P-65, tiers.css). */
+.toast[data-kind='LOOT'][data-tier] { border-left-color: var(--tier-color); }
+.toast .tier-badge { vertical-align: 0.1em; }
+.toast-subject {
+  color: var(--tier-color, var(--text));
+  font-weight: 700;
+}
+.toast-hint {
+  margin-top: 0.2rem;
+  font-size: 0.8em;
+  color: var(--text-dim);
+}
+/* The Bag shows what a toast would say, and a toast would cover its buttons (Compare's Equip). */
+body:has(.side-panels) .toast:not([data-kind='ERROR']) { display: none; }
 
 /* Achievements get a gold card with a sweeping shine. */
 .toast[data-kind='ACHIEVEMENT'] {
@@ -1299,7 +1452,35 @@ body:has(.layout-landscape) .toast-layer {
   bottom: 0.5rem;
   z-index: 15;
   width: min(24rem, calc(100vw - 1rem));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* The Bag scrolls under its close button, which stays in the top-right corner (P-65). */
+.side-panels-body {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+}
+
+.side-panels-close {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  z-index: 1;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: var(--radius-small);
+  background: none;
+  color: var(--text-dim);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.side-panels-close:hover {
+  color: var(--text);
 }
 
 .layout-portrait .side-panels {
@@ -1309,11 +1490,29 @@ body:has(.layout-landscape) .toast-layer {
 }
 
 .side-panels .hud {
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
   margin-bottom: 0.75rem;
+  padding-right: 3.25rem;                 /* clear of the close button */
+}
+
+.side-panels .hud-weapon {
+  justify-self: start;
+}
+
+/* The four tabs on one row: they share the width instead of wrapping. */
+.side-panels .tabs {
+  flex-wrap: nowrap;
+  gap: 0;
 }
 
 .side-panels .tab {
+  flex: 1 1 auto;
+  min-width: 48px;
   min-height: 48px;
+  padding: 0.45rem 0.4rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
 }
 
 /* ---------- Dialogue (pages and choices, P-44, P-49, P-50) ----------
@@ -2069,7 +2268,7 @@ body:has(.in-battle) .toast:not([data-kind='ERROR']) {
   font-weight: 700;
 }
 
-.lantern-shards { color: #8fe3b0; }
+.lantern-shards { color: var(--shards); }
 
 .lantern-menu {
   display: grid;
@@ -2208,7 +2407,7 @@ body:has(.in-battle) .toast:not([data-kind='ERROR']) {
   grid-column: 1 / -1;
   margin: 0.1rem 0;
   font-size: 0.85rem;
-  color: var(--gold);
+  color: var(--shards);
 }
 
 .lantern-cost-short { color: var(--danger); }
@@ -2293,7 +2492,7 @@ body:has(.lantern-box) .toast:not([data-kind='ERROR']) {
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
   background: rgba(10, 8, 6, 0.55);
-  color: #8fe3b0;
+  color: var(--shards);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   pointer-events: none;
@@ -2309,6 +2508,6 @@ body:has(.lantern-box) .toast:not([data-kind='ERROR']) {
 }
 
 @keyframes shards-pulse {
-  from { color: #fff; text-shadow: 0 0 8px #8fe3b0; }
+  from { color: #fff; text-shadow: 0 0 8px var(--shards); }
   to { color: inherit; text-shadow: none; }
 }

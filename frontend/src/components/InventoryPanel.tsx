@@ -1,18 +1,50 @@
 import WeaponCard from './WeaponCard';
-import type { InventoryView, ItemView } from '../api/types';
+import WeaponCompare from './WeaponCompare';
+import type { BagRow, BagState } from '../bag/bagMenu';
+import type { InventoryView, ItemView, WeaponView } from '../api/types';
 
-// Lists inventory items in the order the server sent them (weapons by tier
-// first). `usable` and `equipped` are decided in Java; buttons only follow them.
+// Lists the items in the order the server sent them (weapons by tier first),
+// or Compare for a weapon (P-65). `usable` and `equipped` come from Java; the
+// keyboard and gamepad highlight comes from the Bag menu (bag/bagMenu.ts).
 interface InventoryPanelProps {
   inventory: InventoryView | null;
+  equipped: WeaponView | null;
+  state: BagState;
+  busy: boolean;
+  onCompare: (itemId: string) => void;
   onEquip: (itemId: string) => void;
   onUse: (itemId: string) => void;
-  busy: boolean;
+  onBack: () => void;
 }
 
-export default function InventoryPanel({ inventory, onEquip, onUse, busy }: InventoryPanelProps) {
+/** The menu's view of the items. */
+export function bagRows(inventory: InventoryView | null): BagRow[] {
+  return (inventory?.items ?? []).map((item) => ({
+    id: item.id, weapon: item.weapon != null, equipped: item.equipped, usable: item.usable,
+  }));
+}
+
+export default function InventoryPanel({
+  inventory, equipped, state, busy, onCompare, onEquip, onUse, onBack,
+}: InventoryPanelProps) {
   if (!inventory) return <p className="empty">No inventory yet.</p>;
   const { items, usedSlots, capacity } = inventory;
+
+  if (state.page === 'compare') {
+    const candidate = items.find((item) => item.id === state.itemId)?.weapon;
+    if (candidate) {
+      return (
+        <WeaponCompare
+          current={equipped}
+          candidate={candidate}
+          highlight={state.highlight}
+          busy={busy}
+          onEquip={() => onEquip(candidate.id)}
+          onBack={onBack}
+        />
+      );
+    }
+  }
 
   return (
     <div className="inventory">
@@ -21,13 +53,13 @@ export default function InventoryPanel({ inventory, onEquip, onUse, busy }: Inve
       </p>
       {items.length === 0 && <p className="empty">Your pack is empty.</p>}
       <ul className="item-list">
-        {items.map((item) => (
-          <li key={item.id}>
-            {item.type === 'WEAPON' ? (
-              <WeaponCard weapon={item}>
+        {items.map((item, index) => (
+          <li key={item.id} className={state.page === 'list' && index === state.highlight ? 'bag-highlighted' : undefined}>
+            {item.weapon ? (
+              <WeaponCard weapon={item.weapon} equipped={item.equipped}>
                 {!item.equipped && (
-                  <button type="button" className="btn btn-small" disabled={busy} onClick={() => onEquip(item.id)}>
-                    Equip
+                  <button type="button" className="btn btn-small" disabled={busy} onClick={() => onCompare(item.id)}>
+                    Compare
                   </button>
                 )}
               </WeaponCard>

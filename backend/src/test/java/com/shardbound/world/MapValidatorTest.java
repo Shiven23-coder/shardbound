@@ -45,7 +45,8 @@ class MapValidatorTest {
                         "unbuilt_area", new World.Area("unbuilt_area", "test_region", "Unbuilt", null)),
                 List.of(edges),
                 Map.of("test_area", map));
-        return new MapValidator(world, Set.of("intro", "flavour"), Set.of(), Set.of("storm_rat")).validate();
+        return new MapValidator(world, Set.of("intro", "flavour"), Set.of(), Set.of("storm_rat"),
+                Map.of("hatchet", false, "tonic", true)).validate();
     }
 
     private static MapObject building(int x, int y, int w, int h) {
@@ -107,5 +108,38 @@ class MapValidatorTest {
     void anEdgeMayOnlyJoinBuiltAreas() {
         List<String> errors = validate(map(List.of()), new World.Edge("test_area", "unbuilt_area", 1, "some_flag"));
         assertTrue(errors.stream().anyMatch(e -> e.contains("unbuilt_area") && e.contains("no map")), errors.toString());
+    }
+    private static MapObject chest(String name, Map<String, String> props) {
+        return new MapObject(name, ObjectType.CHEST, 4, 4, 1, 1, props);
+    }
+
+    @Test
+    void aChestWithAKnownItemAFlagAndAFallbackIsValid() {
+        assertEquals(List.of(), validate(map(List.of(),
+                chest("box", Map.of("item", "hatchet", "qty", "1", "flag", "chest_box", "fallbackLevel", "3")),
+                chest("crate", Map.of("item", "tonic", "qty", "2", "flag", "chest_crate")))));
+    }
+
+    @Test
+    void aChestNeedsAKnownItemAndAFlagOfItsOwn() {
+        List<String> errors = validate(map(List.of(),
+                chest("box", Map.of("item", "sword", "qty", "1", "flag", "chest_box")),
+                chest("crate", Map.of("item", "tonic", "qty", "1", "flag", "chest_box")),
+                chest("bare", Map.of("item", "tonic", "qty", "1"))));
+        assertTrue(errors.stream().anyMatch(e -> e.contains("box") && e.contains("unknown item sword")), errors.toString());
+        assertTrue(errors.stream().anyMatch(e -> e.contains("chest_box") && e.contains("twice")), errors.toString());
+        assertTrue(errors.stream().anyMatch(e -> e.contains("bare") && e.contains("flag")), errors.toString());
+    }
+
+    @Test
+    void aChestWithAnItemThatDoesNotStackNeedsAFallbackAndQuantityOne() {
+        List<String> errors = validate(map(List.of(),
+                chest("box", Map.of("item", "hatchet", "qty", "1", "flag", "chest_box")),
+                chest("pair", Map.of("item", "hatchet", "qty", "2", "flag", "chest_pair", "fallbackItem", "tonic")),
+                chest("odd", Map.of("item", "hatchet", "qty", "1", "flag", "chest_odd", "fallbackItem", "rope"))));
+        assertTrue(errors.stream().anyMatch(e -> e.contains("box") && e.contains("fallback")), errors.toString());
+        assertTrue(errors.stream().anyMatch(e -> e.contains("pair") && e.contains("qty 1")), errors.toString());
+        assertTrue(errors.stream().anyMatch(e -> e.contains("odd") && e.contains("unknown fallback item rope")),
+                errors.toString());
     }
 }

@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test';
 import path from 'node:path';
 import * as backend from '../support/backend';
 import {
-  choose, inArea, interact, leaveLantern, newGame, press, restAtLantern, status, tap, turnPage, walkTo, winBattle, type Controls,
+  chests, choose, inArea, interact, leaveLantern, newGame, openBag, press, restAtLantern, status, tap, toTheRuinsAtDawn, turnPage,
+  walkTo, winBattle, type Controls,
 } from '../support/world';
 
 // Review screenshots of each layout (P-40): a dialogue page with its ▼
@@ -135,4 +136,30 @@ test('the Lantern menu and the level-up screen', async ({ page }, testInfo) => {
   if (controls === 'keyboard') await page.mouse.move(1, 1);
   await page.waitForTimeout(400);
   await shot('level-up');
+});
+
+test('a chest opening, its loot and Compare in the Bag (P-65)', async ({ page }, testInfo) => {
+  const controls: Controls = testInfo.project.use.hasTouch ? 'touch' : 'keyboard';
+  const shot = (name: string) => page.screenshot({ path: path.join(SHOTS_DIR!, `${testInfo.project.name}-${name}.png`) });
+  await toTheRuinsAtDawn(page, controls, `shotc-${testInfo.project.name.slice(0, 7)}-${Date.now() % 1e9}`);
+  await walkTo(page, controls, 'ruins_chest');
+  await expect(page.locator('.objective-line')).toBeHidden({ timeout: 10_000 });
+  await page.waitForTimeout(600);
+  await shot('chest-closed');
+  await interact(page, controls);
+  await expect.poll(() => chests(page), { intervals: [20] }).toEqual({ ruins_chest: 'open' });
+  await page.waitForTimeout(120);                                     // the lid has popped; the sparks fly
+  await shot('chest-opening');
+  await expect(page.locator('.toast[data-kind="LOOT"]')).toBeVisible();
+  await page.waitForTimeout(500);
+  await shot('chest-loot');
+
+  await openBag(page, controls);
+  await page.waitForTimeout(300);
+  await shot('bag');
+  if (controls === 'keyboard') await page.keyboard.press('e');
+  else await press(page.getByRole('button', { name: 'Compare' }));
+  await expect(page.locator('.weapon-compare')).toBeVisible();
+  await page.waitForTimeout(300);
+  await shot('compare');
 });

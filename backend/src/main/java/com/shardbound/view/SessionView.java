@@ -41,11 +41,12 @@ public record SessionView(
 
     public record InventoryView(int usedSlots, int capacity, List<ItemView> items) { }
 
-    /** tier/base/critPct are null for non-weapons; heal/fp null for non-consumables. */
-    /** An item in the bag; for a flask (P-63) {@code qty} is its charges left and {@code maxQty} its charges when full. */
+    /**
+     * An item in the bag. {@code weapon} is set for weapons only (P-65); heal/fp are null for non-consumables.
+     * For a flask (P-63) {@code qty} is its charges left and {@code maxQty} its charges when full.
+     */
     public record ItemView(String id, String name, String type, String description, int qty, boolean equipped,
-                           @Nullable String tier, @Nullable Integer base, @Nullable Integer critPct,
-                           @Nullable Integer heal, @Nullable Integer fp,
+                           @Nullable WeaponView weapon, @Nullable Integer heal, @Nullable Integer fp,
                            boolean usable, @Nullable Integer maxQty) { }
 
     public record QuestView(String id, String title, String description, String status, boolean main) { }

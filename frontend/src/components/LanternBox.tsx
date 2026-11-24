@@ -76,6 +76,7 @@ export default function LanternBox({ lantern, busy, layout, tip, onTipDismiss, o
     const onKey = (event: KeyboardEvent) => {
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       if (document.querySelector('[aria-modal="true"]')) return;
+      if (document.querySelector('.side-panels')) return;          // the Bag, opened at the Lantern, has the keys
       const intent = keyIntent(event.key);
       if (!intent) return;
       event.preventDefault();          // no pause menu on Esc; the world scene ignores it
@@ -249,7 +250,7 @@ function LevelUpPage({ lantern, level, preview, busy, values, onChange, onConfir
 }
 
 const STAT_ROWS: [string, keyof StatsView][] = [
-  ['HP', 'maxHp'], ['FP', 'maxFp'], ['DEF', 'defence'], ['ATK', 'attack'], ['SPD', 'speed'],
+  ['HP', 'maxHp'], ['FP', 'maxFp'], ['DEF', 'defence'], ['AR', 'attack'], ['SPD', 'speed'],
 ];
 
 /** "before → after"; `after` null while the server's preview is on its way. */

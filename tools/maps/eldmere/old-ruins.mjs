@@ -2,7 +2,7 @@
 //  - the crater: scorched earth, a ring of rubble, the warm crystal and its steam
 //  - the broken watchtower to the west, with fallen pillars and a wall
 //  - the north rubble, blocking the way to the Ashen Herald's arena (an obstacle, opened in V7)
-//  - the east: a toppled statue and a ruined house; the Ash Wisp and the Barrow Skull from dawn (P-64), space for a chest (V6)
+//  - the east: a toppled statue and a ruined house; the Ash Wisp and the Barrow Skull from dawn (P-64), the main-path chest (V6a, P-65)
 import {
   build, cluster, forestBorder, forestFill, makeTerrain, noise, paintEllipse, paintPath, pathEdges, smooth,
 } from '../kit.mjs';
@@ -59,7 +59,9 @@ export default function oldRuins() {
       // from dawn only (P-64): the storm-night walk for the Heartshard stays a level-1 walk
       { name: 'ruins_creep_a', type: 'creep_spawn', x: 21, y: 9, props: { template: 'ash_wisp', levelMin: 3, levelMax: 4, aggroRadius: 2, showIf: 'dawn' } },
       { name: 'ruins_creep_b', type: 'creep_spawn', x: 7, y: 14, props: { template: 'barrow_skull', levelMin: 4, levelMax: 4, aggroRadius: 1, showIf: 'dawn' } },
-      { name: 'ruins_chest', type: 'reserved', x: 24, y: 15, props: { for: 'chest', phase: 'V6' } },
+      // the main-path chest (P-65): in view on the way out with the Heartshard
+      { name: 'ruins_chest', type: 'chest', x: 24, y: 15,
+        props: { item: 'woodcutter_hatchet', qty: 1, flag: 'chest_ruins', fallbackLevel: 3, showIf: 'dawn' } },
     ],
   });
 }

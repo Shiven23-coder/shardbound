@@ -49,7 +49,7 @@ test('every screen keeps its touch targets at least 48 px', async ({ page }) => 
     await press(page.getByRole('tab', { name: tab }));
     await expectTouchTargets(page, `the ${tab} panel`);
   }
-  await press(page.getByRole('tablist', { name: 'Character panels' }).getByRole('button', { name: 'Close' }));
+  await press(page.getByRole('complementary', { name: 'Character' }).getByRole('button', { name: 'Close' }));
 
   await press(page.getByRole('button', { name: 'Menu' }));
   await expectTouchTargets(page, 'the game menu');

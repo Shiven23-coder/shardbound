@@ -67,7 +67,8 @@ test('the Lantern: cold, kindled, a level bought, a skill moved', async ({ page 
   await press(box.getByRole('button', { name: 'Back' }));
   await press(box.getByRole('button', { name: /^Skills/ }));
   await press(box.getByRole('button', { name: /^Empty/ }).first());   // slot 3
-  await press(box.getByRole('button', { name: /^Rending Cut/ }));
+  // In the chooser for slot 3, never slot 1's button, which also starts with Rending Cut.
+  await press(box.getByRole('list', { name: 'Skills for slot 3' }).getByRole('button', { name: /^Rending Cut/ }));
   await expect(box.locator('.lantern-slots .lantern-option').nth(2)).toContainText('Rending Cut');
   await expect(box.locator('.lantern-slots .lantern-option').nth(0)).toContainText('Empty');   // moved, not copied
   await press(box.getByRole('button', { name: 'Back' }));

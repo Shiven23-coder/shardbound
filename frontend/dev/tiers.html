@@ -1,0 +1,17 @@
+<!doctype html>
+<!-- Dev only (P-65): every tier's weapon card, for design review and screenshots.
+     Served by `npm run dev` at /dev/tiers.html; not a build input, so never shipped. -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shardbound tier cards</title>
+    <style>
+      .tier-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.75rem; padding: 1rem; }
+    </style>
+  </head>
+  <body data-region="VILLAGE">
+    <div id="root"></div>
+    <script type="module" src="./tiers.tsx"></script>
+  </body>
+</html>

@@ -46,10 +46,39 @@
         {
           "label": "Take the hatchet",
           "to": "p09m",
+          "hiddenWhenLocked": true,
+          "conditions": [
+            {
+              "type": "ITEM",
+              "key": "woodcutter_hatchet",
+              "op": "=",
+              "value": 0
+            }
+          ],
           "effects": [
             {
               "type": "GIVE_ITEM",
               "key": "woodcutter_hatchet",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "label": "Take the tonic from his belt",
+          "to": "p09m",
+          "hiddenWhenLocked": true,
+          "conditions": [
+            {
+              "type": "ITEM",
+              "key": "woodcutter_hatchet",
+              "op": ">=",
+              "value": 1
+            }
+          ],
+          "effects": [
+            {
+              "type": "GIVE_ITEM",
+              "key": "energy_tonic",
               "value": 1
             }
           ]

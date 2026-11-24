@@ -1,9 +1,18 @@
 package com.shardbound.engine;
 
 import com.shardbound.event.GameEvent;
+import org.jspecify.annotations.Nullable;
 
-/** A short notification shown by the UI ("Obtained: Heartshard"). */
-public record Toast(String kind, String text) {
+/**
+ * A short notification shown by the UI ("Obtained: Heartshard"). A LOOT toast (P-65) names what was found
+ * ({@code subject}, shown in its {@code tier} colour) and whether that weapon would raise the player's
+ * attack rating ({@code upgrade}).
+ */
+public record Toast(String kind, String text, @Nullable String tier, @Nullable String subject, boolean upgrade) {
+
+    public Toast(String kind, String text) {
+        this(kind, text, null, null, false);
+    }
 
     /**
      * Builds the toast for an event, or returns null if the event has no

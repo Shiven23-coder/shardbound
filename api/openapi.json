@@ -166,6 +166,48 @@
         "tags" : [ "dev" ]
       }
     },
+    "/api/debug/weapons" : {
+      "get" : {
+        "operationId" : "weaponLadder",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/WeaponView"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "4XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Client error"
+          },
+          "5XX" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Server error"
+          }
+        },
+        "summary" : "Every weapon rated for a new player, best first (dev only, P-65)",
+        "tags" : [ "dev" ]
+      }
+    },
     "/api/dialogue/choose" : {
       "post" : {
         "operationId" : "choose",
@@ -1434,6 +1476,26 @@
         },
         "required" : [ "enemy", "hits", "menu", "player", "round", "text" ]
       },
+      "ChestView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "open" : {
+            "type" : "boolean"
+          },
+          "x" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "y" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "id", "open", "x", "y" ]
+      },
       "ChoiceView" : {
         "type" : "object",
         "properties" : {
@@ -1730,7 +1792,7 @@
             "format" : "int32"
           },
           "weapon" : {
-            "$ref" : "#/components/schemas/WeaponInfo"
+            "$ref" : "#/components/schemas/WeaponView"
           }
         },
         "required" : [ "attack", "defence", "fp", "gold", "hp", "level", "maxFp", "maxHp", "shards" ]
@@ -1841,14 +1903,6 @@
       "ItemView" : {
         "type" : "object",
         "properties" : {
-          "base" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "critPct" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
           "description" : {
             "type" : "string"
           },
@@ -1877,14 +1931,14 @@
             "type" : "integer",
             "format" : "int32"
           },
-          "tier" : {
-            "type" : "string"
-          },
           "type" : {
             "type" : "string"
           },
           "usable" : {
             "type" : "boolean"
+          },
+          "weapon" : {
+            "$ref" : "#/components/schemas/WeaponView"
           }
         },
         "required" : [ "description", "equipped", "id", "name", "qty", "type", "usable" ]
@@ -2533,18 +2587,44 @@
           "kind" : {
             "type" : "string"
           },
+          "subject" : {
+            "type" : "string"
+          },
           "text" : {
             "type" : "string"
+          },
+          "tier" : {
+            "type" : "string"
+          },
+          "upgrade" : {
+            "type" : "boolean"
           }
         },
-        "required" : [ "kind", "text" ]
+        "required" : [ "kind", "text", "upgrade" ]
       },
-      "WeaponInfo" : {
+      "WeaponView" : {
         "type" : "object",
         "properties" : {
+          "arc" : {
+            "type" : "string"
+          },
+          "attack" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
           "base" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "critPct" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "dex" : {
+            "type" : "string"
           },
           "id" : {
             "type" : "string"
@@ -2552,11 +2632,14 @@
           "name" : {
             "type" : "string"
           },
+          "str" : {
+            "type" : "string"
+          },
           "tier" : {
             "type" : "string"
           }
         },
-        "required" : [ "base", "id", "name", "tier" ]
+        "required" : [ "attack", "base", "critPct", "description", "id", "name", "tier" ]
       },
       "WorldView" : {
         "type" : "object",
@@ -2566,6 +2649,12 @@
           },
           "areaName" : {
             "type" : "string"
+          },
+          "chests" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ChestView"
+            }
           },
           "creeps" : {
             "type" : "array",
@@ -2607,7 +2696,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "areaId", "areaName", "creeps", "hiddenObjects", "lanterns", "lightState", "mapKey", "npcs", "player", "regionId" ]
+        "required" : [ "areaId", "areaName", "chests", "creeps", "hiddenObjects", "lanterns", "lightState", "mapKey", "npcs", "player", "regionId" ]
       }
     },
     "securitySchemes" : {

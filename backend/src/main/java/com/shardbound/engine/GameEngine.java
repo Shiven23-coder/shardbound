@@ -1,9 +1,12 @@
 package com.shardbound.engine;
 
 import java.util.HashSet;
+import com.shardbound.world.Chest;
 import com.shardbound.world.Lantern;
 import com.shardbound.view.LevelPreviewView;
+import com.shardbound.progression.Attributes;
 import com.shardbound.progression.PlayerStats;
+import com.shardbound.progression.ProgressionRules;
 import com.shardbound.progression.LevelUp;
 import com.shardbound.progression.Attribute;
 import com.shardbound.achievement.AchievementManager;
@@ -46,6 +49,7 @@ import com.shardbound.save.SlotSummary;
 import com.shardbound.view.SessionView;
 import com.shardbound.view.MetaViews.InspectorView;
 import com.shardbound.view.MetaViews.QuestStatusView;
+import com.shardbound.view.WeaponView;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import com.shardbound.world.AreaMap;
@@ -298,9 +302,16 @@ public class GameEngine {
                     .filter(o -> o.type().interactive() && WorldObjects.active(s, last.areaId(), o))
                     .orElseThrow(() -> new WorldEventRejectedException("There is nothing to do there.", last));
             worldEvents.checkInRange(target, tile, last);
+            if (target.type() == ObjectType.CHEST && s.flag(Chest.of(last.areaId(), target).flag()) != 0) {
+                throw new WorldEventRejectedException("The chest is empty.", last);
+            }
             s.moveTo(new WorldPosition(last.areaId(), x, y, facing), clock.millis());
             if (target.type() == ObjectType.TRIGGER && target.flag("once")) {
                 s.setFlag(WorldObjects.onceFlag(last.areaId(), target), 1);
+            }
+            if (target.type() == ObjectType.CHEST) {
+                Chests.open(s, Chest.of(last.areaId(), target), content);
+                return persistAndView(s);
             }
             if (target.type() == ObjectType.LANTERN) {
                 Lantern lantern = Lantern.of(last.areaId(), target);
@@ -772,6 +783,17 @@ public class GameEngine {
     // =====================================================================
     // Inspector (dev profile only)
     // =====================================================================
+
+    /** Every weapon in the content, best first, rated for a new player (P-65): the dev tier gallery shows them. */
+    public List<WeaponView> weaponLadder() {
+        ProgressionRules rules = content.progression();
+        PlayerStats fresh = new PlayerStats(Attributes.starting(rules.attributeStart()), rules);
+        return content.items().values().stream()
+                .filter(Weapon.class::isInstance).map(Weapon.class::cast)
+                .sorted(Inventory.BY_TIER_THEN_ATTACK)
+                .map(weapon -> ViewBuilder.weaponView(fresh, weapon))
+                .toList();
+    }
 
     public InspectorView inspect(GameState s) {
         synchronized (s) {

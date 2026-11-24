@@ -29,19 +29,29 @@
   padding: 0.6rem 0.75rem;
 }
 
-/* Greys for C and below, each a little different. */
-[data-tier='C'] { --tier-color: #b4b9c0; }
-[data-tier='D'] { --tier-color: #9da1a8; }
-[data-tier='E'] { --tier-color: #868a90; }
-[data-tier='F'] { --tier-color: #6f7277; --tier-text: #f2f2f2; }
+/* F–C climb a metal ladder, each in a hue family of its own, so an early find still reads as an upgrade (P-65). */
+[data-tier='F'] { --tier-color: #63666b; --tier-text: #fff; }  /* ash grey */
+[data-tier='E'] { --tier-color: #d8d1c2; }                    /* stone */
+[data-tier='D'] { --tier-color: #b07a45; }                    /* bronze */
+[data-tier='C'] { --tier-color: #c4ced9; }                    /* silver */
+
+/* Silver catches the light: a still sheen across its badge. */
+.tier-badge[data-tier='C'] {
+  background: linear-gradient(120deg, #aebac7 10%, #eef2f6 45%, #c4ced9 60%, #a9b5c2 95%);
+}
 
 [data-tier='B'] { --tier-color: #46b45a; }
-[data-tier='A'] { --tier-color: #4a8cf0; --tier-text: #fff; }
-[data-tier='S'] { --tier-color: #a35cf0; --tier-text: #fff; }
+[data-tier='A'] { --tier-color: #2f6fd6; --tier-text: #fff; }
+[data-tier='S'] { --tier-color: #8a3fe0; --tier-text: #fff; }
 
 /* SS: gold with a moving shimmer. */
 [data-tier='SS'] {
   --tier-color: #f2c230;
+}
+
+/* SSS's single colour, for borders and names such as a loot toast's; its badge and card are a rainbow. */
+[data-tier='SSS'] {
+  --tier-color: #ff4dd2;
 }
 
 .tier-badge[data-tier='SS'] {

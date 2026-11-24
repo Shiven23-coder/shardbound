@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import * as backend from '../support/backend';
 import {
-  activeObstacles, choose, inArea, interact, loadMap, newGame, restAtLantern, settle, status, tap, taps, tileOf,
-  toTheLanternWithTheShard, walkTo, withObstacles, type Dir,
+  activeObstacles, chests, choose, inArea, interact, loadMap, newGame, openBag, restAtLantern, settle, status, tap, taps, tileOf,
+  toTheLanternWithTheShard, toTheRuinsAtDawn, walkTo, withObstacles, type Dir,
 } from '../support/world';
 
 // Tile steps (P-51) on a CPU slowed like a budget phone: the same taps reach
@@ -195,3 +195,24 @@ for (const rate of [4, 8]) {
     await expect(box.locator('.lantern-cost')).toBeVisible({ timeout: 15_000 });   // the preview catches up
   });
 }
+
+for (const rate of [4, 8]) {
+  test(`at ${rate}× CPU the Bag takes every press: down, up, Compare, Equip (P-65)`, async ({ page }) => {
+    await toTheRuinsAtDawn(page, 'keyboard', `slowb${rate}-${Date.now() % 1e9}`);
+    await walkTo(page, 'keyboard', 'ruins_chest');
+    await interact(page, 'keyboard');
+    await expect.poll(() => chests(page)).toEqual({ ruins_chest: 'open' });
+    await throttle(page, rate);
+    await openBag(page, 'keyboard');
+    const rows = page.locator('.item-list > li');
+    for (let i = 0; i < 3; i++) await page.keyboard.press('s');
+    await expect(rows.nth(3)).toHaveClass(/bag-highlighted/);
+    for (let i = 0; i < 3; i++) await page.keyboard.press('w');
+    await expect(rows.nth(0)).toHaveClass(/bag-highlighted/);
+    await page.keyboard.press('e');
+    await expect(page.locator('.weapon-compare')).toBeVisible();
+    await page.keyboard.press('e');
+    await expect(page.locator('.hud-weapon')).toContainText("Woodcutter's Hatchet", { timeout: 15_000 });
+  });
+}
+

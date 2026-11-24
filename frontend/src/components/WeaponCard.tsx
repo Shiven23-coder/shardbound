@@ -1,24 +1,12 @@
 import type { ReactNode } from 'react';
+import type { WeaponView } from '../api/types';
 
-// Weapon display with a tier badge. All colours/animations come from
-// tiers.css via the data-tier attribute; the tier itself comes from Java.
+// A weapon with its tier badge. Colours and animations come from tiers.css via
+// data-tier; every number is the server's, for this player (P-65).
 
-// The fields WeaponCard reads. Both HudView.weapon (WeaponInfo) and an
-// inventory ItemView fit this shape; the optional ones exist only on ItemView.
-export interface WeaponCardData {
-  name: string;
-  tier?: string;
-  attack?: number;
-  critPct?: number;
-  equipped?: boolean;
-  description?: string;
-}
+const GRADES = [['Str', 'str'], ['Dex', 'dex'], ['Arc', 'arc']] as const;
 
-interface TierBadgeProps {
-  tier?: string;
-}
-
-export function TierBadge({ tier }: TierBadgeProps) {
+export function TierBadge({ tier }: { tier?: string }) {
   if (!tier) return null;
   return (
     <span className="tier-badge" data-tier={tier} title={`Tier ${tier}`}>
@@ -27,15 +15,21 @@ export function TierBadge({ tier }: TierBadgeProps) {
   );
 }
 
-// `compact` renders a one-line version for the HUD.
-// `children` is used for action buttons (e.g. Equip) in the inventory.
+/** The scaling grades the weapon has, e.g. [['Str', 'C']]. */
+export function gradesOf(weapon: WeaponView): [string, string][] {
+  return GRADES.flatMap(([label, key]) => (weapon[key] ? [[label, weapon[key]] as [string, string]] : []));
+}
+
+// `compact` is the one-line version for the character sheet; `children` holds
+// action buttons (e.g. Compare) in the Bag.
 interface WeaponCardProps {
-  weapon?: WeaponCardData;
+  weapon?: WeaponView | null;
+  equipped?: boolean;
   compact?: boolean;
   children?: ReactNode;
 }
 
-export default function WeaponCard({ weapon, compact = false, children }: WeaponCardProps) {
+export default function WeaponCard({ weapon, equipped = false, compact = false, children }: WeaponCardProps) {
   if (!weapon) return <span className="weapon-none">Unarmed</span>;
 
   if (compact) {
@@ -43,7 +37,7 @@ export default function WeaponCard({ weapon, compact = false, children }: Weapon
       <span className="weapon-compact">
         <TierBadge tier={weapon.tier} />
         <span className="weapon-name">{weapon.name}</span>
-        {weapon.attack != null && <span className="weapon-stat">ATK +{weapon.attack}</span>}
+        <span className="weapon-stat">AR {weapon.attack}</span>
       </span>
     );
   }
@@ -54,11 +48,16 @@ export default function WeaponCard({ weapon, compact = false, children }: Weapon
         <div className="weapon-card-head">
           <TierBadge tier={weapon.tier} />
           <strong className="weapon-name">{weapon.name}</strong>
+          {equipped && <span className="tag">Equipped</span>}
         </div>
         <p className="weapon-stats">
-          {weapon.attack != null && <span>ATK +{weapon.attack}</span>}
-          {weapon.critPct != null && <span>Crit {weapon.critPct}%</span>}
-          {weapon.equipped && <span className="tag">Equipped</span>}
+          <span>AR {weapon.attack}</span>
+          <span>Crit {weapon.critPct}%</span>
+          {gradesOf(weapon).map(([label, grade]) => (
+            <span key={label} className="weapon-grade">
+              {label} <b>{grade}</b>
+            </span>
+          ))}
         </p>
         {weapon.description && <p className="item-desc">{weapon.description}</p>}
         {children}

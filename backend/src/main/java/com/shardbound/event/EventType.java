@@ -26,5 +26,7 @@ public enum EventType {
     SHARDS_GAINED,
     SKILL_LEARNED,
     // added for V5 progression (P-61)
-    LEVEL_UP
+    LEVEL_UP,
+    // added for V6a chests (P-65)
+    CHEST_OPENED
 }

@@ -20,7 +20,10 @@ import DialogueBox from '../components/DialogueBox';
 import TouchOverlay, { Dpad, InteractButton } from '../components/TouchControls';
 import FullscreenButton from '../components/FullscreenButton';
 import { enterFullscreen, fullscreenSupported, isFullscreen, useFullscreen } from '../ui/fullscreen';
-import InventoryPanel from '../components/InventoryPanel';
+import InventoryPanel, { bagRows } from '../components/InventoryPanel';
+import { BAG_START, bagStep, type BagState } from '../bag/bagMenu';
+import { keyIntent, type Intent } from '../dialogue/dialogueInput';
+import { useGamepadIntents } from '../components/gamepadChoices';
 import QuestLog from '../components/QuestLog';
 import ReputationPanel from '../components/ReputationPanel';
 import Journal from '../components/Journal';
@@ -104,10 +107,13 @@ export default function WorldScreen() {
     bridge.device = device;
   }, [bridge, device]);
 
-  // I opens and closes the Bag (P-47), except while typing or with a menu panel open.
+  // I opens and closes the Bag (P-47), except while typing, with a menu panel open or in a battle (it has its BAG).
+  const inBattle = useRef(false);
+  inBattle.current = battle !== null;
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'i' && event.key !== 'I') return;
+      if (inBattle.current) return;
       if (event.ctrlKey || event.metaKey || event.altKey || event.defaultPrevented) return;
       const target = event.target as HTMLElement | null;
       if (target && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return;
@@ -118,13 +124,14 @@ export default function WorldScreen() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // The server's world goes to the scene; walking pauses outside WORLD mode and while a request is out.
+  // The server's world goes to the scene; walking pauses outside WORLD mode, while a request is out and while
+  // the Bag is open (its keys move the highlight, not the player).
   useEffect(() => {
     if (view) bridge.sendView(view.world);
   }, [bridge, view]);
   useEffect(() => {
-    bridge.setFrozen(view?.mode !== 'WORLD' || busy || battle !== null);
-  }, [bridge, view?.mode, busy, battle]);
+    bridge.setFrozen(view?.mode !== 'WORLD' || busy || battle !== null || panelOpen);
+  }, [bridge, view?.mode, busy, battle, panelOpen]);
   useEffect(() => {
     bridge.setBattle(battle, BATTLE_COVER[layout]);
   }, [bridge, battle, layout]);
@@ -302,41 +309,105 @@ interface SidePanelsProps {
 }
 
 // The Bag: the full character sheet (HP, FP, Shards, gold, weapon) above the
-// inventory, quests, reputation and journal. Quick slots join it on touch (V4).
+// inventory, quests, reputation and journal. On the Inventory tab the keyboard
+// and gamepad move a highlight and open Compare (P-65); left and right change tabs.
 function SidePanels({ view, busy, onClose, onEquip, onUse }: SidePanelsProps) {
   const [tab, setTab] = useState<Tab>(TABS[0]);
+  const [bag, setBag] = useState<BagState>(BAG_START);
+  const rows = bagRows(view.inventory);
+
+  const handle = (intent: Intent) => {
+    if (tab !== 'Inventory') {
+      if (intent.kind === 'back') onClose();
+      if (intent.kind === 'left' || intent.kind === 'right') {
+        setTab(TABS[(TABS.indexOf(tab) + (intent.kind === 'left' ? -1 : 1) + TABS.length) % TABS.length]!);
+      }
+      return;
+    }
+    const step = bagStep(bag, intent, rows);
+    setBag(step.state);
+    const action = step.action;
+    if (action?.kind === 'equip' && !busy) onEquip(action.itemId);
+    if (action?.kind === 'use' && !busy) onUse(action.itemId);
+    if (action?.kind === 'close') onClose();
+    if (action?.kind === 'tab') setTab(TABS[(TABS.indexOf(tab) + action.delta + TABS.length) % TABS.length]!);
+  };
+  const latest = useRef(handle);
+  latest.current = handle;
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (document.querySelector('[aria-modal="true"]')) return;
+      const intent = keyIntent(event.key);
+      if (!intent) return;
+      event.preventDefault();          // Esc closes the Bag here, not the pause menu; E does not act in the world
+      event.stopPropagation();
+      if (!event.repeat || intent.kind === 'up' || intent.kind === 'down') latest.current(intent);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, []);
+  useGamepadIntents(useCallback((intent: Intent, held: boolean) => { if (!held) latest.current(intent); }, []));
+
+  // The highlighted row stays in view as it moves through a long Bag; Compare opens at its top,
+  // so both cards' names show even on a short landscape screen.
+  const comparing = bag.page === 'compare';
+  useEffect(() => {
+    if (comparing) document.querySelector('.side-panels .weapon-compare')?.scrollIntoView({ block: 'start' });
+  }, [comparing]);
+  useEffect(() => {
+    if (bag.page === 'list') document.querySelector('.side-panels .bag-highlighted')?.scrollIntoView({ block: 'nearest' });
+  }, [bag]);
 
   return (
-    <aside className="side-panels panel" aria-label="Character">
-      <Hud hud={view.hud} demoMode={view.demoMode} />
-      <div className="tabs" role="tablist" aria-label="Character panels">
-        {TABS.map((name) => (
-          <button
-            key={name}
-            type="button"
-            role="tab"
-            id={`tab-${name}`}
-            aria-selected={tab === name}
-            aria-controls="side-tabpanel"
-            className={tab === name ? 'tab tab-active' : 'tab'}
-            onClick={() => setTab(name)}
-          >
-            {name}
-          </button>
-        ))}
-        <button type="button" className="tab" aria-label="Close" onClick={onClose}>
-          ✕
-        </button>
-      </div>
-      <div id="side-tabpanel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="tab-panel">
-        {tab === 'Inventory' && (
-          <InventoryPanel inventory={view.inventory} busy={busy} onEquip={onEquip} onUse={onUse} />
-        )}
-        {tab === 'Quests' && <QuestLog quests={view.quests ?? []} />}
-        {tab === 'Reputation' && (
-          <ReputationPanel reputation={view.reputation ?? []} affinity={view.affinity ?? []} />
-        )}
-        {tab === 'Journal' && <Journal journal={view.journal ?? []} />}
+    <aside className={comparing ? 'side-panels side-panels-comparing panel' : 'side-panels panel'} aria-label="Character">
+      <button type="button" className="side-panels-close" aria-label="Close" onClick={onClose}>
+        ✕
+      </button>
+      <div className="side-panels-body">
+        <Hud hud={view.hud} demoMode={view.demoMode} />
+        <div className="tabs" role="tablist" aria-label="Character panels">
+          {TABS.map((name) => (
+            <button
+              key={name}
+              type="button"
+              role="tab"
+              id={`tab-${name}`}
+              aria-selected={tab === name}
+              aria-controls="side-tabpanel"
+              className={tab === name ? 'tab tab-active' : 'tab'}
+              onClick={() => {
+                setTab(name);
+                setBag(BAG_START);
+              }}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+        <div id="side-tabpanel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="tab-panel">
+          {tab === 'Inventory' && (
+            <InventoryPanel
+              inventory={view.inventory}
+              equipped={view.hud?.weapon ?? null}
+              state={bag}
+              busy={busy}
+              onCompare={(itemId) => setBag({ page: 'compare', highlight: 0, itemId })}
+              onEquip={(itemId) => {
+                onEquip(itemId);
+                setBag({ page: 'list', highlight: Math.max(0, rows.findIndex((r) => r.id === itemId)) });
+              }}
+              onUse={onUse}
+              onBack={() => setBag({ page: 'list', highlight: Math.max(0, rows.findIndex((r) => bag.page === 'compare' && r.id === bag.itemId)) })}
+            />
+          )}
+          {tab === 'Quests' && <QuestLog quests={view.quests ?? []} />}
+          {tab === 'Reputation' && (
+            <ReputationPanel reputation={view.reputation ?? []} affinity={view.affinity ?? []} />
+          )}
+          {tab === 'Journal' && <Journal journal={view.journal ?? []} />}
+        </div>
       </div>
     </aside>
   );

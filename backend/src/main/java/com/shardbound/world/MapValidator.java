@@ -21,7 +21,9 @@ public class MapValidator {
     private final Set<String> dialogues;
     private final Set<String> npcs;
     private final Set<String> creeps;
+    private final Map<String, Boolean> items;
     private final Set<String> lanternIds = new HashSet<>();
+    private final Set<String> chestFlags = new HashSet<>();
     private final List<String> errors = new ArrayList<>();
 
     /** The aggro radius a creep spawn may have, in tiles (V2_SPEC §4.2). */
@@ -32,9 +34,12 @@ public class MapValidator {
      * @param dialogues every dialogue id in the content
      * @param npcs      every NPC id in world.json
      * @param creeps    every enemy id in creeps.json
+     * @param items     every item id in world.json, mapped to whether it stacks
      */
-    public MapValidator(World world, Set<String> dialogues, Set<String> npcs, Set<String> creeps) {
+    public MapValidator(World world, Set<String> dialogues, Set<String> npcs, Set<String> creeps,
+                        Map<String, Boolean> items) {
         this.world = world;
+        this.items = items;
         this.dialogues = dialogues;
         this.npcs = npcs;
         this.creeps = creeps;
@@ -129,6 +134,7 @@ public class MapValidator {
             case INTERACT, TRIGGER, OBSTACLE -> checkDialogue(where, o);
             case CREEP_SPAWN -> checkCreep(where, o);
             case LANTERN -> checkLantern(areaId, where, o);
+            case CHEST -> checkChest(where, o);
             default -> { }
         }
     }
@@ -151,6 +157,55 @@ public class MapValidator {
             errors.add(where + ": Lantern " + o.name() + " names no spawn point of its map");
         }
         checkDialogue(where, o);
+    }
+
+    /**
+     * A chest (P-65) names a known item, a quantity of at least 1 and a flag no other chest uses. An item
+     * that does not stack comes one at a time and needs a fallback for a player who already owns it:
+     * {@code fallbackLevel} (Shards of one creep of that level) or a known {@code fallbackItem}.
+     */
+    private void checkChest(String where, MapObject o) {
+        String item = o.property("item");
+        Integer qty = integer(o, "qty");
+        if (item == null || !items.containsKey(item)) {
+            errors.add(where + ": chest " + o.name() + " names unknown item " + item);
+        } else if (qty == null || qty < 1) {
+            errors.add(where + ": chest " + o.name() + " needs a qty of at least 1");
+        } else if (!items.get(item)) {
+            if (qty != 1) {
+                errors.add(where + ": chest " + o.name() + " holds " + item + ", which does not stack: qty 1");
+            }
+            checkFallback(where, o);
+        }
+        String flag = o.property("flag");
+        if (flag == null || flag.isBlank() || flag.startsWith("_")) {
+            errors.add(where + ": chest " + o.name() + " needs a flag for its opened state");
+        } else if (!chestFlags.add(flag)) {
+            errors.add(where + ": chest flag " + flag + " is used twice");
+        }
+    }
+
+    private void checkFallback(String where, MapObject o) {
+        String fallbackItem = o.property("fallbackItem");
+        Integer level = integer(o, "fallbackLevel");
+        if (fallbackItem == null && (level == null || level < 1 || level > 99)) {
+            errors.add(where + ": chest " + o.name() + " needs a fallback: fallbackLevel 1–99 or a fallbackItem");
+        } else if (fallbackItem != null && !items.containsKey(fallbackItem)) {
+            errors.add(where + ": chest " + o.name() + " names unknown fallback item " + fallbackItem);
+        }
+    }
+
+    /** The flags chests set when opened: only the engine sets them (P-65). */
+    public static Set<String> chestFlags(World world) {
+        Set<String> flags = new HashSet<>();
+        for (AreaMap map : world.maps().values()) {
+            for (MapObject o : map.objectsOf(ObjectType.CHEST)) {
+                if (o.property("flag") != null) {
+                    flags.add(o.property("flag"));
+                }
+            }
+        }
+        return flags;
     }
 
     /** A creep spawn names a known enemy, a level range 1 ≤ min ≤ max ≤ 99 and an aggro radius of 1–3 tiles. */

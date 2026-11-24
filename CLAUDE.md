@@ -67,4 +67,4 @@ docker compose up -d
 - End each phase with the rule 12 report.
 
 ## Current phase
-**V5 — Progression** (in progress on `v5-progression`; maintenance merged via PR #20) (update this line as we progress)
+**V6a — Gear slice** (in progress on `v6a-gear-slice`; V5 merged via PR #22) (update this line as we progress)

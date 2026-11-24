@@ -41,6 +41,8 @@ const EFFECTS = {
   'Heal2.wav': 'sfx/lantern-rest.wav',
   'LevelUp1.wav': 'sfx/level-up.wav',
   'PowerUp1.wav': 'sfx/shards-recovered.wav',
+  // chests (P-65)
+  'Bonus2.wav': 'sfx/chest-open.wav',
 };
 const MUSIC = {
   '26 - Lost Village.ogg': 'music/eldmere.ogg',

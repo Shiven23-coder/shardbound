@@ -20,13 +20,13 @@ export default function Hud({ hud, demoMode }: HudProps) {
       </div>
       <div className="hud-stats">
         <span className="hud-small">Level {hud.level}</span>
-        <span className="hud-gold" title="Shards">
+        <span className="hud-shards" title="Shards">
           <span aria-hidden="true">◆</span> {hud.shards} Shards
         </span>
         <span className="hud-gold" title="Gold">
           <span aria-hidden="true">◈</span> {hud.gold} gold
         </span>
-        <span className="hud-small">ATK {hud.attack}</span>
+        <span className="hud-small">AR {hud.attack}</span>
         <span className="hud-small">DEF {hud.defence}</span>
         {demoMode && <span className="tag tag-demo">Demo</span>}
       </div>

@@ -8,8 +8,4 @@ import org.jspecify.annotations.Nullable;
  * nothing is equipped.
  */
 public record HudView(int hp, int maxHp, int fp, int maxFp, int gold, int shards, int level, int attack, int defence,
-                      @Nullable WeaponInfo weapon) {
-
-    /** {@code base} is the weapon's base attack. */
-    public record WeaponInfo(String id, String name, String tier, int base) { }
-}
+                      @Nullable WeaponView weapon) { }

@@ -22,6 +22,8 @@
   --xp-2: #8fb3ff;
   --energy: #4fd1c5;
   --gold: #f5c542;
+  /* Shards are always the Heartshard's green; gold is always gold (P-65). */
+  --shards: #8fe3b0;
   --danger: #e5484d;
   --success: #46a758;
   --focus: #ffd166;

@@ -275,7 +275,8 @@ function soundFor(hit: HitView): Effect {
   return 'magic';
 }
 
-function createEffectAnimations(scene: Phaser.Scene): void {
+/** The one-shot animations of the effect sheets (`<key>:play`), made once for the whole game. */
+export function createEffectAnimations(scene: Phaser.Scene): void {
   for (const [key, fx] of Object.entries(effectArt)) {
     if (scene.anims.exists(`${key}:play`) || !scene.textures.exists(key)) continue;
     scene.anims.create({

@@ -20,7 +20,7 @@ const TILESETS = [
   { name: 'house', image: 'ninja-adventure/eldmere/tilesets/TilesetHouse.png', columns: 33, rows: 23 },
   { name: 'abandoned', image: 'ninja-adventure/eldmere/tilesets/TilesetVillageAbandoned.png', columns: 20, rows: 12 },
   { name: 'shadows', image: 'shardbound/shadows.png', columns: 4, rows: 1 },
-  { name: 'props', image: 'shardbound/props.png', columns: 4, rows: 1 },
+  { name: 'props', image: 'shardbound/props.png', columns: 7, rows: 1 },
 ];
 let nextGid = 1;
 for (const t of TILESETS) {
@@ -118,6 +118,8 @@ export const STAMPS = {
   // a Lantern's post (P-61): the scene draws its top, lit or cold
   lanternBase: { tileset: 'props', rows: [[1]], solid: [0], shadow: 'prop' },
   millstone: prop('props', 3),
+  // the snapped branch at the hidden clearing's gap (P-65): ground detail, never blocks
+  brokenBranch: { tileset: 'props', rows: [[6]], solid: [] },
 };
 
 // Ground detail (never blocks), by theme: [tileset, local id].

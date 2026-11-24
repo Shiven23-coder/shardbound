@@ -19,6 +19,7 @@ export function makeView(overrides: Partial<SessionView> = {}): SessionView {
       creeps: [],
       hiddenObjects: [],
       lanterns: [],
+    chests: [],
     },
     dialogue: {
       nodeId: 'start',
@@ -35,7 +36,7 @@ export function makeView(overrides: Partial<SessionView> = {}): SessionView {
     reputation: [],
     affinity: [],
     journal: [],
-    toasts: [{ kind: 'INFO', text: 'Welcome.' }],
+    toasts: [{ kind: 'INFO', text: 'Welcome.', upgrade: false }],
     offerReload: false,
     ...overrides,
   };

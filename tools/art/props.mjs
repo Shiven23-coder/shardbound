@@ -6,6 +6,7 @@
 //   3     millstone, seen from above
 //   4     lantern post top, cold: dark glass (an unlit Lantern, P-61)
 //   5     Lost Shards: three pale green shards on the ground (P-62)
+//   6     a snapped branch on the ground: the tell at the hidden clearing's gap (P-65)
 //   node tools/art/props.mjs
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -32,6 +33,8 @@ const PALETTE = {
   k: [70, 66, 72, 255], // stone shade
   q: [40, 46, 58, 255], // cold glass
   Q: [74, 84, 100, 255], // cold glass highlight
+  p: [196, 164, 118, 255], // fresh splinter
+  L: [86, 120, 70, 255], // leaf
 };
 
 // Lantern post, two tiles tall.
@@ -112,7 +115,27 @@ const LOST_SHARDS = [
 /** The lantern post's top with its glass cold: lit colours become dark glass. */
 const COLD_LANTERN_TOP = LANTERN_POST.slice(0, TILE).map((line) => line.replace(/[gh]/g, 'q').replace(/G/g, 'Q'));
 
-const image = blankImage(TILE * 6, TILE, [0, 0, 0, 0]);
+// A snapped branch lying across the path, its fresh splinters pale against the bark.
+const BROKEN_BRANCH = [
+  '................',
+  '................',
+  '................',
+  '................',
+  '..........LL....',
+  '.........LLo....',
+  '.........owo....',
+  '..oo....owWo....',
+  '.owWoo.oWwo.....',
+  '.owwWWopwo......',
+  '..oowwppo.......',
+  '....ooppWo......',
+  '.......owWo.....',
+  '........oo......',
+  '................',
+  '................',
+];
+
+const image = blankImage(TILE * 7, TILE, [0, 0, 0, 0]);
 
 /** Draws a letter grid, `TILE` columns wide, starting at tile `first`; taller grids continue in the next tiles. */
 function draw(grid, first) {
@@ -150,6 +173,7 @@ draw(HEARTSHARD, 2);
 millstone(3);
 draw(COLD_LANTERN_TOP, 4);
 draw(LOST_SHARDS, 5);
+draw(BROKEN_BRANCH, 6);
 
 const out = path.join(ROOT, 'content', 'art', 'shardbound', 'props.png');
 mkdirSync(path.dirname(out), { recursive: true });

@@ -15,10 +15,11 @@ import { KeyboardInput } from './keyboardInput';
 import { nextTile, Stepper, type StepWorld, type Tile } from './stepper';
 import { zoomFor } from './zoom';
 import {
-  actorArt, actorKeys, actorShadow, battleBackdrop, effectArt, frameSize, interactRange, lightingFor, mapUrl, sheetLayout, stepTiming,
+  actorArt, actorKeys, actorShadow, battleBackdrop, chestArt, effectArt, frameSize, interactRange, lightingFor, mapUrl, sheetLayout,
+  stepTiming,
 } from './content';
 import { artUrl, tilesetUrl } from './art';
-import { BACKDROP_KEY, BATTLE_SCENE, BattleScene } from './BattleScene';
+import { BACKDROP_KEY, BATTLE_SCENE, BattleScene, createEffectAnimations } from './BattleScene';
 import { reducedMotion } from './motion';
 import type { LightState, RegionLighting } from './content';
 
@@ -30,11 +31,16 @@ const DEPTH = {
 };
 const DRAWN_LAYERS = ['ground', 'detail', 'shadows', 'decor', 'obstacles', 'above'] as const;
 /** Object types the player can use: talk to, read, look at (P-45 obstacles included). */
-const USABLE = new Set(['npc', 'interact', 'obstacle', 'lantern']);
+const USABLE = new Set(['npc', 'interact', 'obstacle', 'lantern', 'chest']);
 /** Frames of Shardbound's props sheet (tools/art/props.mjs): a Lantern's top, lit and cold; the Lost Shards. */
 const PROPS_FRAME = { lanternLit: 0, lanternCold: 4, lostShards: 5 } as const;
 /** A kindled Lantern's green core glow (P-61), in tiles; it does not fade with daylight. */
 const LANTERN_CORE = { radius: 0.9, colour: '#8fe3b0', alpha: 0.6 } as const;
+/** The chest sprite (P-65) and its frames. */
+const CHEST_KEY = 'chest';
+const CHEST_FRAME = { closed: 0, open: 1 } as const;
+/** A closed chest's faint glint (P-65), in tiles: drawn with the lights, so it shows through the treeline. */
+const CHEST_GLINT = { radius: 0.7, colour: '#ffe7a3', alpha: 0.45 } as const;
 /** Frames per second of a creep's idle loop. */
 const CREEP_IDLE_FPS = 3;
 /** A creep this many tiles beyond its aggro radius is near: the battle music starts loading (P-57). */
@@ -105,6 +111,7 @@ export class WorldScene extends Phaser.Scene {
   private props: Phaser.GameObjects.Image[] = [];
   /** Each Lantern's top, drawn lit or cold (P-61). */
   private lanternTops = new Map<string, Phaser.GameObjects.Image>();
+  private chests = new Map<string, Phaser.GameObjects.Sprite>();
   /** The Lost Shards marker in this area (P-62). */
   private lostMarker: Phaser.GameObjects.Image | null = null;
   private keyboard!: KeyboardInput;
@@ -152,6 +159,7 @@ export class WorldScene extends Phaser.Scene {
     this.padDirection = null;
     this.npcs = new Map();
     this.lanternTops = new Map();
+    this.chests = new Map();
     this.lostMarker = null;
     this.creeps = new Map();
     this.disarmed = new Set();
@@ -180,6 +188,9 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     if (!this.textures.exists('actor-shadow')) this.load.image('actor-shadow', artUrl(actorShadow));
+    if (!this.textures.exists(CHEST_KEY)) {
+      this.load.spritesheet(CHEST_KEY, artUrl(chestArt.sheet), { frameWidth: chestArt.frameWidth, frameHeight: chestArt.frameHeight });
+    }
     // Battle effects load with the world, so a battle starts at once (V2_SPEC §4.13: < 300 ms).
     for (const [key, fx] of Object.entries(effectArt)) {
       if (!this.textures.exists(key)) {
@@ -192,10 +203,12 @@ export class WorldScene extends Phaser.Scene {
   create(): void {
     createEffectTextures(this);
     createWalkAnimations(this);
+    createEffectAnimations(this);
     this.buildMap();
     this.createPlayer();
     this.showNpcs(this.view.npcs);
     this.showLanterns();
+    this.showChests([]);
     this.showLostShards();
     this.showCreeps(this.view.creeps);
     this.showProps();
@@ -439,11 +452,12 @@ export class WorldScene extends Phaser.Scene {
     return pressed;
   }
 
-  /** A tile the player cannot step onto: outside the map, the collision layer, an active obstacle or an NPC. */
+  /** A tile the player cannot step onto: outside the map, the collision layer, an active obstacle, a chest or an NPC. */
   private blocked(tile: Tile): boolean {
     if (tile.x < 0 || tile.y < 0 || tile.x * TILE >= this.mapWidth || tile.y * TILE >= this.mapHeight) return true;
     if (this.collisionLayer?.hasTileAt(tile.x, tile.y)) return true;
     if (this.npcTiles.has(tileKey(tile))) return true;
+    if (this.view.chests.some((c) => tileKey(tileAt(c.x, c.y)) === tileKey(tile))) return true;
     return this.objects.some((o) => o.type === 'obstacle' && this.isActive(o) && covers(o, tile));
   }
 
@@ -548,6 +562,11 @@ export class WorldScene extends Phaser.Scene {
     return !this.view.hiddenObjects.includes(o.name);
   }
 
+  /** Something to use now: an active usable object, but not a chest that is already open. */
+  private usable(o: MapObject): boolean {
+    return USABLE.has(o.type) && this.isActive(o) && !this.view.chests.some((c) => c.id === o.name && c.open);
+  }
+
   /**
    * Arriving on an exit or a trigger sends it, once per entry. Returns true when
    * it did, which stops the walk there.
@@ -576,7 +595,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private inReach(tile: Tile): MapObject[] {
-    return this.objects.filter((o) => USABLE.has(o.type) && this.isActive(o) && distance(o, tile) <= interactRange);
+    return this.objects.filter((o) => this.usable(o) && distance(o, tile) <= interactRange);
   }
 
   /** What E would use now: the object in front of the player, else the nearest in reach. */
@@ -629,7 +648,7 @@ export class WorldScene extends Phaser.Scene {
   private interactAt(worldX: number, worldY: number): void {
     if (!this.canWalk() || this.stepper.walking) return;
     const tapped = { x: Math.floor(worldX / TILE), y: Math.floor(worldY / TILE) };
-    const target = this.objects.find((o) => USABLE.has(o.type) && this.isActive(o)
+    const target = this.objects.find((o) => this.usable(o)
       && (covers(o, tapped) || covers(o, { x: tapped.x, y: tapped.y + 1 })));
     if (target && distance(target, this.stepper.tile) <= interactRange) this.send(target);
   }
@@ -655,8 +674,9 @@ export class WorldScene extends Phaser.Scene {
     const areaChanged = view.areaId !== this.view.areaId;
     const moved = view.player.x !== this.view.player.x || view.player.y !== this.view.player.y;
     const kindled = view.lanterns.filter((l) => l.lit && !this.view.lanterns.find((o) => o.id === l.id)?.lit);
+    const opened = view.chests.filter((c) => c.open && this.view.chests.some((o) => o.id === c.id && !o.open)).map((c) => c.id);
     const lightChanged = view.lightState !== this.view.lightState
-      || view.hiddenObjects.join() !== this.view.hiddenObjects.join() || kindled.length > 0;
+      || view.hiddenObjects.join() !== this.view.hiddenObjects.join() || kindled.length > 0 || opened.length > 0;
     this.view = view;
     this.pending = false;
     if (areaChanged) {
@@ -666,8 +686,10 @@ export class WorldScene extends Phaser.Scene {
     this.showNpcs(view.npcs);
     this.showCreeps(view.creeps);
     this.showLanterns();
+    this.showChests(opened);
     this.showLostShards();
     if (kindled.length > 0) audio.play('lanternKindle');
+    if (opened.length > 0) audio.play('chestOpen');
     this.showProps();
     this.showObstacles();
     if (lightChanged) this.buildLighting();
@@ -705,6 +727,53 @@ export class WorldScene extends Phaser.Scene {
         ?? this.add.image(lantern.x, lantern.y - TILE, tilesetKey('props'), frame).setDepth(DEPTH.above);
       top.setFrame(frame);
       this.lanternTops.set(lantern.id, top);
+    }
+  }
+
+  /**
+   * The chests present now (P-65), closed or open. Those in `opened` were opened just now and play their
+   * opening: the lid pops and sparks fly (only the open frame under reduced motion). Their state is
+   * published on the canvas (data-chests, "id:open" or "id:closed", comma-separated) for automation
+   * such as the e2e tests.
+   */
+  private showChests(opened: string[]): void {
+    for (const [id, sprite] of this.chests) {
+      if (!this.view.chests.some((c) => c.id === id)) {
+        sprite.destroy();
+        this.chests.delete(id);
+      }
+    }
+    for (const chest of this.view.chests) {
+      const frame = chest.open ? CHEST_FRAME.open : CHEST_FRAME.closed;
+      let sprite = this.chests.get(chest.id);
+      if (!sprite) {
+        sprite = this.add.sprite(chest.x, chest.y, CHEST_KEY, frame).setDepth(DEPTH.actors + (chest.y + TILE / 2) / 10000);
+        this.chests.set(chest.id, sprite);
+      }
+      if (opened.includes(chest.id)) {
+        this.playChestOpening(sprite);
+      } else {
+        sprite.setFrame(frame);
+      }
+    }
+    this.game.canvas.dataset.chests = this.view.chests.map((c) => `${c.id}:${c.open ? 'open' : 'closed'}`).join(',');
+    this.markerKey = '';
+  }
+
+  private playChestOpening(sprite: Phaser.GameObjects.Sprite): void {
+    if (reducedMotion()) {
+      sprite.setFrame(CHEST_FRAME.open);
+      return;
+    }
+    this.tweens.add({
+      targets: sprite, scaleY: 0.8, scaleX: 1.12, duration: 90, yoyo: true, ease: 'Quad.easeOut',
+      onYoyo: () => sprite.setFrame(CHEST_FRAME.open),
+    });
+    if (this.anims.exists('fx.spark:play')) {
+      // Above the darkness, so the sparks shine at night and at dawn.
+      const sparks = this.add.sprite(sprite.x, sprite.y - TILE / 2, 'fx.spark').setScale(0.6).setDepth(DEPTH.marker);
+      sparks.play('fx.spark:play');
+      sparks.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => sparks.destroy());
     }
   }
 
@@ -804,6 +873,15 @@ export class WorldScene extends Phaser.Scene {
       this.lighting.push(core);
       if (!reducedMotion()) {
         this.tweens.add({ targets: core, alpha: LANTERN_CORE.alpha * 0.6, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      }
+    }
+    for (const chest of this.view.chests.filter((c) => !c.open)) {
+      const glint = this.addLight(chest.x, chest.y - TILE / 4, TILE * CHEST_GLINT.radius, CHEST_GLINT.colour, CHEST_GLINT.alpha);
+      this.lighting.push(glint);
+      if (!reducedMotion()) {
+        this.tweens.add({
+          targets: glint, alpha: 0.08, duration: 700, hold: 1600, repeatDelay: 1900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+        });
       }
     }
     if (state.playerLight) {

@@ -26,7 +26,7 @@
       "weapon": { "tier": "E", "base": 28, "scaling": { "STR": "C" }, "critPct": 5, "ability": null } },
     { "id": "hunter_longbow", "name": "Hunter's Longbow", "type": "WEAPON", "price": 40,
       "description": "Yew and sinew, strung tight. The grip is worn smooth by a steady hand.",
-      "weapon": { "tier": "D", "base": 30, "scaling": { "DEX": "B" }, "critPct": 10, "ability": "Steady Aim" } },
+      "weapon": { "tier": "D", "base": 26, "scaling": { "DEX": "B" }, "critPct": 10, "ability": "Steady Aim" } },
     { "id": "iron_longsword", "name": "Iron Longsword", "type": "WEAPON", "price": 70,
       "description": "Fresh from Brann's forge. Plain, honest, and properly balanced.",
       "weapon": { "tier": "C", "base": 36, "scaling": { "STR": "C", "DEX": "D" }, "critPct": 8, "ability": null } },

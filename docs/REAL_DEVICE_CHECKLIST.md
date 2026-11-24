@@ -11,7 +11,7 @@ One manual run per region on a phone of the target class: mid-range Android, abo
 6. Set screen brightness to about **50 %** and turn adaptive brightness off.
 7. When done, stop with Ctrl+C. Nothing stays open on the network.
 - Start a **New game** with a fresh profile.
-- **[core]** marks the 16 checks that matter most: do them first, in both orientations, if time is short.
+- **[core]** marks the 19 checks that matter most: do them first, in both orientations, if time is short.
 - Play the sections below **upright (portrait, the main phone layout) and sideways (landscape)**; tick each box for both, or note which one failed. Rotating mid-game is allowed and should switch the layout at once (P-40).
 
 ## Eldmere (V3)
@@ -103,6 +103,14 @@ One manual run per region on a phone of the target class: mid-range Android, abo
 - [ ] The Lantern Draught reads "Lantern Draught 3/3" in the Bag and in battle, heals, counts down, and is full again after a rest.
 - [ ] After a rest the meadow creeps are back; with no Lantern menu open, the Shards count shows on the HUD.
 - [ ] Osric talks beside the Lantern; after your first death he has a line about it, once.
+
+### Chests and gear (V6a)
+- [ ] **[core]** **Portrait:** in the Old Ruins at dawn, Ⓐ beside the chest opens it: the lid pops with sparks and a chime, and a toast with a stone-coloured **E** badge says "Found: Woodcutter's Hatchet"; Ⓐ is not offered at the open chest again.
+- [ ] **[core]** **Both layouts:** in the Bag, Compare on the hatchet shows the sword and the hatchet with AR, Crit, Str, Dex and Arc before → after (better in green); Equip puts it at the top of the Bag with AR 31; every button is easy to hit with a thumb.
+- [ ] **[core]** With the Bag open the D-pad does not walk; closing it, walking works at once.
+- [ ] Tier badges F, E, D and C read as ash grey, stone, bronze and silver, all clearly different.
+- [ ] From the lane by day, a faint glint shows through the trees in the south-east; a snapped branch marks the gap, and the path leads to a second chest with the Hunter's Longbow (a bronze **D** toast).
+- [ ] Osric's "Anything worth finding nearby?" hints at the poacher's path, and is gone once the clearing's chest is open.
 
 ### Record
 | Item | Value |

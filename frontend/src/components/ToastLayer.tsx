@@ -3,6 +3,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useGame } from '../state/GameContext';
 import type { ErrorState } from '../state/gameReducer';
 import type { SessionView, ToastView } from '../api/types';
+import { TierBadge } from './WeaponCard';
+import { upgradeHint } from '../settings/hints';
+import { useInputState, type InputDevice } from '../input/inputMode';
 
 const TOAST_MS = 3500;
 
@@ -14,6 +17,7 @@ interface ShownToast extends ToastView {
 // Shows the `toasts` array of each new SessionView (plus request errors) as a
 // stack of messages that slide in and dismiss themselves.
 export default function ToastLayer() {
+  const { device } = useInputState();
   const { state } = useGame();
   const [toasts, setToasts] = useState<ShownToast[]>([]);
   const nextId = useRef(1);
@@ -42,14 +46,14 @@ export default function ToastLayer() {
     const error = state.error;
     if (!error || error === lastError.current) return;
     lastError.current = error;
-    push([{ kind: 'ERROR', text: error.message }]);
+    push([{ kind: 'ERROR', text: error.message, upgrade: false }]);
   }, [state.error]);
 
   return (
     <div className="toast-layer" aria-live="polite" aria-relevant="additions">
       <AnimatePresence initial={false}>
         {toasts.map((toast) => (
-          <Toast key={toast.id} toast={toast} onDone={dismiss} />
+          <Toast key={toast.id} toast={toast} device={device} onDone={dismiss} />
         ))}
       </AnimatePresence>
     </div>
@@ -58,10 +62,11 @@ export default function ToastLayer() {
 
 interface ToastProps {
   toast: ShownToast;
+  device: InputDevice;
   onDone: (id: number) => void;
 }
 
-function Toast({ toast, onDone }: ToastProps) {
+function Toast({ toast, device, onDone }: ToastProps) {
   useEffect(() => {
     const timer = setTimeout(() => onDone(toast.id), TOAST_MS);
     return () => clearTimeout(timer);
@@ -72,6 +77,7 @@ function Toast({ toast, onDone }: ToastProps) {
       layout
       className="toast"
       data-kind={toast.kind}
+      data-tier={toast.tier ?? undefined}
       role={toast.kind === 'ERROR' ? 'alert' : 'status'}
       initial={{ x: 140, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
@@ -79,8 +85,31 @@ function Toast({ toast, onDone }: ToastProps) {
       transition={{ type: 'spring', stiffness: 260, damping: 24 }}
       onClick={() => onDone(toast.id)}
     >
-      <span className="toast-kind">{toast.kind}</span>
-      <span>{toast.text}</span>
+      <ToastBody toast={toast} device={device} />
     </motion.div>
+  );
+}
+
+/**
+ * A toast's words. A LOOT toast (P-65) shows the find's tier badge inline, its name in the tier
+ * colour, and, when the server says it beats the equipped weapon, where to compare it.
+ */
+export function ToastBody({ toast, device }: { toast: ToastView; device: InputDevice }) {
+  const at = toast.subject ? toast.text.indexOf(toast.subject) : -1;
+  return (
+    <>
+      <span className="toast-kind">{toast.kind}</span>
+      {at < 0 ? (
+        <span>{toast.text}</span>
+      ) : (
+        <span className="toast-text">
+          {toast.text.slice(0, at)}
+          {toast.tier && <TierBadge tier={toast.tier} />}{' '}
+          <span className="toast-subject" data-tier={toast.tier ?? undefined}>{toast.subject}</span>
+          {toast.text.slice(at + toast.subject!.length)}
+        </span>
+      )}
+      {toast.upgrade && <span className="toast-hint">{upgradeHint(device)}</span>}
+    </>
   );
 }

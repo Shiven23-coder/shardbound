@@ -4303,7 +4303,7 @@
     {
      "id": 11,
      "name": "ruins_chest",
-     "type": "reserved",
+     "type": "chest",
      "x": 384,
      "y": 240,
      "width": 16,
@@ -4312,14 +4312,29 @@
      "visible": true,
      "properties": [
       {
-       "name": "for",
+       "name": "item",
        "type": "string",
-       "value": "chest"
+       "value": "woodcutter_hatchet"
       },
       {
-       "name": "phase",
+       "name": "qty",
+       "type": "float",
+       "value": 1
+      },
+      {
+       "name": "flag",
        "type": "string",
-       "value": "V6"
+       "value": "chest_ruins"
+      },
+      {
+       "name": "fallbackLevel",
+       "type": "float",
+       "value": 3
+      },
+      {
+       "name": "showIf",
+       "type": "string",
+       "value": "dawn"
       }
      ]
     },
@@ -4446,12 +4461,12 @@
    "firstgid": 2636,
    "name": "props",
    "image": "../art/shardbound/props.png",
-   "imagewidth": 64,
+   "imagewidth": 112,
    "imageheight": 16,
    "tilewidth": 16,
    "tileheight": 16,
-   "columns": 4,
-   "tilecount": 4,
+   "columns": 7,
+   "tilecount": 7,
    "margin": 0,
    "spacing": 0
   }

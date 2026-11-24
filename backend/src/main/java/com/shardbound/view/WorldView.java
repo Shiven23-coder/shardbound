@@ -17,12 +17,18 @@ import java.util.List;
  */
 public record WorldView(String areaId, String areaName, String regionId, String mapKey, String lightState,
                         PlayerView player, List<NpcView> npcs, List<CreepView> creeps, List<String> hiddenObjects,
-                        List<LanternView> lanterns, @Nullable LostShardsView lostShards) {
+                        List<LanternView> lanterns, List<ChestView> chests, @Nullable LostShardsView lostShards) {
 
     public record PlayerView(int x, int y, Facing facing) { }
 
     /** A Lantern (P-61): {@code id} is the map object name, x/y its tile centre in pixels; lit or cold. */
     public record LanternView(String id, String lanternId, String name, int x, int y, boolean lit) { }
+
+    /**
+     * A chest present now (P-65): {@code id} is the map object name, x/y its tile centre in pixels. Its
+     * contents are not sent; an open chest stays drawn open and blocks like a closed one.
+     */
+    public record ChestView(String id, int x, int y, boolean open) { }
 
     /** The Shards the last death dropped, in this area (P-62): tile centre in pixels and the amount. */
     public record LostShardsView(int x, int y, int amount) { }
