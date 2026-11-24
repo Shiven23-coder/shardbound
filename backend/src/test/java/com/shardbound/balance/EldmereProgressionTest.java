@@ -258,8 +258,9 @@ class EldmereProgressionTest {
         BattleRules rules = new BattleRules(r.hpPerLevel(), r.atkPerLevel(), r.defPerLevel(), r.shardsBase(),
                 r.shardsExponent(), r.rollMin(), r.rollMax(), r.critMultiplier(), r.enemyCritPct(), r.guardNormal(),
                 r.guardTelegraphed(), r.statusChanceCap(), r.fleeBasePct(), r.fleePctPerSpeed(), r.fleeMinPct(),
-                r.fleeMaxPct(), r.fleeIgnoreTiles(), r.defensiveGuardBelowPct(), r.dialogueLossHpPct(), victoryFpPct);
-        return new BattleEngine(new BattleContent(b.chart(), b.statuses(), b.skills(), b.creeps(), rules),
+                r.fleeMaxPct(), r.fleeIgnoreTiles(), r.defensiveGuardBelowPct(), r.dialogueLossHpPct(), victoryFpPct,
+                r.bossShardsMultiplier());
+        return new BattleEngine(new BattleContent(b.chart(), b.statuses(), b.skills(), b.creeps(), b.bosses(), rules),
                 content.items());
     }
 

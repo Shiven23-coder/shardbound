@@ -12,16 +12,23 @@ package com.shardbound.battle;
  * @param fleeIgnoreTiles   a creep fled from ignores the player until they are this far beyond its aggro radius
  * @param dialogueLossHpPct HP left after losing a dialogue fight (P-55, kept by P-62)
  * @param victoryFpPct      FP restored by a victory, % of max FP (P-63)
+ * @param bossShardsMultiplier a boss pays this many times a creep of its level's Shards (V2_SPEC §4.3, P-67)
  */
 public record BattleRules(double hpPerLevel, double atkPerLevel, double defPerLevel, double shardsBase,
                           double shardsExponent, double rollMin, double rollMax, double critMultiplier,
                           int enemyCritPct, double guardNormal, double guardTelegraphed, int statusChanceCap,
                           int fleeBasePct, int fleePctPerSpeed, int fleeMinPct, int fleeMaxPct, int fleeIgnoreTiles,
-                          int defensiveGuardBelowPct, int dialogueLossHpPct, int victoryFpPct) {
+                          int defensiveGuardBelowPct, int dialogueLossHpPct, int victoryFpPct,
+                          int bossShardsMultiplier) {
 
     /** Shards for defeating a creep of this level: round(base · level^exponent). */
     public int creepShards(int level) {
         return (int) Math.round(shardsBase * Math.pow(level, shardsExponent));
+    }
+
+    /** Shards for defeating a boss of this level (V2_SPEC §4.3). */
+    public int bossShards(int level) {
+        return bossShardsMultiplier * creepShards(level);
     }
 
     /** A creep's stat at {@code level}: round(base · (1 + growth · (level − 1))). */

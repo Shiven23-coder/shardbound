@@ -21,7 +21,8 @@
         "POISON",
         "BURN",
         "FROST",
-        "STUN"
+        "STUN",
+        "EXPOSED"
       ],
       "additionalProperties": false,
       "properties": {
@@ -38,6 +39,9 @@
           "$ref": "#/$defs/status"
         },
         "STUN": {
+          "$ref": "#/$defs/status"
+        },
+        "EXPOSED": {
           "$ref": "#/$defs/status"
         }
       }
@@ -68,7 +72,8 @@
             "skull",
             "flame",
             "flake",
-            "star"
+            "star",
+            "crack"
           ]
         },
         "turns": {

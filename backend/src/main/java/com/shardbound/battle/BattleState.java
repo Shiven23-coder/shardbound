@@ -27,6 +27,7 @@ public final class BattleState {
     private final List<String> text = new ArrayList<>();
     private final List<HitLine> hits = new ArrayList<>();
     private int round;
+    private @Nullable Integer phaseLine;
     private BattleOutcome outcome = BattleOutcome.ONGOING;
     private @Nullable Rewards rewards;
 
@@ -50,6 +51,14 @@ public final class BattleState {
     public BattleOutcome outcome()         { return outcome; }
     public @Nullable Rewards rewards()     { return rewards; }
 
+    /** The index in this round's text of the line where a boss turned to its second phase, else null (P-67). */
+    public @Nullable Integer phaseLine()   { return phaseLine; }
+
+    /** The announced move's name while one is pending, for the persistent warning (P-67), else null. */
+    public @Nullable String telegraphMove() {
+        return enemy.pendingTelegraphs().stream().findFirst().map(Skill::name).orElse(null);
+    }
+
     /** The announced move's line while one is pending, else null. */
     public @Nullable String telegraph() {
         return enemy.pendingTelegraphs().stream().findFirst()
@@ -61,6 +70,7 @@ public final class BattleState {
         round++;
         text.clear();
         hits.clear();
+        phaseLine = null;
     }
 
     /** The index the next line of the round's text will have. */
@@ -71,6 +81,11 @@ public final class BattleState {
     /** A line added after the battle has ended, by what follows it (where a death wakes the player, P-62). */
     public void close(String line) {
         text.add(line);
+    }
+
+    /** Marks the line just said as a boss's turn to its second phase. */
+    void markPhaseLine() {
+        phaseLine = text.size() - 1;
     }
 
     void say(String line) {

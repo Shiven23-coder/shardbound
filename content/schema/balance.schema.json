@@ -69,7 +69,8 @@
         "flee",
         "defensiveGuardBelowPct",
         "dialogueLossHpPct",
-        "victoryFpPct"
+        "victoryFpPct",
+        "bossShardsMultiplier"
       ],
       "additionalProperties": false,
       "properties": {
@@ -241,6 +242,11 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 100
+        },
+        "bossShardsMultiplier": {
+          "description": "A boss pays this many times a creep of its level's Shards (V2_SPEC §4.3, P-67).",
+          "type": "integer",
+          "minimum": 1
         }
       }
     },

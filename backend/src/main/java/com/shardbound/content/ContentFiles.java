@@ -34,6 +34,7 @@ public final class ContentFiles {
     public static final String STATUSES = "statuses.json";
     public static final String SKILLS = "skills.json";
     public static final String CREEPS = "creeps.json";
+    public static final String BOSSES = "bosses.json";
     public static final String SCHEMA_DIR = "schema/";
     public static final String DIALOGUE_DIR = "dialogue/";
     public static final String MAPS_DIR = "maps/";

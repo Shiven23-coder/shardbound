@@ -1,0 +1,61 @@
+{
+  "$schema": "./schema/bosses.schema.json",
+  "description": "Bosses (V2_SPEC §4.7, P-67). Stats are at level 1 and scale with the creep rules. A boss has two phases: the second begins at atPct % of its HP, with its line, a speed change and its own moves. A telegraphed move is announced every 'telegraphEvery' rounds. Guarding a telegraphed blow puts 'onGuardedTelegraph' on the boss. The reward is boss Shards (balance.json bossShardsMultiplier) plus 'item', or Shards of one creep of 'fallbackLevel' if the item is already owned or the bag is full (P-65). Only the engine sets 'defeatFlag'.",
+  "bosses": [
+    {
+      "id": "ashen_herald",
+      "name": "Ashen Herald",
+      "family": "ASHEN",
+      "sprite": "boss.ashen_herald",
+      "level": 5,
+      "baseHp": 196,
+      "baseAtk": 13,
+      "baseDef": 10,
+      "baseSpd": 7,
+      "phases": [
+        {
+          "moves": [
+            {
+              "skill": "cinder_lash",
+              "weight": 3
+            },
+            {
+              "skill": "ash_veil",
+              "weight": 2
+            }
+          ],
+          "telegraph": "cinderfall",
+          "telegraphEvery": 3
+        },
+        {
+          "atPct": 50,
+          "line": "The Herald's mantle splits. Beneath the ash, something is burning.",
+          "spdDelta": 1,
+          "moves": [
+            {
+              "skill": "searing_wing",
+              "weight": 2
+            },
+            {
+              "skill": "cinder_lash",
+              "weight": 3
+            }
+          ],
+          "telegraph": "pyre_descent",
+          "telegraphEvery": 2
+        }
+      ],
+      "onGuardedTelegraph": {
+        "status": "EXPOSED",
+        "line": "Your guard turns the blow aside. The Herald's mantle cracks: it is exposed!"
+      },
+      "reward": {
+        "item": "iron_longsword",
+        "fallbackLevel": 5
+      },
+      "defeatFlag": "herald_defeated",
+      "introCutscene": "herald_intro",
+      "epilogueCutscene": "herald_epilogue"
+    }
+  ]
+}

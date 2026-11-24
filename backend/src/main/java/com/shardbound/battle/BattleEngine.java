@@ -5,6 +5,7 @@ import com.shardbound.engine.GameState;
 import com.shardbound.event.EventBus;
 import com.shardbound.event.EventType;
 import com.shardbound.event.GameEvent;
+import com.shardbound.exception.InventoryFullException;
 import com.shardbound.item.Consumable;
 import com.shardbound.item.Flask;
 import com.shardbound.item.Item;
@@ -50,14 +51,28 @@ public final class BattleEngine {
         return battle;
     }
 
+    /** Starts a boss battle (V2_SPEC §4.7, P-67): the boss at its own level, and no fleeing. */
+    public BattleState startBoss(GameState s, BossTemplate boss) {
+        BattleState battle = buildBoss(s, boss);
+        battle.startRound();
+        battle.say("The " + boss.name() + " stands before you!");
+        return battle;
+    }
+
+    private BattleState buildBoss(GameState s, BossTemplate boss) {
+        PlayerFighter player = new PlayerFighter(s.stats(), s.inventory().equippedWeapon());
+        return new BattleState(player, new CreepFighter(boss, content.rules()), null, null, false);
+    }
+
     /** Rebuilds a stored battle (P-22): the same fighters, then the stored HP, statuses and round on top. */
     public BattleState restore(GameState s, BattleSnapshot snapshot) {
+        BossTemplate boss = content.bosses().get(snapshot.creepId());
         CreepTemplate template = content.creeps().get(snapshot.creepId());
-        if (template == null) {
+        if (template == null && boss == null) {
             throw new IllegalStateException("Stored battle against unknown enemy " + snapshot.creepId());
         }
-        BattleState battle = build(s, template, snapshot.level(), snapshot.creepRef(), snapshot.encounterId(),
-                snapshot.canFlee());
+        BattleState battle = boss != null ? buildBoss(s, boss)
+                : build(s, template, snapshot.level(), snapshot.creepRef(), snapshot.encounterId(), snapshot.canFlee());
         CreepFighter enemy = battle.enemy();
         List<Skill> telegraphs = new ArrayList<>();
         for (String id : snapshot.enemyTelegraphs()) {
@@ -150,12 +165,38 @@ public final class BattleEngine {
     private boolean startOfTurn(BattleState battle, Fighter fighter) {
         StatusTracker.Tick tick = fighter.statuses().tick(fighter.maxHp(), content.statuses());
         for (Map.Entry<Status, Integer> damage : tick.damage()) {
+            int phase = phaseOf(fighter);
             int lost = fighter.takeDamage(damage.getValue());
             battle.record(new HitLine(fighter.isPlayer(), lost, false, null, damage.getKey(), null, battle.nextLine()));
             battle.say(subject(fighter) + (fighter.isPlayer() ? " suffer " : " suffers ") + lost + " from "
                     + content.status(damage.getKey()).name().toLowerCase() + ".");
+            checkPhase(battle, fighter, phase);
+        }
+        if (tick.skipTurn() && isBoss(fighter)) {
+            fighter.statuses().grantImmunity(Status.STUN, BOSS_STUN_IMMUNE_TURNS);   // §4.5
         }
         return tick.skipTurn();
+    }
+
+    /** A boss is Stun-immune this many turns after a Stun (V2_SPEC §4.5). */
+    private static final int BOSS_STUN_IMMUNE_TURNS = 3;
+
+    private static boolean isBoss(Fighter fighter) {
+        return fighter instanceof CreepFighter creep && creep.boss() != null;
+    }
+
+    private static int phaseOf(Fighter fighter) {
+        return fighter instanceof CreepFighter creep ? creep.phase() : 1;
+    }
+
+    /** A boss that just fell to its second phase says its line and cannot be stunned until its next turn (§4.7). */
+    private void checkPhase(BattleState battle, Fighter fighter, int phaseBefore) {
+        if (fighter instanceof CreepFighter creep && creep.boss() != null && creep.isAlive()
+                && phaseBefore == 1 && creep.phase() == 2) {
+            battle.say(creep.bossPhase().line());
+            battle.markPhaseLine();
+            creep.statuses().grantImmunity(Status.STUN, 1);
+        }
     }
 
     /** Performs the player's action; returns true if the player escaped. */
@@ -224,6 +265,10 @@ public final class BattleEngine {
             strike(s, battle, enemy, battle.player(), announced, true);
             return;
         }
+        if (enemy.boss() != null) {
+            bossTurn(s, battle, enemy, rng);
+            return;
+        }
         EnemyAI.Choice choice = EnemyAI.forStrategy(enemy.template().ai())
                 .decide(enemy, battle.player(), content.rules(), rng);
         if (choice.guards()) {
@@ -237,6 +282,20 @@ public final class BattleEngine {
         }
     }
 
+    /**
+     * A boss's turn (V2_SPEC §4.7, P-67): on every n-th round of its phase it announces the phase's
+     * telegraphed move; otherwise it picks a move by weight.
+     */
+    private void bossTurn(GameState s, BattleState battle, CreepFighter boss, Random rng) {
+        BossTemplate.Phase phase = boss.bossPhase();
+        if (battle.round() % phase.telegraphEvery() == 0) {
+            boss.announce(phase.telegraph());
+            battle.say(phase.telegraph().telegraphLine().replace("{name}", boss.name()));
+        } else {
+            strike(s, battle, boss, battle.player(), EnemyAI.weighted(phase.moves(), rng), false);
+        }
+    }
+
     /** One hit with its lines: the move, how well it landed, the damage, a status put on or washed off. */
     private void strike(GameState s, BattleState battle, Fighter attacker, Fighter defender, Skill move,
                         boolean telegraphed) {
@@ -244,6 +303,7 @@ public final class BattleEngine {
         battle.say(move == Skill.STRIKE
                 ? subject(attacker) + (attacker.isPlayer() ? " strike!" : " attacks!")
                 : subject(attacker) + (attacker.isPlayer() ? " use " : " uses ") + move.name() + "!");
+        int phaseBefore = phaseOf(defender);
         DamageCalculator.Hit hit = calculator.hit(attacker, defender, move, telegraphed, s.rng());
         switch (hit.affinity()) {
             case W -> battle.say("It's super effective!");
@@ -262,6 +322,12 @@ public final class BattleEngine {
                 battle.say(possessive(defender) + " " + content.status(removed).name().toLowerCase() + " fades.");
             }
         }
+        if (telegraphed && defender.isPlayer() && defender.guarding() && attacker instanceof CreepFighter creep
+                && creep.boss() != null) {
+            BossTemplate boss = creep.boss();
+            creep.statuses().apply(content.status(boss.exposeStatus()));     // "Guard the fall" (P-67)
+            battle.say(boss.exposeLine());
+        }
         if (hit.status() != null && defender.isAlive()) {
             StatusRule rule = content.status(hit.status());
             defender.statuses().apply(rule);
@@ -272,6 +338,7 @@ public final class BattleEngine {
                 battle.say(subject(defender) + (defender.isPlayer() ? " lose " : " loses ") + burst + " more.");
             }
         }
+        checkPhase(battle, defender, phaseBefore);
     }
 
     // =====================================================================
@@ -295,6 +362,9 @@ public final class BattleEngine {
      */
     private BattleOutcome won(GameState s, BattleState battle) {
         CreepFighter enemy = battle.enemy();
+        if (enemy.boss() != null) {
+            return bossWon(s, battle, enemy.boss());
+        }
         EventBus bus = s.bus();
         int shards = content.rules().creepShards(enemy.level());
         List<String> drops = new ArrayList<>();
@@ -316,6 +386,44 @@ public final class BattleEngine {
         s.stats().restoreFp(s.stats().maxFp() * content.rules().victoryFpPct() / 100);
         battle.end(BattleOutcome.WON, new BattleState.Rewards(shards, drops));
         return BattleOutcome.WON;
+    }
+
+    /**
+     * A boss falls (P-67): boss Shards and its reward item, or, if the item is already owned or the bag is
+     * full, Shards of one creep of the fallback level (never empty, P-65). FP as after any victory.
+     */
+    private BattleOutcome bossWon(GameState s, BattleState battle, BossTemplate boss) {
+        EventBus bus = s.bus();
+        BattleRules rules = content.rules();
+        int shards = rules.bossShards(boss.level());
+        List<String> taken = new ArrayList<>();
+        Item reward = items.get(boss.rewardItem());
+        boolean owned = !reward.isStackable() && s.inventory().has(reward.id());
+        if (!owned && takes(s, reward)) {
+            taken.add(reward.id());
+            bus.publish(new GameEvent(EventType.ITEM_GAINED, Map.of("itemId", reward.id())));
+        } else {
+            shards += rules.creepShards(boss.fallbackLevel());
+        }
+        battle.say("The " + boss.name() + " is defeated!");
+        battle.say("You gain " + shards + " Shards.");
+        if (!taken.isEmpty()) {
+            battle.say("You take the " + reward.name() + ".");
+        }
+        bus.publish(GameEvent.of(EventType.BATTLE_WON, "Victory over the " + boss.name(), "creepId", boss.id()));
+        Rewards.grantShards(s, bus, shards);
+        s.stats().restoreFp(s.stats().maxFp() * rules.victoryFpPct() / 100);
+        battle.end(BattleOutcome.WON, new BattleState.Rewards(shards, taken));
+        return BattleOutcome.WON;
+    }
+
+    /** Puts one of the item in the bag; false if there is no room. */
+    private static boolean takes(GameState s, Item item) {
+        try {
+            return s.inventory().add(item, 1);
+        } catch (InventoryFullException full) {
+            return false;
+        }
     }
 
     private BattleOutcome lost(GameState s, BattleState battle) {
@@ -344,6 +452,7 @@ public final class BattleEngine {
             case BURN -> "burning";
             case FROST -> "frozen";
             case STUN -> "stunned";
+            case EXPOSED -> "exposed";
         };
     }
 }

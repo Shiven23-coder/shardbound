@@ -5,16 +5,17 @@ import java.util.Map;
 
 /**
  * Everything battles read from content: the element chart, the statuses, the
- * skills, the enemies and the battle numbers. Immutable and shared by all
+ * skills, the enemies, the bosses and the battle numbers. Immutable and shared by all
  * sessions (D20).
  */
 public record BattleContent(ElementChart chart, Map<Status, StatusRule> statuses, Map<String, Skill> skills,
-                            Map<String, CreepTemplate> creeps, BattleRules rules) {
+                            Map<String, CreepTemplate> creeps, Map<String, BossTemplate> bosses, BattleRules rules) {
 
     public BattleContent {
         statuses = new EnumMap<>(statuses);
         skills = Map.copyOf(skills);
         creeps = Map.copyOf(creeps);
+        bosses = Map.copyOf(bosses);
     }
 
     public StatusRule status(Status status) {
