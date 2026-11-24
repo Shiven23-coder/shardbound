@@ -167,6 +167,49 @@ class HeraldTest {
         assertEquals("The road west is drying. Rest, and make ready.", after.objective());
     }
 
+    /** Wins the fight (the Herald brought to 1 HP first) and sits through the epilogue: free roam on the Rise. */
+    private void beatTheHeraldAndSeeTheEpilogue() {
+        toTheRise(false);
+        stepOnTheTrigger();
+        engine.finishCutscene(state(), "herald_intro");
+        state().battle().enemy().restore(1, false, List.of());
+        engine.battleAction(state(), BattleAction.of(BattleAction.Kind.STRIKE));
+        engine.finishCutscene(state(), "herald_epilogue");
+    }
+
+    @Test
+    void afterTheHeraldOsricMarenAndBrannSpeakOfIt() {
+        beatTheHeraldAndSeeTheEpilogue();
+        player.exit("to_ruins");
+        player.exit("to_lane");
+        SessionView osric = player.interact("osric");
+        assertTrue(osric.dialogue().text().startsWith("\"So the light held,\" Osric says. \"All my life I waited to see it hold.\""),
+                osric.dialogue().text());
+        player.choose("I should go.");
+        player.choose("Leave");
+        SessionView again = player.interact("osric");
+        assertFalse(again.dialogue().nodeId().equals("osric_after_herald"), "said once, then the usual talk");
+        player.choose(again.dialogue().choices().getLast().label());
+
+        player.exit("to_square");
+        assertTrue(player.interact("maren").dialogue().text().contains("But tonight Eldmere sleeps."));
+        player.choose("Leave her be");
+        assertTrue(player.interact("brann").dialogue().text().contains("That blade's mine: off my own rack"));
+    }
+
+    @Test
+    void theFloodHasDroppedButTheWestRoadStopsAtTheFarBank() {
+        SessionView before = new RoutePlayer(engine, engine.newGame(0, false, 5L), clock).choose("Ignore");
+        assertTrue(before.world().hiddenObjects().contains("road_stop"));
+
+        beatTheHeraldAndSeeTheEpilogue();
+        player.exit("to_ruins");
+        SessionView lane = player.exit("to_lane");
+        assertTrue(lane.world().hiddenObjects().contains("flooded_road"), "the flood is down");
+        assertFalse(lane.world().hiddenObjects().contains("road_stop"));
+        assertEquals("The far bank is still sodden; tomorrow, perhaps.", player.interact("road_stop").dialogue().text());
+    }
+
     @Test
     void aRunStoredMidCutsceneResumesIntoTheSameCutscene() {
         toTheRise(false);

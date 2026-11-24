@@ -5,6 +5,17 @@
   "start": "maren_greet",
   "entries": [
     {
+      "node": "maren_after_herald",
+      "conditions": [
+        {
+          "type": "FLAG",
+          "key": "herald_defeated",
+          "op": ">=",
+          "value": 1
+        }
+      ]
+    },
+    {
       "node": "maren_shard",
       "conditions": [
         {
@@ -84,6 +95,18 @@
               "value": 5
             }
           ]
+        }
+      ]
+    },
+    {
+      "id": "maren_after_herald",
+      "title": "Elder Maren",
+      "speaker": "maren",
+      "text": "Maren looks north, where the ash has stopped falling. \"The Circle will know their Herald fell. They'll send worse, in time. But tonight Eldmere sleeps.\"",
+      "choices": [
+        {
+          "label": "Leave her be",
+          "end": true
         }
       ]
     }

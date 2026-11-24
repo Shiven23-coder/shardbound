@@ -4,7 +4,8 @@
 //  - the junction: the Junction Lantern (P-61), with Osric the Lamplighter beside it
 //  - Corvin's stop on the east lane, under his lantern
 //  - the flooded west road toward the Whispering Wood: dead trees, water, a sign; the flood
-//    closes the way until the Wood opens (an obstacle, P-45)
+//    closes the way (an obstacle, P-45) until the Herald falls (P-67), and then the far bank,
+//    still sodden, stops the road until the Wood opens
 //  - the south meadow: two creeps (V4, P-54): a Storm Rat and a Mire Slime
 //  - a secret clearing behind the south-east tree wall: the secret chest (V6a, P-65)
 import {
@@ -30,8 +31,11 @@ export default function cottageLane() {
   // Flood water pressing in on both sides of the west road, then rain puddles.
   paintEllipse(terrain, 1.8, 9.2, 3.6, 1.9, 'water', ['grass', 'forest']);
   paintEllipse(terrain, 2.4, 15.6, 3.8, 2.1, 'water', ['grass', 'forest']);
-  paintRect(terrain, 0, 11, 3, 3, 'water'); // the flood over the road itself
   smooth(terrain, 'water', 'grass');
+  // The flood over the road itself, and over the pond banks beside it so the water reads as one: it
+  // lies in the obstacles layer and drops with flooded_road (P-67). The edge column is the far bank.
+  const flood = [];
+  for (let y = 10; y <= 14; y++) for (let x = 1; x <= 2; x++) flood.push([x, y]);
   paintEllipse(terrain, 12.8, 15.0, 2.0, 1.25, 'water', ['grass']);
   paintEllipse(terrain, 20.8, 15.0, 2.0, 1.25, 'water', ['grass']);
 
@@ -83,6 +87,7 @@ export default function cottageLane() {
     terrain,
     forestTrees,
     stamps,
+    obstacleWater: flood,
     details,
     properties: { area: 'eldmere_cottage_lane', region: 'eldmere' },
     objects: [
@@ -95,7 +100,8 @@ export default function cottageLane() {
       { name: 'corvin', type: 'npc', x: 26, y: 9, props: { npcId: 'corvin', dialogue: 'corvin_storm', showIf: 'storm_night' } },
       { name: 'forest_sign', type: 'interact', x: 6, y: 11, props: { dialogue: 'forest_sign' } },
       { name: 'cottage_door', type: 'interact', x: 7, y: 8, props: { dialogue: 'cottage_door' } },
-      { name: 'flooded_road', type: 'obstacle', x: 1, y: 11, w: 2, h: 3, props: { dialogue: 'flooded_road', opensIn: 'WW' } },
+      { name: 'flooded_road', type: 'obstacle', x: 1, y: 10, w: 2, h: 5, props: { dialogue: 'flooded_road', hideIf: 'herald_defeated' } },
+      { name: 'road_stop', type: 'obstacle', x: 0, y: 11, w: 1, h: 3, props: { dialogue: 'road_stop', showIf: 'herald_defeated', opensIn: 'WW' } },
       // warm light (map rule 6)
       { name: 'cottage_window', type: 'light', x: 8, y: 7, props: { radius: 2.4, color: '#ffb35c', intensity: 0.85 } },
       { name: 'cottage_door', type: 'light', x: 7, y: 9, props: { radius: 3.2, color: '#ff9a3c', intensity: 0.8 } },

@@ -5,6 +5,14 @@
   "start": "brann",
   "entries": [
     {
+      "node": "brann_longsword",
+      "conditions": [
+        { "type": "FLAG", "key": "herald_defeated", "op": ">=", "value": 1 },
+        { "type": "ITEM", "key": "iron_longsword", "op": ">=", "value": 1 },
+        { "type": "FLAG", "key": "brann_longsword_line", "op": "=", "value": 0 }
+      ]
+    },
+    {
       "node": "brann_ember",
       "conditions": [
         { "type": "ITEM", "key": "heartshard", "op": ">=", "value": 1 },
@@ -37,6 +45,21 @@
           "effects": [
             { "type": "LEARN_SKILL", "key": "ember" },
             { "type": "SET_FLAG", "key": "brann_taught_ember", "value": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "brann_longsword",
+      "title": "Brann the Smith",
+      "speaker": "brann",
+      "text": "Brann sees the sword at your side and sets down his hammer. \"That blade's mine: off my own rack, the night of the storm. Keep it. You've given it a better story than I could.\"",
+      "choices": [
+        {
+          "label": "Keep it",
+          "end": true,
+          "effects": [
+            { "type": "SET_FLAG", "key": "brann_longsword_line", "value": 1 }
           ]
         }
       ]
