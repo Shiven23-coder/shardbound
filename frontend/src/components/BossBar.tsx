@@ -3,13 +3,14 @@ import { StatusIcon } from './BattleInfoBox';
 
 // A boss's bar (P-67): its name, a long HP bar with a tick where its second
 // phase begins, the phase it is in, its statuses, and a warning that stays
-// while a telegraphed blow is pending. It sits bottom-centre above the battle
-// text, or at the top of the deck in portrait. The HP and the phase keep pace
+// while a telegraphed blow is pending. It sits above the battle text at its
+// right edge, clear of the player's sprite, or at the top of the deck in portrait. The HP and the phase keep pace
 // with the battle text.
 interface BossBarProps {
   boss: BossBarView;
   fighter: FighterView;
   phase: number;
+  /** The pending telegraph's warning, from content ("Cinderfall next turn — Guard to brace"), or null. */
   warning: string | null;
 }
 
@@ -31,7 +32,7 @@ export default function BossBar({ boss, fighter, phase, warning }: BossBarProps)
         <span className="boss-bar-fill" style={{ width: `${share * 100}%` }} />
         <span className="boss-bar-tick" style={{ left: `${boss.phase2Pct}%` }} aria-hidden="true" />
       </div>
-      {warning && <p className="battle-warning boss-bar-warning" role="status">⚠ {warning} next turn</p>}
+      {warning && <p className="battle-warning boss-bar-warning" role="status">⚠ {warning}</p>}
     </section>
   );
 }

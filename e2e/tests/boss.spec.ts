@@ -2,8 +2,8 @@ import { expect, test, type Page } from '@playwright/test';
 import * as backend from '../support/backend';
 import { expectTouchTargets } from '../support/touch';
 import {
-  choose, fightTheHerald, holdSkip, inArea, interact, loseBattle, newGame, press, readyForTheHerald, toTheHerald,
-  toTheRuinsLanternAfterTheAshFalls, turnPage, walkTo, type Controls,
+  castInPlayArea, choose, fightTheHerald, holdSkip, inArea, interact, loseBattle, newGame, press, readyForTheHerald,
+  toTheHerald, toTheRuinsLanternAfterTheAshFalls, turnPage, walkTo, type Controls,
 } from '../support/world';
 
 // The Ashen Herald through the real UI in every layout (P-67, P-68).
@@ -46,7 +46,14 @@ test('the intro advances by taps, skips only on a full hold, and never plays aga
   const line = page.locator('.cutscene-line');
   await expect(line).toBeVisible({ timeout: 30_000 });
   await expect(line).toContainText('Little lamp-bearer. You carry what was ours.', { timeout: 10_000 });
-  await expect(page.locator('.hud-cluster')).toBeHidden();             // a cutscene hides the HUD
+  // Both the Herald and the player in full view, above the line box and inside the screen (P-68).
+  await expect.poll(async () => {
+    const framing = await castInPlayArea(page);
+    return framing.inside ? 'framed' : framing.cast;               // on failure, the boxes show
+  }, { timeout: 10_000 }).toBe('framed');
+  await expect(page.locator('.hud-cluster')).toBeHidden();             // a cutscene hides the HUD…
+  await expect(page.locator('.objective-line')).toBeHidden();          // …and every overlay (P-68)
+  await expect(page.locator('.area-title')).toBeHidden();
   if (testInfo.project.use.hasTouch) await expectTouchTargets(page, 'the cutscene');
 
   await press(line);                                                    // completes the typing (or it already has)
@@ -78,11 +85,23 @@ test('a win: FOE VANQUISHED, the epilogue, then free roam and the west road stop
   await holdSkip(page, controls, 1400);
 
   let vanquished = false;
+  let taught = false;
   const won = await fightTheHerald(page, controls, 3, async () => {
     vanquished ||= await page.locator('.boss-banner-vanquished').isVisible();
+    const warning = page.locator('.boss-bar-warning');
+    if (taught || !(await warning.isVisible()) || !(await page.locator('.battle-menu').isVisible())) return;
+    // The lesson (P-67): the warning says what to do on one line, and the way to Guard is marked.
+    taught = true;
+    await expect(warning).toHaveText(/^⚠ (Cinderfall|Pyre Descent) next turn — Guard to brace$/);
+    // One line (it never wraps), and the line fits the bar rather than running out of it.
+    const fits = await warning.evaluate((el) => el.scrollWidth <= el.clientWidth + 1
+      && el.getBoundingClientRect().height < parseFloat(getComputedStyle(el).fontSize) * 2.4);
+    expect(fits, 'the warning fits on one line').toBe(true);
+    await expect(page.locator('.battle-menu').getByRole('button', { name: /^Attack/ })).toHaveClass(/battle-option-cue/);
   });
   expect(won).toBe(true);
   expect(vanquished, 'FOE VANQUISHED showed').toBe(true);
+  expect(taught, 'a telegraph was warned of').toBe(true);
 
   const line = page.locator('.cutscene-line');
   await expect(line).toContainText('The ash stops falling.', { timeout: 15_000 });
@@ -92,6 +111,8 @@ test('a win: FOE VANQUISHED, the epilogue, then free roam and the west road stop
     await page.waitForTimeout(300);
   }
   await expect(page.locator('.hud-cluster')).toBeVisible({ timeout: 20_000 });
+  // The objective that changed with the victory shows once the epilogue is over, not under it.
+  await expect(page.locator('.objective-line')).toContainText('The road west is drying.', { timeout: 15_000 });
   await expect(page.getByTestId('world-canvas').locator('canvas')).not.toHaveAttribute('data-bosses', /ashen_herald/);
 
   await walkTo(page, controls, 'to_ruins');

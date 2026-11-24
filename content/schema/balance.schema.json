@@ -70,7 +70,8 @@
         "defensiveGuardBelowPct",
         "dialogueLossHpPct",
         "victoryFpPct",
-        "bossShardsMultiplier"
+        "bossShardsMultiplier",
+        "brace"
       ],
       "additionalProperties": false,
       "properties": {
@@ -247,6 +248,16 @@
           "description": "A boss pays this many times a creep of its level's Shards (V2_SPEC §4.3, P-67).",
           "type": "integer",
           "minimum": 1
+        },
+        "brace": {
+          "description": "What the battle shows while a creep's telegraphed blow is pending (P-67): the warning ({move}: its name) and the Guard option's subtitle. A boss has its own in bosses.json.",
+          "type": "object",
+          "required": ["warning", "guardDetail"],
+          "additionalProperties": false,
+          "properties": {
+            "warning": { "type": "string", "pattern": "[{]move[}]" },
+            "guardDetail": { "type": "string", "minLength": 1 }
+          }
         }
       }
     },

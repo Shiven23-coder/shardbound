@@ -41,34 +41,62 @@ class BattleEngineTest {
     void theFasterFighterActsFirstAndThePlayerWinsTies() {
         GameState s = player(1);
         fight(s, "storm_rat", 2);                                  // speed 8 > the player's 6
-        engine.act(s, BattleAction.of(BattleAction.Kind.GUARD));
+        engine.act(s, BattleAction.of(BattleAction.Kind.STRIKE));
         List<String> text = s.battle().text();
         assertTrue(text.getFirst().startsWith("The Storm Rat"), text.toString());
 
         GameState t = player(1);
         BattleState slow = fight(t, "mire_slime", 1);               // speed 4 < 6
-        engine.act(t, BattleAction.of(BattleAction.Kind.GUARD));
-        assertEquals("You raise your guard.", slow.text().getFirst());
+        engine.act(t, BattleAction.of(BattleAction.Kind.STRIKE));
+        assertEquals("You strike!", slow.text().getFirst());
     }
 
+    /** P-69: Guard goes first, so a slower player's guard blunts the faster rat's hit in the same round. */
     @Test
-    void aTelegraphedMoveIsAnnouncedFirstAndLandsNextTurnCutToAQuarterByGuard() {
+    void aSlowerPlayersGuardGoesFirstAndHalvesTheFasterEnemysHitThatRound() {
+        GameState open = player(1);
+        BattleState unguarded = fight(open, "storm_rat", 2);
+        engine.act(open, BattleAction.of(BattleAction.Kind.STRIKE));
+        int full = unguarded.hits().stream().filter(HitLine::onPlayer).findFirst().orElseThrow().amount();
+
+        GameState s = player(1);                                     // the same seed: the same Bite, the same roll
+        BattleState battle = fight(s, "storm_rat", 2);
+        engine.act(s, BattleAction.of(BattleAction.Kind.GUARD));
+        assertEquals("You raise your guard.", battle.text().getFirst(), "the guard goes before the faster rat");
+        int halved = battle.hits().stream().filter(HitLine::onPlayer).findFirst().orElseThrow().amount();
+        assertTrue(Math.abs(halved * 2 - full) <= 1, "guarded " + halved + " of " + full);
+    }
+
+    /**
+     * Rewritten for P-69. It used to pin the old order, where the faster rat landed its announced Frenzy before a
+     * guard chosen that round went up, so only a guard raised the round before could blunt it. Now the guard goes
+     * first and lasts to the end of the round: the Frenzy announced last round lands on it at a quarter.
+     */
+    @Test
+    void aTelegraphedMoveIsAnnouncedFirstAndAGuardChosenTheNextRoundCutsItToAQuarter() {
         GameState s = player(7);
         BattleState battle = fight(s, "storm_rat", 2);
         Skill frenzy = content.skills().get("rat_frenzy");
         battle.enemy().announce(frenzy);
         assertTrue(battle.telegraph().contains("Storm Rat"), battle.telegraph());
-        // Round 1: the faster rat lands the announced Frenzy before the player raises a guard.
-        int before = s.stats().hp();
-        engine.act(s, BattleAction.of(BattleAction.Kind.GUARD));
-        assertTrue(before - s.stats().hp() > 0);
-        // Round 2: the guard raised in round 1 lasts until the player's next turn, so Frenzy lands at a quarter.
-        battle.enemy().announce(frenzy);
         s.stats().heal(100);
         engine.act(s, BattleAction.of(BattleAction.Kind.GUARD));
+        assertEquals("You raise your guard.", battle.text().getFirst());
         int guarded = 100 - s.stats().hp();
         double raw = 13 * 2.0 * 100 / 110.0;                        // atk 13 at level 2, DEF 10
-        assertTrue(guarded <= Math.ceil(raw * 0.25 * 1.1 * 1.5), "guarded frenzy: " + guarded);
+        assertTrue(guarded > 0 && guarded <= Math.ceil(raw * 0.25 * 1.1 * 1.5), "guarded frenzy: " + guarded);
+        assertFalse(battle.enemy().statuses().has(Status.EXPOSED), "only a boss is exposed by a guarded telegraph");
+    }
+
+    /** P-69: an enemy's Guard goes first too: the slower slime braces before the player's strike lands. */
+    @Test
+    void anEnemysGuardAlsoGoesFirst() {
+        GameState s = player(3);
+        BattleState battle = fight(s, "mire_slime", 1);              // speed 4 < the player's 6
+        battle.enemy().takeDamage(battle.enemy().maxHp() - 5);      // below 30 %: it will guard
+        engine.act(s, BattleAction.of(BattleAction.Kind.STRIKE));
+        assertEquals("The Mire Slime braces itself.", battle.text().getFirst(), battle.text().toString());
+        assertTrue(battle.enemy().guarding());
     }
 
     @Test

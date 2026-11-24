@@ -2206,6 +2206,26 @@ body:has(.side-panels) .toast:not([data-kind='ERROR']) { display: none; }
   color: var(--gold);
   font-size: 0.85rem;
   font-weight: 700;
+  white-space: nowrap;               /* one line in every layout (the content strings are short enough) */
+}
+
+/* A creep's info box widens for its warning rather than wrap it. */
+.battle-info:has(.battle-warning) {
+  max-width: 64%;
+}
+
+/* While a blow is pending, the way to Guard carries the warning's amber (P-67). */
+.battle-option-cue {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px rgba(245, 197, 66, 0.35);
+}
+
+.battle-option-cue .battle-option-detail {
+  color: var(--gold);
+}
+
+.battle-option-cue.battle-option-highlighted {
+  background: rgba(245, 197, 66, 0.2);
 }
 
 .status-crack {
@@ -2257,6 +2277,15 @@ body:has(.side-panels) .toast:not([data-kind='ERROR']) { display: none; }
 .boss-phase-2 .boss-bar-phase {
   border-color: var(--hp-2);
   color: var(--hp-2);
+}
+
+/* The second phase burns hotter: an ember fill, from deep red to white-gold (P-67). */
+.boss-phase-2 .boss-bar-fill {
+  background: linear-gradient(90deg, #c2261a, #ff7a1a 60%, #ffd36a);
+}
+
+.boss-phase-2 {
+  border-color: #b4451c;
 }
 
 .boss-bar-statuses {

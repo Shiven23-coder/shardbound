@@ -49,7 +49,7 @@ export default function BattleBox({ battle, busy, placement, onAction, onDone, o
   const measure = useRef<HTMLDivElement>(null);
   const textDone = page >= pages.length;
   const ended = Boolean(battle.outcome);
-  const items = useMemo(() => menuItems(menu.page, battle.menu), [menu.page, battle.menu]);
+  const items = useMemo(() => menuItems(menu.page, battle.menu, battle.brace), [menu.page, battle.menu, battle.brace]);
 
   // A new round starts the menu on ATTACK.
   useEffect(() => {
@@ -150,7 +150,7 @@ export default function BattleBox({ battle, busy, placement, onAction, onDone, o
             <li key={item.id}>
               <button
                 type="button"
-                className={index === highlight ? 'battle-option battle-option-highlighted' : 'battle-option'}
+                className={`battle-option${index === highlight ? ' battle-option-highlighted' : ''}${item.cue ? ' battle-option-cue' : ''}`}
                 aria-current={index === highlight}
                 disabled={item.disabled || busy}
                 onMouseEnter={() => !item.disabled && setMenu((current) => ({ ...current, highlight: index }))}

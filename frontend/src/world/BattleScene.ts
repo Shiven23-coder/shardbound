@@ -6,10 +6,12 @@
 // the target, the target flashes, a number floats up, and a critical hit
 // shakes the camera. Skipping the text plays what is left at once, quickly. A
 // won battle fades the enemy into smoke after the last blow's lines, a lost
-// one the player. A pending telegraph holds the enemy in a wind-up (a boss's
-// raised wings, a creep's tint); a boss turning to its second phase plays its
-// transformation on that line (P-67). The info boxes, text and menus are
-// React's. Reduce motion turns off the shake, flashes and lunges.
+// one the player. A pending telegraph holds the enemy in a wind-up: a slow
+// brightening glow and a small rise and fall (and a boss's raised wings). A
+// boss turning to its second phase plays its transformation on that line, with
+// one ember flash and a short shake, and glows like embers from then on
+// (P-67). The info boxes, text and menus are React's. Reduce motion turns off
+// the shake, the lunges, the pulse and the rise; the flashes become one soft one.
 import Phaser from 'phaser';
 import { audio } from '../audio/audio';
 import type { Effect } from '../audio/audio';
@@ -18,6 +20,7 @@ import type { WorldBridge } from './bridge';
 import { battleBackdrop, battleEffects, bossArt, bossTexture, effectArt, sheetLayout } from './content';
 import type { BossArt } from './content';
 import { createBossAnimations } from './bossSprites';
+import { mixColour } from './colour';
 import { reducedMotion } from './motion';
 
 export const BATTLE_SCENE = 'battle';
@@ -45,8 +48,20 @@ const LIGHTS: Record<string, { sky: [number, number]; tint: number }> = {
 };
 /** A boss stands this many creep-heights tall in the arena (P-67). */
 const BOSS_HEIGHT_IN_CREEPS = 2.4;
-/** The tint of a fighter winding up a telegraphed blow (P-67): warm, never a flash. */
-const WIND_UP_TINT = 0xffb89a;
+/**
+ * The enemy's looks (P-67), all in the screen tint mode, which only ever lightens: a boss's second phase glows
+ * like embers; a wind-up pulses from the resting look to a brighter one and back, slowly (never a strobe).
+ */
+const LOOK = {
+  calm: 0x000000,
+  ember: 0x5a1c04,
+  windUpPeak: { calm: 0x6a4418, ember: 0xa04a10 },
+  /** Under reduce motion the wind-up holds this far between the resting look and the peak. */
+  reducedShare: 0.6,
+} as const;
+/** One wind-up pulse, there and back, and how far the enemy rises, in sprite pixels. */
+const WIND_UP_PULSE_MS = 900;
+const WIND_UP_RISE_PX = 3;
 
 export class BattleScene extends Phaser.Scene {
   private bridge!: WorldBridge;
@@ -67,6 +82,13 @@ export class BattleScene extends Phaser.Scene {
   private bossArt: BossArt | null = null;
   private bossKey = '';
   private windingUp = false;
+  /** The boss has turned to its second phase (its transformation has played). */
+  private emberPhase = false;
+  /** A hit's white flash is on the enemy: the wind-up pulse leaves its tint alone. */
+  private enemyFlashing = false;
+  private windUpTweens: Phaser.Tweens.Tween[] = [];
+  /** Where the enemy stands, without the wind-up's rise. */
+  private enemyRestY = 0;
   /** The round whose phase-2 transformation has played. */
   private phasePlayedRound = -1;
   private scale$ = 4;
@@ -87,6 +109,9 @@ export class BattleScene extends Phaser.Scene {
     this.bossArt = null;
     this.bossKey = '';
     this.windingUp = false;
+    this.emberPhase = false;
+    this.enemyFlashing = false;
+    this.windUpTweens = [];
     this.phasePlayedRound = -1;
   }
 
@@ -109,7 +134,10 @@ export class BattleScene extends Phaser.Scene {
       this.enemy.anims.play({ key: `${first.enemy.sprite}:walk:DOWN`, frameRate: 4 });
     }
     this.player = this.add.sprite(0, 0, first.player.sprite, frame('UP')).setOrigin(0.5, 0.9);
+    // A fight resumed in the second phase (not turning to it this round) glows from the start.
+    this.emberPhase = first.boss?.phase === 2 && first.boss.phaseLine == null;
     this.layout();
+    this.restoreLook();
     this.cameras.main.setBackgroundColor('#07060a');
     if (!reducedMotion()) this.cameras.main.flash(260, 255, 255, 255);
     audio.play('battleStart');
@@ -164,7 +192,9 @@ export class BattleScene extends Phaser.Scene {
       return this.add.ellipse(at.x, at.y - 1, TILE * this.scale$ * 0.9, TILE * this.scale$ * 0.22, 0x000000, 0.35);
     });
     const enemyScale = this.bossArt ? (this.scale$ * TILE * BOSS_HEIGHT_IN_CREEPS) / this.bossArt.frameSize : this.scale$;
+    this.enemyRestY = enemyAt.y;
     this.enemy.setPosition(enemyAt.x, enemyAt.y).setScale(enemyScale).setDepth(2);
+    if (this.windingUp) this.startWindUpMotion();          // the rise follows the new size
     this.player.setPosition(playerAt.x, playerAt.y).setScale(this.scale$ + 1).setDepth(3);
     if (lightState === 'storm_night' && !this.rain && this.textures.exists('fx:rain')) {
       this.rain = this.add.particles(0, 0, 'fx:rain', {
@@ -215,8 +245,9 @@ export class BattleScene extends Phaser.Scene {
   }
 
   /**
-   * A telegraphed blow is pending (P-67): a boss holds its wind-up frame, a creep keeps moving; both take a
-   * warm tint until the blow lands. No flash, so it holds under reduce motion too.
+   * A telegraphed blow is pending (P-67): a boss holds its wind-up pose; boss or creep, the enemy glows brighter
+   * and back, slowly, and rises a little and settles, until the blow lands. Under reduce motion it holds a
+   * steady brighter glow instead.
    */
   private windUp(on: boolean): void {
     if (on === this.windingUp) return;
@@ -226,22 +257,70 @@ export class BattleScene extends Phaser.Scene {
         this.enemy.anims.stop();
         this.enemy.setTexture(bossTexture(this.bossKey, 'attack'), this.bossArt.windUpFrame);
       }
-      this.enemy.setTint(WIND_UP_TINT);
+      this.startWindUpMotion();
     } else {
-      this.enemy.clearTint();
+      this.stopWindUpMotion();
       if (this.bossArt) this.enemy.play(`${this.bossKey}:idle`);
     }
+    this.restoreLook();
   }
 
-  /** The boss turns to its second phase: its transformation, a sting and (with motion) a flash. */
+  private startWindUpMotion(): void {
+    this.stopWindUpMotion();
+    if (reducedMotion()) return;
+    const pulse = { share: 0 };
+    this.windUpTweens = [
+      this.tweens.add({
+        targets: pulse, share: 1, duration: WIND_UP_PULSE_MS / 2, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+        onUpdate: () => this.showLook(pulse.share),
+      }),
+      this.tweens.add({
+        targets: this.enemy, y: this.enemyRestY - WIND_UP_RISE_PX * this.enemy.scaleY, duration: WIND_UP_PULSE_MS / 2,
+        yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+      }),
+    ];
+  }
+
+  private stopWindUpMotion(): void {
+    this.windUpTweens.splice(0).forEach((tween) => tween.remove());
+    this.enemy.y = this.enemyRestY;
+  }
+
+  /** The enemy's look now: the resting one (calm, or the ember phase), or a wind-up's held glow. */
+  private restoreLook(): void {
+    this.showLook(this.windingUp && reducedMotion() ? LOOK.reducedShare : 0);
+  }
+
+  /** The look `share` of the way from the resting one to the wind-up's peak. */
+  private showLook(share: number): void {
+    if (this.enemyFlashing) return;
+    const rest = this.emberPhase ? LOOK.ember : LOOK.calm;
+    const peak = this.emberPhase ? LOOK.windUpPeak.ember : LOOK.windUpPeak.calm;
+    const colour = this.windingUp ? mixColour(rest, peak, share) : rest;
+    if (colour === LOOK.calm) this.enemy.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
+    else this.enemy.setTint(colour).setTintMode(Phaser.TintModes.SCREEN);
+  }
+
+  /**
+   * The boss turns to its second phase: its transformation and a sting, one ember flash and a short shake (one
+   * soft flash under reduce motion), then the ember glow; the music steps up on the same line (React).
+   */
   private playTransformation(): void {
     if (!this.bossArt) return;
     audio.play('heraldPhase');
-    if (!reducedMotion()) this.cameras.main.flash(320, 255, 200, 150);
+    if (reducedMotion()) {
+      this.cameras.main.flash(500, 90, 50, 25);
+    } else {
+      this.cameras.main.flash(220, 255, 150, 70);
+      this.cameras.main.shake(250, 0.008);
+    }
     this.windingUp = false;
-    this.enemy.clearTint().play(`${this.bossKey}:transform`);
+    this.stopWindUpMotion();
+    this.emberPhase = true;
+    this.restoreLook();
+    this.enemy.play(`${this.bossKey}:transform`);
     this.enemy.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
-      if (this.battle?.telegraphMove) this.windUp(true);
+      if (this.battle?.telegraphMove && !this.battle.outcome) this.windUp(true);
       else this.enemy.play(`${this.bossKey}:idle`);
     });
   }
@@ -273,9 +352,21 @@ export class BattleScene extends Phaser.Scene {
     fx.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => fx.destroy());
   }
 
+  /** A hit's white flash; the enemy then takes its look back (its ember glow, its wind-up). */
   private flash(target: Phaser.GameObjects.Sprite): void {
-    const white = () => target.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
-    const normal = () => target.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
+    const isEnemy = target === this.enemy;
+    const white = () => {
+      if (isEnemy) this.enemyFlashing = true;
+      target.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
+    };
+    const normal = () => {
+      if (!isEnemy) {
+        target.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
+        return;
+      }
+      this.enemyFlashing = false;
+      this.restoreLook();
+    };
     white();
     this.time.delayedCall(70, normal);
     this.time.delayedCall(140, white);
@@ -299,6 +390,7 @@ export class BattleScene extends Phaser.Scene {
   private playOutcome(outcome: string): void {
     const motion = !reducedMotion();
     if (outcome === 'WON') {
+      this.windUp(false);
       this.playEffect(battleEffects.escape, this.enemy, 'victory');
       this.tweens.add({ targets: this.enemy, alpha: 0, y: this.enemy.y + (motion ? 6 : 0), duration: 500 });
     } else if (outcome === 'LOST') {

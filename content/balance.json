@@ -13,7 +13,8 @@
     "defensiveGuardBelowPct": 30,
     "dialogueLossHpPct": 50,
     "victoryFpPct": 25,
-    "bossShardsMultiplier": 5
+    "bossShardsMultiplier": 5,
+    "brace": { "warning": "{move} next turn — Guard to brace", "guardDetail": "Brace against the blow" }
   },
   "progression": {
     "attributeStart": 10,

@@ -104,11 +104,16 @@ export default function WorldScreen() {
   }, [view?.battle]);
   const walking = view?.mode === 'WORLD' && battle === null;
   const hint = useHint(bridge, state.player?.playerId, walking);
-  // One overlay at a time (P-49): the area title, then any opening dialogue, then the objective, then a hint.
+  // One overlay at a time (P-49): the area title, then any opening dialogue, then the objective, then a hint;
+  // none over a battle or a cutscene, and an objective that changed meanwhile waits for them to end (P-68).
   const titleShowing = useAreaTitle(view?.world.areaName ?? '');
   const dialogueOpen = view?.mode === 'DIALOGUE' && Boolean(view.dialogue);
-  const objective = useObjectiveBanner(view?.objective, !titleShowing && !dialogueOpen);
-  const overlay = overlayNow({ battle: battle !== null, title: titleShowing, dialogue: dialogueOpen, objective: objective.waiting, hint: hint.shown !== null });
+  const staging = view?.mode === 'CUTSCENE';
+  const objective = useObjectiveBanner(view?.objective, !titleShowing && !dialogueOpen && !staging && battle === null);
+  const overlay = overlayNow({
+    battle: battle !== null, cutscene: staging, title: titleShowing, dialogue: dialogueOpen, objective: objective.waiting,
+    hint: hint.shown !== null,
+  });
 
   useEffect(() => {
     bridge.device = device;
@@ -155,13 +160,20 @@ export default function WorldScreen() {
     setBattleLine({ round, line });
   }, [bridge]);
   const shownLine = battle && battleLine.round === battle.round ? battleLine.line : 0;
+  // A dialogue's box, or a cutscene's line box, covers the bottom of the view: the scene frames above it.
+  const lineBoxOpen = view?.mode === 'DIALOGUE' || cutscene !== null;
   useEffect(() => {
-    bridge.setDialogue(view?.mode === 'DIALOGUE' ? DIALOGUE_COVER[layout] : null);
-  }, [bridge, view?.mode, layout]);
+    bridge.setDialogue(lineBoxOpen ? DIALOGUE_COVER[layout] : null);
+  }, [bridge, lineBoxOpen, layout]);
 
   // The region's music plays while the world is on screen (P-42), the battle track during a battle (P-57),
   // a boss's own track against it, and a cutscene's track once it asks for one (P-67).
   const bossId = battle ? bossIdOf(battle.enemy.sprite) : null;
+  // The boss's phase as the battle text has reached it: the bar, the scene and the music turn on the same line.
+  const bossPhase = battle?.boss ? (battle.boss.phaseLine != null && shownLine < battle.boss.phaseLine ? 1 : battle.boss.phase) : 0;
+  useEffect(() => {
+    audio.setEscalated(bossPhase === 2);
+  }, [bossPhase]);
   const music = battle
     ? (bossId ? audioPacks.bosses[bossId]?.music : undefined) ?? 'battle'
     : cutscenePlayer.music ?? view?.world.regionId;
@@ -249,13 +261,13 @@ export default function WorldScreen() {
     : null;
   // A telegraphed blow is warned of once the round's text is read, until it lands (P-67).
   const battleRead = shownLine === Infinity;
-  const warning = battle && battle.telegraphMove && battleRead && !battle.outcome ? battle.telegraphMove : null;
+  const warning = battle?.brace && battleRead ? battle.brace.warning : null;
   const boss = battle?.boss;
   const bossBar = battle && boss ? (
     <BossBar
       boss={boss}
       fighter={{ ...battle.enemy, hp: hpShown(battle.enemy, false, battle.hits, shownLine) }}
-      phase={boss.phaseLine != null && shownLine < boss.phaseLine ? 1 : boss.phase}
+      phase={bossPhase}
       warning={warning}
     />
   ) : null;

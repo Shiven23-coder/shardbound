@@ -70,27 +70,39 @@ class BossTest {
         assertNull(battle.phaseLine());
     }
 
+    /**
+     * The cadence (P-67): one in every n-th of the boss's moves is its phase's telegraph, and a telegraph takes two
+     * of its turns (the announcement, then the blow), so it is announced every (n + 1)-th round: phase 1 (every 3rd
+     * move) strikes twice between Cinderfalls, phase 2 (every 2nd) once between Pyre Descents.
+     */
     @Test
-    void telegraphsComeOnACadenceEveryThirdRoundThenEverySecond() {
+    void telegraphsComeEveryThirdMoveThenEverySecondWithOrdinaryBlowsBetween() {
         GameState s = player(3);
         BattleState battle = fight(s);
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < 8; i++) {
             s.stats().heal(1000);
-            engine.act(s, guard());
+            engine.act(s, BattleAction.of(BattleAction.Kind.STRIKE));
+            battle.enemy().restore(battle.enemy().maxHp(), false, battle.enemy().pendingTelegraphs());   // stay in phase 1
             boolean announced = battle.text().stream().anyMatch(line -> line.contains("gathers the falling ash"));
-            boolean landing = battle.text().stream().anyMatch(line -> line.contains("uses Cinderfall"));
-            assertEquals(battle.round() % 3 == 0, announced, "phase 1 announces Cinderfall on every 3rd round: " + battle.round());
-            assertFalse(announced && landing);
+            assertEquals(battle.round() % 4 == 0, announced, "phase 1 announces Cinderfall every 4th round: " + battle.round());
         }
-        battle.enemy().restore(battle.enemy().maxHp() / 3, false, List.of());   // phase 2
-        for (int i = 0; i < 4; i++) {
+        battle.enemy().restore(battle.enemy().maxHp() / 3, false, battle.enemy().pendingTelegraphs());   // phase 2
+        boolean previousLanded = false;
+        int landings = 0;
+        for (int i = 0; i < 9; i++) {
             s.stats().heal(1000);
             engine.act(s, guard());
-            boolean landed = battle.text().stream().anyMatch(line -> line.contains("uses Cinderfall") || line.contains("uses Pyre Descent"));
-            boolean announced = battle.telegraph() != null && battle.telegraph().contains("spreads its burning wings");
-            assertEquals(battle.round() % 2 == 0 && !landed, announced,
-                    "phase 2 announces Pyre Descent on every 2nd round: " + battle.round() + " " + battle.text());
+            battle.enemy().restore(battle.enemy().maxHp() / 3, false, battle.enemy().pendingTelegraphs());
+            boolean announced = battle.text().stream().anyMatch(line -> line.contains("spreads its burning wings"));
+            boolean landed = battle.text().stream().anyMatch(line -> line.contains("uses Pyre Descent"));
+            assertEquals(battle.round() % 3 == 0, announced, "phase 2 announces Pyre Descent every 3rd round: " + battle.round());
+            if (previousLanded) {
+                assertFalse(announced || landed, "an ordinary blow follows each Pyre Descent: " + battle.text());
+            }
+            previousLanded = landed;
+            landings += landed ? 1 : 0;
         }
+        assertTrue(landings >= 2, "Pyre Descent lands again and again");
     }
 
     @Test
@@ -98,14 +110,23 @@ class BossTest {
         GameState s = player(4);
         BattleState battle = fight(s);
         double unexposed = battle.enemy().defence(content);
-        engine.act(s, guard());                                        // round 1: the guard lasts into round 2
         battle.enemy().announce(content.skills().get("cinderfall"));
         s.stats().heal(1000);
-        engine.act(s, guard());                                        // round 2: Cinderfall lands on the guard
+        engine.act(s, guard());                                        // the guard goes first; Cinderfall lands on it (P-69)
 
         assertTrue(battle.enemy().statuses().has(Status.EXPOSED), battle.text().toString());
         assertTrue(battle.text().contains(herald.exposeLine()), battle.text().toString());
         assertEquals(unexposed * 0.5, battle.enemy().defence(content), 1e-9, "Exposed halves its defence");
+    }
+
+    @Test
+    void aGuardedOrdinaryHitDoesNotExpose() {
+        GameState s = player(5);
+        BattleState battle = fight(s);
+        s.stats().heal(1000);
+        engine.act(s, guard());                                        // round 2: not a telegraph round
+        assertTrue(battle.hits().stream().anyMatch(HitLine::onPlayer), battle.text().toString());
+        assertFalse(battle.enemy().statuses().has(Status.EXPOSED));
     }
 
     @Test

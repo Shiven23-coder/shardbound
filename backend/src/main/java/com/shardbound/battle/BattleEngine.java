@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Random;
 
@@ -108,26 +109,39 @@ public final class BattleEngine {
     // =====================================================================
 
     /**
-     * Plays one round: the player's action and the enemy's, faster first (the
-     * player on ties), each starting with its statuses' tick (V2_SPEC §4.5).
-     * The order is rebuilt every round from current speed, so Frost counts
-     * (P-54). The caller checked the action is allowed. O(1) per round.
+     * Plays one round (V2_SPEC §4.5, §4.7). Guard goes first, for every fighter
+     * (P-69): whoever guards raises it before anyone acts, and it lasts to the
+     * end of the round, so the hit it blunts is this round's. Then the other
+     * actions, faster first (the player on ties). Each fighter's turn starts with
+     * its statuses' tick; the order is rebuilt every round from current speed, so
+     * Frost counts (P-54). A creep decides its action as the round begins, so its
+     * Guard can go first too. The caller checked the action is allowed. O(1) per round.
      */
     public BattleOutcome act(GameState s, BattleAction action) {
         BattleState battle = s.battle();
         battle.startRound();
-        for (Fighter fighter : turnOrder(battle)) {
+        PlayerFighter player = battle.player();
+        CreepFighter enemy = battle.enemy();
+        player.setGuarding(false);
+        enemy.setGuarding(false);
+        EnemyAI.Choice plan = planEnemy(s, battle);
+        boolean playerGuards = action.kind() == BattleAction.Kind.GUARD;
+        boolean enemyGuards = plan != null && plan.guards();
+        for (Fighter fighter : guardsFirst(battle, playerGuards, enemyGuards)) {
             if (!fighter.isAlive()) {
                 continue;
             }
-            fighter.setGuarding(false);                 // Guard lasts until the guarder's next turn
-            boolean skip = startOfTurn(battle, fighter);
-            BattleOutcome after = outcomeOf(s, battle);
-            if (after != BattleOutcome.ONGOING) {
-                return after;
+            Turn turn = openTurn(s, battle, fighter);
+            if (turn.over() != null) {
+                return turn.over();
             }
-            if (skip) {
-                battle.say(subject(fighter) + (fighter.isPlayer() ? " are" : " is") + " stunned and cannot move!");
+            boolean guards = fighter.isPlayer() ? playerGuards : enemyGuards;
+            if (turn.stunned()) {
+                continue;
+            }
+            if (guards) {
+                fighter.setGuarding(true);
+                battle.say(fighter.isPlayer() ? "You raise your guard." : "The " + enemy.name() + " braces itself.");
                 continue;
             }
             if (fighter.isPlayer()) {
@@ -137,14 +151,59 @@ public final class BattleEngine {
                     return BattleOutcome.FLED;
                 }
             } else {
-                enemyTurn(s, battle);
+                enemyTurn(s, battle, plan);
             }
-            after = outcomeOf(s, battle);
+            BattleOutcome after = outcomeOf(s, battle);
             if (after != BattleOutcome.ONGOING) {
                 return after;
             }
         }
         return BattleOutcome.ONGOING;
+    }
+
+    /** How a fighter's turn opened: the battle's end if its statuses ended it, and whether it is stunned. */
+    private record Turn(@Nullable BattleOutcome over, boolean stunned) { }
+
+    /** A fighter's turn opens with its statuses' tick: a Stun costs the turn, and Burn or Poison may end the battle. */
+    private Turn openTurn(GameState s, BattleState battle, Fighter fighter) {
+        boolean skip = startOfTurn(battle, fighter);
+        BattleOutcome after = outcomeOf(s, battle);
+        if (after != BattleOutcome.ONGOING) {
+            return new Turn(after, skip);
+        }
+        if (skip) {
+            battle.say(subject(fighter) + (fighter.isPlayer() ? " are" : " is") + " stunned and cannot move!");
+        }
+        return new Turn(null, skip);
+    }
+
+    /**
+     * The order of the round's turns: whoever guards first (the player before the enemy if both do, P-69),
+     * then the rest by speed.
+     */
+    private List<Fighter> guardsFirst(BattleState battle, boolean playerGuards, boolean enemyGuards) {
+        List<Fighter> bySpeed = turnOrder(battle);
+        List<Fighter> result = new ArrayList<>();
+        if (playerGuards) {
+            result.add(battle.player());
+        }
+        if (enemyGuards) {
+            result.add(battle.enemy());
+        }
+        bySpeed.stream().filter(f -> !result.contains(f)).forEach(result::add);
+        return result;
+    }
+
+    /**
+     * What a creep will do this round, decided as the round begins so a Guard can go first (P-69); null when
+     * its announced move lands this round or it is a boss (whose cadence picks at its turn).
+     */
+    private EnemyAI.@Nullable Choice planEnemy(GameState s, BattleState battle) {
+        CreepFighter enemy = battle.enemy();
+        if (enemy.boss() != null || !enemy.pendingTelegraphs().isEmpty()) {
+            return null;
+        }
+        return EnemyAI.forStrategy(enemy.template().ai()).decide(enemy, battle.player(), content.rules(), s.rng());
     }
 
     /** Faster first; the player wins ties. A {@code PriorityQueue}, as in v1 (V2_SPEC §4.7). */
@@ -204,10 +263,7 @@ public final class BattleEngine {
         PlayerFighter player = battle.player();
         switch (action.kind()) {
             case STRIKE -> strike(s, battle, player, battle.enemy(), Skill.STRIKE, false);
-            case GUARD -> {
-                player.setGuarding(true);
-                battle.say("You raise your guard.");
-            }
+            case GUARD -> throw new IllegalStateException("Guard goes first, before the turns (P-69)");
             case SKILL -> {
                 Skill skill = skill(s.loadout().get(action.slot()));
                 player.stats().spendFp(skill.fpCost());
@@ -254,41 +310,38 @@ public final class BattleEngine {
     }
 
     /**
-     * The enemy's turn: a move announced last turn lands now; otherwise the
-     * AI decides, and a telegraphed move is only announced (P-54).
+     * The enemy's turn: a move announced last turn lands now; a boss follows its
+     * cadence; a creep does what it planned as the round began (its Guard has
+     * already gone first), and a telegraphed move is only announced (P-54).
      */
-    private void enemyTurn(GameState s, BattleState battle) {
+    private void enemyTurn(GameState s, BattleState battle, EnemyAI.@Nullable Choice choice) {
         CreepFighter enemy = battle.enemy();
-        Random rng = s.rng();
         Skill announced = enemy.nextTelegraph().orElse(null);
         if (announced != null) {
             strike(s, battle, enemy, battle.player(), announced, true);
             return;
         }
         if (enemy.boss() != null) {
-            bossTurn(s, battle, enemy, rng);
+            bossTurn(s, battle, enemy, s.rng());
             return;
         }
-        EnemyAI.Choice choice = EnemyAI.forStrategy(enemy.template().ai())
-                .decide(enemy, battle.player(), content.rules(), rng);
-        if (choice.guards()) {
-            enemy.setGuarding(true);
-            battle.say("The " + enemy.name() + " braces itself.");
-        } else if (choice.move().telegraph()) {
-            enemy.announce(choice.move());
-            battle.say(choice.move().telegraphLine().replace("{name}", enemy.name()));
+        EnemyAI.Choice planned = Objects.requireNonNull(choice, "a creep plans its action as the round begins");
+        if (planned.move().telegraph()) {
+            enemy.announce(planned.move());
+            battle.say(planned.move().telegraphLine().replace("{name}", enemy.name()));
         } else {
-            strike(s, battle, enemy, battle.player(), choice.move(), false);
+            strike(s, battle, enemy, battle.player(), planned.move(), false);
         }
     }
 
     /**
-     * A boss's turn (V2_SPEC §4.7, P-67): on every n-th round of its phase it announces the phase's
-     * telegraphed move; otherwise it picks a move by weight.
+     * A boss's turn (V2_SPEC §4.7, P-67): every n-th of its moves is the phase's telegraphed move, which takes two
+     * of its turns (announced, then landed), so it is announced every (n + 1)-th round; otherwise it picks a move
+     * by weight. A phase of every 2nd move still strikes once between its telegraphs.
      */
     private void bossTurn(GameState s, BattleState battle, CreepFighter boss, Random rng) {
         BossTemplate.Phase phase = boss.bossPhase();
-        if (battle.round() % phase.telegraphEvery() == 0) {
+        if (battle.round() % (phase.telegraphEvery() + 1) == 0) {
             boss.announce(phase.telegraph());
             battle.say(phase.telegraph().telegraphLine().replace("{name}", boss.name()));
         } else {

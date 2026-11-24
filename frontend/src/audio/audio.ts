@@ -6,7 +6,8 @@
 // never held decoded in memory. File names and levels come from
 // content/audio/audio.json, whose packs say when each file downloads (P-59):
 // the interface sounds with the first page, a region's music and ambience on
-// entering it, the battle track and effects only when a creep is near.
+// entering it, the battle track and effects only when a creep is near. A
+// boss's track steps up in its second phase: faster, its pitch kept, louder (P-67).
 import manifest from '../../../content/audio/audio.json';
 import { getSettings, subscribeSettings } from '../settings/settings';
 import type { Settings } from '../settings/settings';
@@ -30,6 +31,13 @@ interface Track {
   /** AAC, for browsers that cannot play OGG Vorbis (Safari on older iPhones, P-48). */
   fallback: string;
   volume: number;
+  /** How the track plays once stepped up (a boss's second phase, P-67). */
+  escalated?: { rate: number; volume: number };
+}
+
+/** How fast and how loud a track plays, stepped up or not (a track with no step-up plays as it is). */
+export function musicLevel(track: Track, escalated: boolean): { rate: number; volume: number } {
+  return escalated && track.escalated ? track.escalated : { rate: 1, volume: track.volume };
 }
 
 const effects: Record<Effect, Sound> = manifest.effects;
@@ -93,6 +101,8 @@ class AudioEngine {
   /** What should be playing once sound is unlocked, and while it is. */
   private readonly wantedLoops = new Set<Effect>();
   private wantedMusic: string | null = null;
+  /** The music is stepped up (a boss's second phase). */
+  private escalated = false;
   private track: Playing | null = null;
   /** Tracks asked for ahead of time (the battle music when a creep is near, P-57), loading but not playing. */
   private readonly prefetched = new Map<string, HTMLAudioElement>();
@@ -190,6 +200,15 @@ class AudioEngine {
     return urlOf(playableFile(track, (type) => probe.canPlayType(type) !== ''));
   }
 
+  /** Steps the music up or back (a boss's second phase, P-67), on the track playing and any that follows. */
+  setEscalated(on: boolean): void {
+    if (on === this.escalated) return;
+    this.escalated = on;
+    const playing = this.track;
+    if (!playing || !this.context) return;
+    this.applyLevel(playing, manifest.musicFadeMs / 1000 / 3);
+  }
+
   /** The music of a region, or silence (null). Changing region fades one track out and the next in. */
   setMusic(region: string | null): void {
     this.wantedMusic = region && music[region] ? region : null;
@@ -268,9 +287,16 @@ class AudioEngine {
     element.currentTime = 0;
     const gain = this.gainFor(0, this.musicBus);
     this.context.createMediaElementSource(element).connect(gain);
-    gain.gain.setTargetAtTime(sound.volume, this.context.currentTime, fade / 3);
-    void element.play().catch(() => undefined);
     this.track = { region: this.wantedMusic, element, gain };
+    this.applyLevel(this.track, fade / 3);
+    void element.play().catch(() => undefined);
+  }
+
+  private applyLevel(playing: Playing, smoothing: number): void {
+    const level = musicLevel(music[playing.region]!, this.escalated);
+    playing.element.preservesPitch = true;
+    playing.element.playbackRate = level.rate;
+    playing.gain.gain.setTargetAtTime(level.volume, this.context!.currentTime, smoothing);
   }
 }
 

@@ -134,7 +134,7 @@
          "type": "string"
         },
         "telegraphEvery": {
-         "description": "Announced on every n-th round.",
+         "description": "Every n-th of the boss's moves is the telegraph; it takes two turns, so it is announced every (n + 1)-th round (P-67).",
          "type": "integer",
          "minimum": 1
         }
@@ -146,7 +146,9 @@
       "additionalProperties": false,
       "required": [
        "status",
-       "line"
+       "line",
+       "warning",
+       "guardDetail"
       ],
       "properties": {
        "status": {
@@ -155,6 +157,14 @@
         ]
        },
        "line": {
+        "type": "string",
+        "minLength": 1
+       },
+       "warning": {
+        "type": "string",
+        "pattern": "[{]move[}]"
+       },
+       "guardDetail": {
         "type": "string",
         "minLength": 1
        }

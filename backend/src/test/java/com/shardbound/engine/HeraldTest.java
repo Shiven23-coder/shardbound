@@ -81,7 +81,7 @@ class HeraldTest {
     private SessionView stepOnTheTrigger() {
         AreaMap rise = engine.content().world().mapOf(RISE);
         clock.advance(RoutePlayer.WALK);
-        return engine.interact(state(), "herald_trigger", rise.centre(10), rise.centre(7), state().position().facing());
+        return engine.interact(state(), "herald_trigger", rise.centre(10), rise.centre(6), state().position().facing());
     }
 
     private static String firstLine(SessionView v) {
@@ -116,6 +116,23 @@ class HeraldTest {
         assertEquals(50, fight.battle().boss().phase2Pct());
         assertFalse(fight.battle().menu().canFlee());
         assertEquals(1, state().flag(GameEngine.seenFlag("herald_intro")));
+    }
+
+    @Test
+    void theHeraldsTelegraphTeachesThatGuardingLeavesItExposed() {
+        toTheRise(false);
+        stepOnTheTrigger();
+        SessionView fight = engine.finishCutscene(state(), "herald_intro");
+        while (fight.battle().brace() == null) {
+            fight = engine.battleAction(state(), BattleAction.of(BattleAction.Kind.STRIKE));
+        }
+        assertEquals("Cinderfall next turn — Guard to brace", fight.battle().brace().warning());
+        assertEquals("Brace — leaves it exposed", fight.battle().brace().guardDetail());
+
+        SessionView guarded = engine.battleAction(state(), BattleAction.of(BattleAction.Kind.GUARD));
+        assertTrue(guarded.battle().text().contains("The Herald staggers — EXPOSED!"), String.valueOf(guarded.battle().text()));
+        assertTrue(guarded.battle().enemy().statuses().stream().anyMatch(st -> st.id().equals("EXPOSED")),
+                "the boss bar shows the EXPOSED chip");
     }
 
     @Test

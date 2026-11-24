@@ -3,6 +3,7 @@ package com.shardbound.engine;
 import com.shardbound.view.CutsceneView;
 import com.shardbound.cutscene.Cutscene;
 import com.shardbound.battle.BossTemplate;
+import com.shardbound.battle.BraceCue;
 import com.shardbound.view.ChoiceView;
 import com.shardbound.view.BattleView;
 import com.shardbound.view.HudView;
@@ -374,9 +375,12 @@ public class ViewBuilder {
         BossTemplate boss = b.enemy().boss();
         BattleView.BossBarView bossBar = boss == null ? null
                 : new BattleView.BossBarView(boss.name(), b.enemy().phase(), boss.phases().get(1).atPct(), b.phaseLine());
+        BraceCue cue = boss == null ? battle.brace() : boss.brace();
+        BattleView.BraceView brace = b.telegraphMove() == null || b.outcome() != BattleOutcome.ONGOING ? null
+                : new BattleView.BraceView(cue.warningFor(b.telegraphMove()), cue.guardDetail());
         return new BattleView(fighter(b.enemy(), battle, false), fighter(b.player(), battle, true), b.round(), b.text(),
                 b.telegraph(), menu, hits, b.outcome() == BattleOutcome.ONGOING ? null : b.outcome().name(), rewards,
-                b.telegraphMove(), bossBar);
+                b.telegraphMove(), bossBar, brace);
     }
 
     private static BattleView.FighterView fighter(Fighter f, BattleContent battle, boolean player) {

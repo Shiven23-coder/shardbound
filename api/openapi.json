@@ -1529,6 +1529,9 @@
           "boss" : {
             "$ref" : "#/components/schemas/BossBarView"
           },
+          "brace" : {
+            "$ref" : "#/components/schemas/BraceView"
+          },
           "enemy" : {
             "$ref" : "#/components/schemas/FighterView"
           },
@@ -1615,6 +1618,18 @@
           }
         },
         "required" : [ "bossId", "id", "name", "sprite", "x", "y" ]
+      },
+      "BraceView" : {
+        "type" : "object",
+        "properties" : {
+          "guardDetail" : {
+            "type" : "string"
+          },
+          "warning" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "guardDetail", "warning" ]
       },
       "ChestView" : {
         "type" : "object",

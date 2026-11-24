@@ -15,6 +15,7 @@ import java.util.List;
  */
 public record BossTemplate(String id, String name, Family family, String sprite, int level, int baseHp, int baseAtk,
                            int baseDef, int baseSpd, List<Phase> phases, Status exposeStatus, String exposeLine,
+                           BraceCue brace,
                            String rewardItem, int fallbackLevel, String defeatFlag, String introCutscene,
                            String epilogueCutscene) {
 
@@ -27,8 +28,8 @@ public record BossTemplate(String id, String name, Family family, String sprite,
 
     /**
      * One phase: it begins when the boss's HP falls to {@code atPct} % (the first phase from the start), with
-     * its line and speed change, its weighted moves, and a telegraphed move announced every
-     * {@code telegraphEvery}-th round.
+     * its line and speed change, its weighted moves, and a telegraphed move as every {@code telegraphEvery}-th
+     * of its moves (announced, then landed: every {@code telegraphEvery + 1} rounds).
      */
     public record Phase(int atPct, @Nullable String line, int spdDelta, List<CreepTemplate.WeightedMove> moves,
                         Skill telegraph, int telegraphEvery) {

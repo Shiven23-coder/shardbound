@@ -66,3 +66,20 @@ describe('the Lantern Draught in the BAG (P-63)', () => {
     expect(empty!.disabled).toBe(true);
   });
 });
+
+describe('the brace cue while a telegraph is pending (P-67)', () => {
+  const brace = { warning: 'Cinderfall next turn — Guard to brace', guardDetail: 'Brace — leaves it exposed' };
+
+  it('marks ATTACK and Guard with the cue and gives Guard the server\'s subtitle', () => {
+    expect(menuItems('root', menu, brace).find((i) => i.id === 'attack')?.cue).toBe(true);
+    const guard = menuItems('attack', menu, brace).find((i) => i.id === 'guard')!;
+    expect(guard.cue).toBe(true);
+    expect(guard.detail).toBe('Brace — leaves it exposed');
+    expect(menuItems('attack', menu, brace).find((i) => i.id === 'strike')?.cue).toBeFalsy();
+  });
+
+  it('marks nothing when no blow is pending', () => {
+    expect(menuItems('root', menu).some((i) => i.cue)).toBe(false);
+    expect(menuItems('attack', menu, null).find((i) => i.id === 'guard')?.detail).toBe('Halve the next hit');
+  });
+});

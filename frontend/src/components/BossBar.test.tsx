@@ -29,15 +29,15 @@ describe('BossBar', () => {
   });
 
   it('warns of a pending telegraphed blow until it lands', () => {
-    const html = renderToStaticMarkup(<BossBar boss={bar} fighter={herald} phase={1} warning="Cinderfall" />);
-    expect(html).toContain('⚠ Cinderfall next turn');
+    const html = renderToStaticMarkup(<BossBar boss={bar} fighter={herald} phase={1} warning="Cinderfall next turn — Guard to brace" />);
+    expect(html).toContain('⚠ Cinderfall next turn — Guard to brace');
   });
 });
 
 describe('BattleInfoBox', () => {
   it("warns of a creep's pending telegraphed blow too", () => {
     const rat: FighterView = { name: 'Storm Rat', level: 1, hp: 20, maxHp: 20, sprite: 'creep.storm_rat', statuses: [] };
-    expect(renderToStaticMarkup(<BattleInfoBox fighter={rat} side="enemy" warning="Frenzy" />)).toContain('next turn');
+    expect(renderToStaticMarkup(<BattleInfoBox fighter={rat} side="enemy" warning="Frenzy next turn — Guard to brace" />)).toContain('next turn');
     expect(renderToStaticMarkup(<BattleInfoBox fighter={rat} side="enemy" />)).not.toContain('next turn');
   });
 });

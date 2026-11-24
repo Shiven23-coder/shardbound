@@ -71,14 +71,23 @@
       }
     },
     "track": {
-      "description": "A music track: the OGG, and an AAC fallback for browsers that cannot play OGG (P-48).",
+      "description": "A music track: the OGG, and an AAC fallback for browsers that cannot play OGG (P-48). A boss's track may step up in its second phase (P-67): faster, its pitch kept, and louder.",
       "type": "object",
       "required": ["file", "fallback", "volume"],
       "additionalProperties": false,
       "properties": {
         "file": { "type": "string", "pattern": "^music/[a-z0-9-]+[.]ogg$" },
         "fallback": { "type": "string", "pattern": "^music/[a-z0-9-]+[.]m4a$" },
-        "volume": { "type": "number", "minimum": 0, "maximum": 1 }
+        "volume": { "type": "number", "minimum": 0, "maximum": 1 },
+        "escalated": {
+          "type": "object",
+          "required": ["rate", "volume"],
+          "additionalProperties": false,
+          "properties": {
+            "rate": { "type": "number", "minimum": 1, "maximum": 1.25 },
+            "volume": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        }
       }
     },
     "sound": {

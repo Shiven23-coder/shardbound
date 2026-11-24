@@ -40,8 +40,8 @@
 
     {"id": "cinder_lash", "name": "Cinder Lash", "element": "FIRE", "power": 1.0, "fpCost": 0, "scaling": "WEAPON", "unlock": "CREEP", "description": "A whip of embers that leaves grey welts."},
     {"id": "ash_veil", "name": "Ash Veil", "element": "PHYSICAL", "power": 0.8, "fpCost": 0, "scaling": "WEAPON", "status": "BLEED", "statusChance": 40, "unlock": "CREEP", "description": "Ash sharp as glass, thrown in a cloud."},
-    {"id": "cinderfall", "name": "Cinderfall", "element": "FIRE", "power": 2.0, "fpCost": 0, "scaling": "WEAPON", "telegraph": true, "telegraphLine": "The {name} gathers the falling ash above its head!", "unlock": "CREEP", "description": "Every flake of ash in the sky, brought down at once."},
+    {"id": "cinderfall", "name": "Cinderfall", "element": "FIRE", "power": 1.6, "fpCost": 0, "scaling": "WEAPON", "telegraph": true, "telegraphLine": "The {name} gathers the falling ash above its head!", "unlock": "CREEP", "description": "Every flake of ash in the sky, brought down at once."},
     {"id": "searing_wing", "name": "Searing Wing", "element": "FIRE", "power": 1.1, "fpCost": 0, "scaling": "WEAPON", "status": "BURN", "statusChance": 40, "unlock": "CREEP", "description": "A sweep of wings that burn as they pass."},
-    {"id": "pyre_descent", "name": "Pyre Descent", "element": "FIRE", "power": 2.4, "fpCost": 0, "scaling": "WEAPON", "telegraph": true, "telegraphLine": "The {name} spreads its burning wings and rises!", "unlock": "CREEP", "description": "It falls on you like a burning house."}
+    {"id": "pyre_descent", "name": "Pyre Descent", "element": "FIRE", "power": 1.9, "fpCost": 0, "scaling": "WEAPON", "telegraph": true, "telegraphLine": "The {name} spreads its burning wings and rises!", "unlock": "CREEP", "description": "It falls on you like a burning house."}
   ]
 }

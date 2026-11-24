@@ -12,7 +12,14 @@ import java.util.List;
  */
 public record BattleView(FighterView enemy, FighterView player, int round, List<String> text,
                          @Nullable String telegraph, MenuView menu, List<HitView> hits, @Nullable String outcome,
-                         @Nullable RewardsView rewards, @Nullable String telegraphMove, @Nullable BossBarView boss) {
+                         @Nullable RewardsView rewards, @Nullable String telegraphMove, @Nullable BossBarView boss,
+                         @Nullable BraceView brace) {
+
+    /**
+     * While a telegraphed blow is pending (P-67): the warning to show ("Cinderfall next turn — Guard to brace")
+     * and the Guard option's subtitle, from content.
+     */
+    public record BraceView(String warning, String guardDetail) { }
 
     /**
      * A boss fight's bar (P-67): the boss's phase, where its second phase begins (% of HP, the tick on the

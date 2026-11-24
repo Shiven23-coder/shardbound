@@ -9,7 +9,7 @@ interface BattleInfoBoxProps {
   side: 'enemy' | 'player';
   fp?: number;
   maxFp?: number;
-  /** The pending telegraphed move's name, or null. */
+  /** The pending telegraph's warning, from content, or null. */
   warning?: string | null;
 }
 
@@ -45,7 +45,7 @@ export default function BattleInfoBox({ fighter, side, fp, maxFp, warning }: Bat
           {fighter.statuses.map((status) => <StatusIcon key={status.id} status={status} />)}
         </ul>
       )}
-      {warning && <p className="battle-warning" role="status">⚠ {warning} next turn</p>}
+      {warning && <p className="battle-warning" role="status">⚠ {warning}</p>}
     </section>
   );
 }

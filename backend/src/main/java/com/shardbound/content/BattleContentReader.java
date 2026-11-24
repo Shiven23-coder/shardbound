@@ -4,6 +4,7 @@ import com.shardbound.battle.Affinity;
 import com.shardbound.battle.BattleContent;
 import com.shardbound.battle.BattleRules;
 import com.shardbound.battle.BossTemplate;
+import com.shardbound.battle.BraceCue;
 import com.shardbound.battle.CreepTemplate;
 import com.shardbound.battle.Element;
 import com.shardbound.battle.ElementChart;
@@ -46,7 +47,9 @@ public class BattleContentReader {
 
     public BattleContent readBattle() {
         Map<String, Skill> skills = readSkills();
-        return new BattleContent(readChart(), readStatuses(), skills, readCreeps(skills), readBosses(skills), readRules());
+        JsonNode brace = parse(ContentFiles.BALANCE).get("battle").get("brace");
+        return new BattleContent(readChart(), readStatuses(), skills, readCreeps(skills), readBosses(skills), readRules(),
+                new BraceCue(brace.get("warning").asString(), brace.get("guardDetail").asString()));
     }
 
     private ElementChart readChart() {
@@ -155,7 +158,9 @@ public class BattleContentReader {
             BossTemplate boss = new BossTemplate(id, n.get("name").asString(), Family.valueOf(n.get("family").asString()),
                     n.get("sprite").asString(), n.get("level").asInt(), n.get("baseHp").asInt(), n.get("baseAtk").asInt(),
                     n.get("baseDef").asInt(), n.get("baseSpd").asInt(), phases, Status.valueOf(expose.get("status").asString()),
-                    expose.get("line").asString(), reward.get("item").asString(), reward.get("fallbackLevel").asInt(),
+                    expose.get("line").asString(),
+                    new BraceCue(expose.get("warning").asString(), expose.get("guardDetail").asString()),
+                    reward.get("item").asString(), reward.get("fallbackLevel").asInt(),
                     n.get("defeatFlag").asString(), n.get("introCutscene").asString(), n.get("epilogueCutscene").asString());
             if (result.put(id, boss) != null) {
                 throw new ContentValidationException("bosses.json: boss " + id + " is defined twice");

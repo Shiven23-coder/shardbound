@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import manifest from '../../../content/audio/audio.json';
-import { audioPacks, busLevels, playableFile } from './audio';
+import { audioPacks, busLevels, musicLevel, playableFile } from './audio';
 import { DEFAULT_SETTINGS } from '../settings/settings';
 
 describe('music files', () => {
@@ -37,5 +37,15 @@ describe('audio levels from the settings', () => {
     expect(audioPacks.battle.music).toBe('battle');
     const bossTracks = Object.values(audioPacks.bosses).map((p) => p.music);
     expect(Object.keys(manifest.music).sort()).toEqual([...Object.keys(audioPacks.regions), 'battle', ...bossTracks].sort());
+  });
+});
+
+describe('the boss music step-up (P-67)', () => {
+  it("plays a boss's track faster and louder in its second phase, and other tracks as they are", () => {
+    const herald = { file: 'music/herald.ogg', fallback: 'music/herald.m4a', volume: 0.32, escalated: { rate: 1.1, volume: 0.42 } };
+    expect(musicLevel(herald, false)).toEqual({ rate: 1, volume: 0.32 });
+    expect(musicLevel(herald, true)).toEqual({ rate: 1.1, volume: 0.42 });
+    const region = { file: 'music/eldmere.ogg', fallback: 'music/eldmere.m4a', volume: 0.3 };
+    expect(musicLevel(region, true)).toEqual({ rate: 1, volume: 0.3 });
   });
 });
