@@ -586,7 +586,7 @@
         "audio": {
           "description": "Audio by when it downloads (P-59): the larger version (OGG or AAC) of each track counts.",
           "type": "object",
-          "required": ["initialKb", "regionPackKb", "battlePackKb"],
+          "required": ["initialKb", "regionPackKb", "battlePackKb", "bossPackKb"],
           "additionalProperties": false,
           "properties": {
             "initialKb": {
@@ -601,6 +601,11 @@
             },
             "battlePackKb": {
               "description": "The battle pack, loaded when a creep is near: the battle track and effects.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "bossPackKb": {
+              "description": "One boss's pack, loaded on entering its arena (P-67): its music and stings.",
               "type": "number",
               "exclusiveMinimum": 0
             }

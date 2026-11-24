@@ -144,5 +144,38 @@
     "sheet": "shardbound/chest-eldmere.png",
     "frameWidth": 16,
     "frameHeight": 16
+  },
+  "bosses": {
+    "boss.ashen_herald": {
+      "description": "The Ashen Herald (P-67): the pack's Red Tengu. Transform plays as it arrives and as it turns at phase 2; windUpFrame of the attack sheet is held while a telegraph is pending.",
+      "frameSize": 82,
+      "faceset": "ninja-adventure/eldmere/bosses/TenguRed/Faceset.png",
+      "idle": {
+        "sheet": "ninja-adventure/eldmere/bosses/TenguRed/Idle.png",
+        "frames": 6,
+        "frameRate": 6
+      },
+      "walk": {
+        "sheet": "ninja-adventure/eldmere/bosses/TenguRed/Walk.png",
+        "frames": 10,
+        "frameRate": 10
+      },
+      "attack": {
+        "sheet": "ninja-adventure/eldmere/bosses/TenguRed/Attack.png",
+        "frames": 15,
+        "frameRate": 14
+      },
+      "hit": {
+        "sheet": "ninja-adventure/eldmere/bosses/TenguRed/Hit.png",
+        "frames": 8,
+        "frameRate": 16
+      },
+      "transform": {
+        "sheet": "ninja-adventure/eldmere/bosses/TenguRed/Trans.png",
+        "frames": 11,
+        "frameRate": 12
+      },
+      "windUpFrame": 8
+    }
   }
 }

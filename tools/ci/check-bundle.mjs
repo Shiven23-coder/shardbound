@@ -56,7 +56,7 @@ const textureBytes = pack.filter((file) => file.endsWith('.png')).reduce((sum, f
 check('Texture memory (Eldmere)', textureBytes / (1024 * 1024), budgets.textureMemoryMb, 'MB');
 
 // Audio by when it downloads (P-59, P-64): the initial pack with the first page, each region's pack on
-// entering it, the battle pack when a creep is near. Region packs may share effects (the Lantern sounds): a
+// entering it, the battle pack when a creep is near, each boss's pack on entering its arena (P-67). Region packs may share effects (the Lantern sounds): a
 // shared effect counts in every region pack that lists it. A track counts in the larger of its two versions (OGG, or the AAC
 // fallback, P-48). Built files are named <name>-<hash>.<ext>, where Vite's hash is 8 characters that may
 // include - and _ (battle-C75rI3V-.ogg).
@@ -77,7 +77,7 @@ function builtSize(source) {
 }
 const effectsSize = (names) => names.reduce((sum, name) => sum + builtSize(sounds.effects[name].file), 0);
 const trackSize = (name) => Math.max(builtSize(sounds.music[name].file), builtSize(sounds.music[name].fallback));
-const { initial: initialPack, regions, battle } = sounds.packs;
+const { initial: initialPack, regions, battle, bosses } = sounds.packs;
 check('Audio, initial pack (first page)', kb(effectsSize(initialPack.effects)), budgets.audio.initialKb, 'KB');
 for (const [region, pack] of Object.entries(regions)) {
   check(`Audio, ${region} pack (entering the region)`, kb(effectsSize(pack.effects) + trackSize(pack.music)),
@@ -85,6 +85,10 @@ for (const [region, pack] of Object.entries(regions)) {
 }
 check('Audio, battle pack (a creep near)', kb(effectsSize(battle.effects) + trackSize(battle.music)),
   budgets.audio.battlePackKb, 'KB');
+for (const [boss, pack] of Object.entries(bosses)) {
+  check(`Audio, ${boss} pack (entering its arena)`, kb(effectsSize(pack.effects) + trackSize(pack.music)),
+    budgets.audio.bossPackKb, 'KB');
+}
 const unloaded = audioFiles.filter((file) => !loaded.has(file));
 if (unloaded.length > 0) problems.push(`audio in the build that no pack loads: ${unloaded.join(', ')}`);
 

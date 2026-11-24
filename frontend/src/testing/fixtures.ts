@@ -20,6 +20,7 @@ export function makeView(overrides: Partial<SessionView> = {}): SessionView {
       hiddenObjects: [],
       lanterns: [],
     chests: [],
+    bosses: [],
     },
     dialogue: {
       nodeId: 'start',

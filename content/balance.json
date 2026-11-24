@@ -40,7 +40,8 @@
     "audio": {
       "initialKb": 64,
       "regionPackKb": 1280,
-      "battlePackKb": 1024
+      "battlePackKb": 1024,
+      "bossPackKb": 1024
     },
     "performance": {
       "cpuThrottle": 4,

@@ -41,11 +41,12 @@ interface Pack {
   effects: Effect[];
 }
 
-/** When each sound downloads (P-59). */
+/** When each sound downloads (P-59): each boss's pack on entering its arena (P-67). */
 export const audioPacks = manifest.packs as unknown as {
   initial: { effects: Effect[] };
   regions: Record<string, Pack>;
   battle: Pack;
+  bosses: Record<string, Pack>;
 };
 
 export const audioTiming = {
@@ -162,6 +163,12 @@ class AudioEngine {
   /** Downloads the battle track and effects when a creep is near; never with the first page (P-57). */
   loadBattle(): void {
     this.loadPack(audioPacks.battle);
+  }
+
+  /** Downloads a boss's track and stings on entering its arena (P-64, P-67). */
+  loadBoss(bossId: string): void {
+    const pack = audioPacks.bosses[bossId];
+    if (pack) this.loadPack(pack);
   }
 
   private loadPack(pack: Pack): void {
