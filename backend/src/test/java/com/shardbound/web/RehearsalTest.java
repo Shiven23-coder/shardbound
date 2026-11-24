@@ -83,7 +83,7 @@ class RehearsalTest {
         player.exit("arena_way");
         AreaMap rise = engine.content().world().mapOf("eldmere_ash_rise");
         clock.advance(RoutePlayer.WALK);
-        SessionView intro = engine.interact(s, "herald_trigger", rise.centre(10), rise.centre(7), s.position().facing());
+        SessionView intro = engine.interact(s, "herald_trigger", rise.centre(10), rise.centre(6), s.position().facing());
         assertEquals(Mode.CUTSCENE, intro.mode());
         assertEquals("herald_intro", intro.cutscene().id());
     }

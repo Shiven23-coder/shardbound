@@ -39,9 +39,10 @@ public record Cutscene(String id, String area, List<Actor> actors, List<Step> st
     /**
      * One step; only the fields its kind uses are set.
      *
-     * @param actor   MOVE, FACE, VANISH, CAMERA (pan to): an actor id or {@code "player"}
+     * @param actor   MOVE, FACE, VANISH, CAMERA (pan to, or frame alone): an actor id or {@code "player"}
      * @param speaker SAY: an NPC id or actor id whose portrait is shown, or null for narration
-     * @param camera  CAMERA: {@code pan}, {@code zoom}, {@code shake} or {@code follow}
+     * @param camera  CAMERA: {@code frame} (the actor, or every actor and the player, inside the play area above the
+     *                line box), {@code pan}, {@code zoom}, {@code shake} or {@code follow}
      * @param ms      the step's duration where it has one
      * @param state   LIGHT: a light state of the area's region; FADE: {@code out} or {@code in}
      */

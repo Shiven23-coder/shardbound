@@ -8,7 +8,7 @@
       "id": "herald",
       "sprite": "boss.ashen_herald",
       "x": 10,
-      "y": 1,
+      "y": 2,
       "facing": "DOWN",
       "name": "The Ashen Herald"
     }
@@ -21,10 +21,9 @@
     },
     {
       "do": "camera",
-      "camera": "pan",
-      "x": 10,
-      "y": 4,
-      "ms": 1200
+      "camera": "frame",
+      "actor": "herald",
+      "ms": 1000
     },
     {
       "do": "music",
@@ -36,13 +35,18 @@
       "path": [
         [
           10,
-          2
+          3
         ],
         [
           10,
-          3
+          4
         ]
       ]
+    },
+    {
+      "do": "camera",
+      "camera": "frame",
+      "ms": 700
     },
     {
       "do": "say",
@@ -75,16 +79,6 @@
     {
       "do": "flash",
       "ms": 300
-    },
-    {
-      "do": "move",
-      "actor": "herald",
-      "path": [
-        [
-          10,
-          4
-        ]
-      ]
     },
     {
       "do": "say",

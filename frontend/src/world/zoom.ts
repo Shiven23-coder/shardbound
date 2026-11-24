@@ -22,6 +22,10 @@ export function zoomFor(view: Size, map: Size): number {
   const short = Math.min(view.width, view.height);
   let zoom = Math.floor(short / (SHORT_SIDE_TILES * TILE));
   if (zoom < 2) zoom = Math.floor(short / (MIN_SHORT_SIDE_TILES * TILE));
-  const fill = Math.max(Math.ceil(view.width / map.width), Math.ceil(view.height / map.height));
-  return Math.max(1, zoom, fill);
+  return Math.max(1, zoom, fillZoom(view, map));
+}
+
+/** The smallest whole zoom at which the map fills the view, so no empty band shows beside it (P-52). */
+export function fillZoom(view: Size, map: Size): number {
+  return Math.max(1, Math.ceil(view.width / map.width), Math.ceil(view.height / map.height));
 }

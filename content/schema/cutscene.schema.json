@@ -184,6 +184,7 @@
           },
           "camera": {
             "enum": [
+              "frame",
               "pan",
               "zoom",
               "shake",

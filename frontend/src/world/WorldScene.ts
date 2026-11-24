@@ -14,6 +14,8 @@ import type { InputDevice } from '../input/inputMode';
 import { KeyboardInput } from './keyboardInput';
 import { nextTile, Stepper, type StepWorld, type Tile } from './stepper';
 import { zoomFor } from './zoom';
+import { frameSubjects, union } from './framing';
+import type { Box } from './framing';
 import {
   actorArt, actorKeys, actorShadow, battleBackdrop, bossArt, bossTexture, chestArt, effectArt, frameSize, interactRange, lightingFor,
   mapUrl, sheetLayout, stepTiming,
@@ -122,6 +124,12 @@ export class WorldScene extends Phaser.Scene {
   private bosses = new Map<string, Phaser.GameObjects.Sprite>();
   /** The cutscene's actors by id while one plays (P-68). */
   private cutsceneActors = new Map<string, Phaser.GameObjects.Sprite>();
+  /** A cutscene is playing. */
+  private inCutscene = false;
+  /** Who the cutscene's last `frame` step framed (an actor id, or every actor and the player), kept on resize. */
+  private framed: string | null = null;
+  /** The actors' and the player's screen boxes last published (data-cast), for automation. */
+  private publishedCast = '';
   /** The light state a cutscene shows instead of the view's (it keeps the old light until its LIGHT step). */
   private lightOverride: string | null = null;
   /** The light state last built. */
@@ -295,6 +303,7 @@ export class WorldScene extends Phaser.Scene {
     this.stepper.update(this.game.loop.rawDelta, canWalk ? this.heldDirection() : null, this.stepWorld);
     this.drawPlayer();
     this.publishPosition();
+    this.publishCast();
     this.checkHudCover();
     this.updateMarker();
     if (!this.canWalk() || this.stepper.walking) return;
@@ -829,6 +838,7 @@ export class WorldScene extends Phaser.Scene {
   /** A cutscene begins: its cast takes the stage, the camera stops following, and the light holds. */
   private startCutscene(cast: CutsceneCast): void {
     this.endCutscene();
+    this.inCutscene = true;
     this.lightOverride = this.shownLight || this.view.lightState;
     this.cameras.main.stopFollow();
     for (const actor of cast.actors) {
@@ -850,11 +860,20 @@ export class WorldScene extends Phaser.Scene {
     });
     this.cutsceneActors.clear();
     delete this.game.canvas.dataset.cutscene;
+    delete this.game.canvas.dataset.cast;
+    this.publishedCast = '';
+    this.framed = null;
+    const wasCutscene = this.inCutscene;
+    this.inCutscene = false;
     if (this.lightOverride !== null) {
       this.lightOverride = null;
       this.buildLighting();
     }
     this.cameras.main.resetFX();
+    if (wasCutscene) {
+      const { width, height } = this.scale.gameSize;
+      this.cameras.main.setZoom(zoomFor({ width, height }, { width: this.mapWidth, height: this.mapHeight }));
+    }
     this.cameras.main.startFollow(this.player, true, 0.2, 0.2);
   }
 
@@ -944,6 +963,11 @@ export class WorldScene extends Phaser.Scene {
     const camera = this.cameras.main;
     const ms = step.ms ?? 800;
     switch (step.camera) {
+      case 'frame':
+        this.framed = step.actor ?? '*';
+        this.reframe(motion ? ms : 0);
+        this.time.delayedCall(motion ? ms : 0, done);
+        return;
       case 'pan': {
         const actor = step.actor ? this.cutsceneActors.get(step.actor) : undefined;
         const at = actor ? { x: actor.x, y: actor.y } : centreOf({ x: step.x ?? 0, y: step.y ?? 0 });
@@ -974,6 +998,47 @@ export class WorldScene extends Phaser.Scene {
         camera.startFollow(this.player, true, 0.2, 0.2);
         done();
     }
+  }
+
+  /**
+   * Frames the cutscene's subjects (one actor, or every actor and the player) inside the play area above the
+   * line box (P-68), moving over `ms` or at once.
+   */
+  private reframe(ms: number): void {
+    if (this.framed === null) return;
+    const subjects = this.framed === '*'
+      ? [...this.cutsceneActors.values(), this.player]
+      : [this.cutsceneActors.get(this.framed) ?? this.player];
+    const { width, height } = this.scale.gameSize;
+    const camera = this.cameras.main;
+    const base = zoomFor({ width, height }, { width: this.mapWidth, height: this.mapHeight });
+    const framing = frameSubjects(union(subjects.map(boxOf)), { width, height }, this.bridge.dialogueCover ?? 0,
+      { width: this.mapWidth, height: this.mapHeight }, base);
+    camera.stopFollow();
+    if (framing.zoom !== camera.zoom) camera.setZoom(framing.zoom);
+    if (ms > 0) camera.pan(framing.x, framing.y, ms, 'Sine.easeInOut', true);
+    else camera.centerOn(framing.x, framing.y);
+  }
+
+  /**
+   * While a cutscene plays, each actor's and the player's box on screen (CSS pixels from the canvas's top left)
+   * is published on the canvas (data-cast, "id:left,top,right,bottom;..."), for automation such as the e2e
+   * framing check.
+   */
+  private publishCast(): void {
+    if (!this.inCutscene) return;
+    const camera = this.cameras.main;
+    const view = camera.worldView;
+    const cast = [...this.cutsceneActors.entries(), ['player', this.player] as const]
+      .map(([id, sprite]) => {
+        const box = boxOf(sprite);
+        const at = (x: number, y: number) => [Math.round((x - view.x) * camera.zoom), Math.round((y - view.y) * camera.zoom)];
+        return `${id}:${[...at(box.left, box.top), ...at(box.right, box.bottom)].join(',')}`;
+      })
+      .join(';');
+    if (cast === this.publishedCast) return;
+    this.publishedCast = cast;
+    this.game.canvas.dataset.cast = cast;
   }
 
   private vanishActor(step: CutsceneStepView, motion: boolean, done: () => void): void {
@@ -1193,6 +1258,10 @@ export class WorldScene extends Phaser.Scene {
    */
   private frameDialogue(cover: number | null): void {
     const camera = this.cameras.main;
+    if (this.inCutscene) {
+      this.reframe(0);                          // the cutscene's line box: its framing, for the new cover
+      return;
+    }
     if (cover === null) {
       this.focus = null;
       camera.startFollow(this.player, true, 0.2, 0.2);
@@ -1217,8 +1286,9 @@ export class WorldScene extends Phaser.Scene {
     const fit = () => {
       const { width, height } = this.scale.gameSize;
       camera.setZoom(zoomFor({ width, height }, { width: this.mapWidth, height: this.mapHeight }));
-      // The camera does not follow during a dialogue: frame the speaker again for the new size.
-      if (this.bridge.dialogueCover !== null) this.frameDialogue(this.bridge.dialogueCover);
+      // The camera does not follow during a dialogue or a framed cutscene: frame them again for the new size.
+      if (this.inCutscene) this.reframe(0);
+      else if (this.bridge.dialogueCover !== null) this.frameDialogue(this.bridge.dialogueCover);
     };
     fit();
     this.scale.on(Phaser.Scale.Events.RESIZE, fit);
@@ -1263,6 +1333,12 @@ function toMapObject(o: Phaser.Types.Tilemaps.TiledObject): MapObject {
     height: Math.max(1, Math.round((o.height ?? TILE) / TILE)),
     props,
   };
+}
+
+/** A sprite's drawn box in world pixels. */
+function boxOf(sprite: Phaser.GameObjects.Sprite): Box {
+  const bounds = sprite.getBounds();
+  return { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom };
 }
 
 function covers(o: MapObject, tile: { x: number; y: number }): boolean {

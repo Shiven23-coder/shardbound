@@ -661,3 +661,23 @@ export async function toTheRuinsLanternAfterTheAshFalls(page: Page, controls: Co
 
 /** The Ruins Lantern's rest spawn, east of it (P-67). */
 export const RUINS_REST: [number, number] = [13, 5];
+
+/**
+ * While a cutscene plays: each actor's and the player's box on the page (data-cast, P-68), the play area's box
+ * (the canvas less the part under the cutscene's line box, if the box lies over it) and whether every actor lies
+ * fully inside it.
+ */
+export async function castInPlayArea(page: Page): Promise<{ inside: boolean; cast: string }> {
+  return page.evaluate(() => {
+    const canvas = document.querySelector('[data-testid="world-canvas"] canvas') as HTMLCanvasElement;
+    const area = canvas.getBoundingClientRect();
+    const line = document.querySelector('.cutscene-line')?.getBoundingClientRect();
+    const bottom = line && line.top < area.bottom && line.bottom > area.top ? line.top : area.bottom;
+    const cast = canvas.dataset.cast ?? '';
+    const boxes = cast.split(';').filter(Boolean).map((entry) => entry.split(':')[1]!.split(',').map(Number));
+    const inside = boxes.length >= 2 && boxes.every(([left, top, right, bottom2]) =>
+      area.left + left! >= area.left && area.top + top! >= area.top && area.left + right! <= area.right
+      && area.top + bottom2! <= bottom);
+    return { inside, cast: `${cast} | play area ${Math.round(area.width)}×${Math.round(bottom - area.top)}` };
+  });
+}

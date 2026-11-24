@@ -101,7 +101,7 @@ public final class CutsceneValidator {
             }
             case CAMERA -> {
                 if (step.camera() == null) {
-                    errors.add(where + ": camera needs pan, zoom, shake or follow");
+                    errors.add(where + ": camera needs frame, pan, zoom, shake or follow");
                 }
             }
             case LIGHT -> {
