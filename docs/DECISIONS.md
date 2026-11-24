@@ -725,7 +725,7 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 
 **Spec.** §12.
 
-**Amended by P-27** (Whispering Wood placed after V6).
+**Amended by P-27** (Whispering Wood placed after V6). **Superseded by P-66** (no public alpha; one launch as 1.0).
 
 ---
 
@@ -762,6 +762,8 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 **Why.** Accounts and ops ship and get reviewed separately.
 
 **Spec.** §12.
+
+**Superseded by P-66:** V2c is gone; its parts are in S1 Private staging and V12.
 
 ---
 
@@ -851,6 +853,8 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 
 **Spec.** §12.
 
+**Superseded by P-66:** no Alpha 2; WW follows PLAYTEST 1 in the new order.
+
 ---
 
 ## P-28 — CI guards content ids against unmapped removal
@@ -926,6 +930,8 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 **Why.** Broken object-level authorization is the most common API flaw; a test against the contract stops it from coming back.
 
 **Spec.** §7, §12 (ALPHA).
+
+**Amended by P-66:** the contract test is a LAUNCH checklist item.
 
 ---
 
@@ -1614,3 +1620,31 @@ The audio engine fetches a pack's files when its moment comes and decodes each e
 **Revises** P-64's stand-in (now the rusty-sword lower bound), P-27's post-ALPHA order (V6 → V6b) and the Hunter's Longbow's base in §4.6 (30 → 26).
 
 **Spec.** §4.6, §9, §12.
+
+## P-66 — No public alpha: one launch, complete, as 1.0
+
+**Problem.** The plan shipped a public alpha after Eldmere (ALPHA) and Whispering Wood as Alpha 2, so accounts, deploy and a public feedback loop came before most of the game existed. The game should meet the public once, complete.
+
+**Decision.**
+- **There is no public alpha.** The game launches once, complete, as **1.0**. Until then it runs on a **private, password-protected staging** for invited playtests.
+- **Phase order:**
+
+  V7 Eldmere boss → V6b Gear II → V10a Content tools → S1 Private staging → **PLAYTEST 1** (Eldmere) → WW Whispering Wood → V8 Navigation → V11a Hollow Deep → V9 Save slots → **PLAYTEST 2** → V11b Valdren City → V11c Ashen Wastes → V11d Crystal Spire → V2a Accounts + privacy → V2b Email accounts → V10b Telemetry → V12 Polish → **PLAYTEST 3** → **LAUNCH 1.0**.
+- **V10 splits:** **V10a Content tools** (the playtest bot over REST, the per-region balance simulator, content tooling) comes early so every region after Eldmere is built with it; **V10b Telemetry** (anonymous telemetry, opt-out, SQL views) comes before launch.
+- **V2c's parts are placed:**
+  - **S1 Private staging:** the container image, hosting, managed Postgres with backups and a **tested restore**, Sentry, JSON logs, Actuator health and metrics, password protection, preview deployments per PR, and the content-id guard (P-28), since playtesters' saves must survive releases.
+  - **V12 Polish:** the installable PWA and version skew (`X-API-Version`, "Update available", one release of backward compatibility, the `oasdiff` check).
+- **Playtests:**
+  - **PLAYTEST 1** plays Eldmere, start to the Ashen Herald, on phone and desktop with the in-game feedback button (moved from ALPHA).
+  - **PLAYTEST 2** plays through the Hollow Deep with save slots.
+  - **PLAYTEST 3** plays the complete game after V12.
+- **The ALPHA checklist becomes the LAUNCH checklist:** ASVS L1 review, a backup restore drill, a Sentry alert, the privacy page live, licences chosen (code vs story/art), no endpoint accepting a player id from the client (P-32), the repository public, and domain email with SPF, DKIM and DMARC.
+- **Releases:** each phase is still a `0.x` release with a CHANGELOG entry; **1.0 is the launch**.
+- **GitHub:** the milestone ALPHA is renamed **LAUNCH**; its issues stay on it.
+- **Credits and the end screen** belong to V11d, the final ending. V7 ends in an epilogue and free roam, not an end-of-alpha screen.
+
+**Why.** Players see one finished game. Private playtests at three points still bring outside eyes early, and the tools (bot, simulator) arrive before the regions they check.
+
+**Supersedes** the ALPHA parts of P-17 (order, feedback button), P-20 (V2c), P-27 (Alpha 2 and the order after ALPHA) and P-32 (an ALPHA checklist item, now LAUNCH), and the ALPHA milestone. **Reads as LAUNCH** wherever P-11 ("at alpha") and P-25 ("before ALPHA") name the alpha.
+
+**Spec.** §1, §4.10, §4.15, §6, §7, §11, §12, §13.
