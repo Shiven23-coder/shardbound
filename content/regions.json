@@ -23,11 +23,13 @@
     { "id": "eldmere_cottage_lane", "region": "eldmere", "name": "Cottage Lane", "map": "eldmere_cottage_lane" },
     { "id": "eldmere_old_ruins", "region": "eldmere", "name": "The Old Ruins", "map": "eldmere_old_ruins" },
     { "id": "eldmere_square", "region": "eldmere", "name": "Eldmere Square", "map": "eldmere_square" },
-    { "id": "eldmere_mill_road", "region": "eldmere", "name": "Mill Road", "map": "eldmere_mill_road" }
+    { "id": "eldmere_mill_road", "region": "eldmere", "name": "Mill Road", "map": "eldmere_mill_road" },
+    { "id": "eldmere_ash_rise", "region": "eldmere", "name": "The Ash Rise", "map": "eldmere_ash_rise" }
   ],
   "edges": [
     { "from": "eldmere_cottage_lane", "to": "eldmere_old_ruins", "weight": 1 },
     { "from": "eldmere_cottage_lane", "to": "eldmere_square", "weight": 1 },
-    { "from": "eldmere_square", "to": "eldmere_mill_road", "weight": 1 }
+    { "from": "eldmere_square", "to": "eldmere_mill_road", "weight": 1 },
+    { "from": "eldmere_old_ruins", "to": "eldmere_ash_rise", "weight": 1, "gateFlag": "herald_risen" }
   ]
 }

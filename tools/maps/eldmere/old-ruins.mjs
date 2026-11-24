@@ -1,7 +1,7 @@
 // Old Ruins (28 × 20): where the Heartshard fell.
 //  - the crater: scorched earth, a ring of rubble, the warm crystal and its steam
 //  - the broken watchtower to the west, with fallen pillars and a wall
-//  - the north rubble, blocking the way to the Ashen Herald's arena (an obstacle, opened in V7)
+//  - the north rubble, blocking the way to the Ash Rise until the ash falls (P-67); the Ruins Lantern beside the path north
 //  - the east: a toppled statue and a ruined house; the Ash Wisp and the Barrow Skull from dawn (P-64), the main-path chest (V6a, P-65)
 import {
   build, cluster, forestBorder, forestFill, makeTerrain, noise, paintEllipse, paintPath, pathEdges, smooth,
@@ -26,11 +26,14 @@ export default function oldRuins() {
     ['boulder', 9, 7], ['rubble', 11, 12], ['rubble3', 17, 12], ['rock', 10, 10], ['rubble2', 18, 8],
     // the broken watchtower and what fell from it
     ['watchtower', 4, 4], ['pillar', 8, 4], ['pillarBroken', 3, 10], ['brokenWall', 5, 11], ['rubble4', 8, 9],
-    // the north rubble, blocking the way to the arena
-    ['boulders', 13, 0], ['rubble', 12, 3], ['rubble2', 17, 3], ['rubble4', 16, 2],
+    // the Ruins Lantern's post (the scene draws its top, lit or cold)
+    ['lanternBase', 12, 5],
     // the east: a toppled statue and a ruined house
     ['statue', 21, 5], ['pillarBroken', 23, 9], ['ruinedHouse', 19, 13], ['rubble3', 24, 12],
   ];
+
+  // The north rubble, drawn and blocking only until the ash falls (P-45, P-67).
+  const obstacleStamps = [['boulders', 13, 0], ['rubble', 12, 3], ['rubble2', 17, 3], ['rubble4', 16, 2]];
 
   const details = [];
   pathEdges(details, terrain, { verge: 'stones', edge: 'grit', density: 0.07, seed: 23 });
@@ -45,17 +48,24 @@ export default function oldRuins() {
     terrain,
     forestTrees,
     stamps,
+    obstacleStamps,
     details,
     properties: { area: 'eldmere_old_ruins', region: 'eldmere' },
     objects: [
       { name: 'from_lane', type: 'spawn_point', x: 13, y: 18, props: { main: true } },
       { name: 'to_lane', type: 'exit', x: 13, y: 19, w: 2, h: 1, props: { toArea: 'eldmere_cottage_lane', toSpawn: 'from_ruins' } },
       { name: 'crater_crystal', type: 'interact', x: 14, y: 9, props: { dialogue: 'crater_crystal' } },
-      { name: 'ruins_rubble', type: 'obstacle', x: 12, y: 1, w: 6, h: 3, props: { dialogue: 'ruins_rubble', opensIn: 'V7' } },
+      { name: 'ruins_rubble', type: 'obstacle', x: 12, y: 1, w: 6, h: 3, props: { dialogue: 'ruins_rubble', hideIf: 'herald_risen' } },
       { name: 'crater_steam', type: 'effect', x: 12, y: 8, w: 5, h: 3, props: { effect: 'steam' } },
       { name: 'heartshard', type: 'prop', x: 14, y: 9, props: { sprite: 'props:2', hideIf: 'dawn' } },
       { name: 'heartshard_glow', type: 'light', x: 14, y: 9, props: { radius: 3.4, color: '#8cf0a8', intensity: 0.9, hideIf: 'dawn' } },
-      { name: 'arena_way', type: 'reserved', x: 13, y: 1, w: 4, h: 2, props: { for: 'exit', phase: 'V7' } },
+      { name: 'arena_way', type: 'exit', x: 13, y: 1, w: 4, h: 2, props: { toArea: 'eldmere_ash_rise', toSpawn: 'from_ruins' } },
+      { name: 'from_rise', type: 'spawn_point', x: 14, y: 4 },
+      // the Ruins Lantern (P-67): a short way back to the Herald after a fall
+      { name: 'ruins_lantern', type: 'lantern', x: 12, y: 5,
+        props: { lanternId: 'ruins', name: 'Ruins Lantern', spawn: 'ruins_rest', dialogue: 'ruins_lantern',
+          radius: 3.4, color: '#ffc46b', intensity: 1.0 } },
+      { name: 'ruins_rest', type: 'spawn_point', x: 13, y: 5 },
       // from dawn only (P-64): the storm-night walk for the Heartshard stays a level-1 walk
       { name: 'ruins_creep_a', type: 'creep_spawn', x: 21, y: 9, props: { template: 'ash_wisp', levelMin: 3, levelMax: 4, aggroRadius: 2, showIf: 'dawn' } },
       { name: 'ruins_creep_b', type: 'creep_spawn', x: 7, y: 14, props: { template: 'barrow_skull', levelMin: 4, levelMax: 4, aggroRadius: 1, showIf: 'dawn' } },
