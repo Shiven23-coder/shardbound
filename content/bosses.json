@@ -8,9 +8,9 @@
       "family": "ASHEN",
       "sprite": "boss.ashen_herald",
       "level": 5,
-      "baseHp": 196,
-      "baseAtk": 13,
-      "baseDef": 10,
+      "baseHp": 128,
+      "baseAtk": 9,
+      "baseDef": 8,
       "baseSpd": 7,
       "phases": [
         {
