@@ -86,6 +86,7 @@ test('a win: FOE VANQUISHED, the epilogue, then free roam and the west road stop
 
   const line = page.locator('.cutscene-line');
   await expect(line).toContainText('The ash stops falling.', { timeout: 15_000 });
+  await expect(page.getByRole('status').filter({ hasText: /to skip$/ }), 'the intro skip left no hint behind').toBeHidden();
   for (let turns = 0; turns < 20 && (await line.isVisible()); turns++) {
     await press(line);
     await page.waitForTimeout(300);

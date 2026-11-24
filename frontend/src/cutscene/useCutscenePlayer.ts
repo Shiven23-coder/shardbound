@@ -75,6 +75,8 @@ export function useCutscenePlayer(
     if (id === null || finished.current === id) return;
     finished.current = id;
     setHeldSince(null);
+    clearTimeout(hintTimer.current);
+    setHinted(false);                                  // a skip ends the hold: the hint goes with it
     finishWith.current(id);
   }, [id]);
   const next = useCallback(() => {
@@ -88,6 +90,7 @@ export function useCutscenePlayer(
     const playing = current.current;
     bridge.setCutscene(playing ? { id: playing.id, actors: playing.actors } : null);
     setMusic(null);
+    setHinted(false);
   }, [bridge, id]);
 
   useEffect(() => {
