@@ -141,11 +141,14 @@ test('walking through the falling ash stays within the frame CPU budget (P-67)',
   cdp.on('Tracing.dataCollected', ({ value }) => events.push(...(value as TraceEvent[])));
   await cdp.send('Tracing.start', { categories: 'devtools.timeline', transferMode: 'ReportEvents' });
 
-  await walkTo(page, 'keyboard', 'arena_way');
-  await inArea(page, 'The Ash Rise');
-  await walkToTile(page, 'keyboard', [10, 8]);                       // across the Rise, short of the Herald's trigger
-  await walkTo(page, 'keyboard', 'to_ruins');
-  await inArea(page, 'The Old Ruins');
+  // Up onto the Rise and back, twice: enough frames for a p95 even on a slow runner.
+  for (let lap = 0; lap < 2; lap++) {
+    await walkTo(page, 'keyboard', 'arena_way');
+    await inArea(page, 'The Ash Rise');
+    await walkToTile(page, 'keyboard', [10, 8]);                     // across the Rise, short of the Herald's trigger
+    await walkTo(page, 'keyboard', 'to_ruins');
+    await inArea(page, 'The Old Ruins');
+  }
 
   const done = new Promise((resolve) => cdp.once('Tracing.tracingComplete', resolve));
   await cdp.send('Tracing.end');
