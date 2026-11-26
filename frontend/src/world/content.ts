@@ -107,6 +107,11 @@ export function bossIdOf(sprite: string): string | null {
   return sprite.startsWith('boss.') ? sprite.slice('boss.'.length) : null;
 }
 
+/** A boss's sprite key in the art manifest: `boss.<bossId>`, as bosses.json names it. */
+export function bossSpriteKey(bossId: string): string {
+  return `boss.${bossId}`;
+}
+
 export interface LightState {
   ambient: number;
   tint: number[];
