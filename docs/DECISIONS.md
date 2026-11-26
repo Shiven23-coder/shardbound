@@ -829,7 +829,7 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 
 **Problem.** The planned semester tag for v1 waited on a PostgreSQL verification run that only mattered for submission.
 
-**Decision.** Annotated tag `v1-archive` on `main` at `2a17e8a` ("v1 archived; never verified on PostgreSQL"). The PostgreSQL run is skipped. The deleted study docs are preserved in the tag.
+**Decision.** Annotated tag `v1-archive` on `main` at `0f6c993` ("v1 archived; never verified on PostgreSQL"). The PostgreSQL run is skipped. The deleted study docs are preserved in the tag.
 
 **Why.** v1 is no longer submitted.
 

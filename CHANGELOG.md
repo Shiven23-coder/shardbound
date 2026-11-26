@@ -11,14 +11,14 @@
 
 ### Features
 
-* battles (V4) ([#18](https://github.com/Shiven23-coder/shardbound/issues/18)) ([818ffce](https://github.com/Shiven23-coder/shardbound/commit/818ffce21b3b1b7a379294e3f7bf23e081ffb72f))
-* platform reset (P0) ([#1](https://github.com/Shiven23-coder/shardbound/issues/1)) ([f951784](https://github.com/Shiven23-coder/shardbound/commit/f951784eada979ad44819f8e30b3a66db14b994d))
-* world — Eldmere walkable (V3) ([#12](https://github.com/Shiven23-coder/shardbound/issues/12)) ([e74302d](https://github.com/Shiven23-coder/shardbound/commit/e74302d7d7173ae4d160e2c88233eefb8408e6b5))
+* battles (V4) (private PR 18) ([dbc61cd](https://github.com/Shiven23-coder/shardbound/commit/dbc61cd6a68d8c52c1ee999f7d69a2ab05323cef))
+* platform reset (P0) (private PR 1) ([970fc49](https://github.com/Shiven23-coder/shardbound/commit/970fc492837163693890be3f31a97e96d286b1c5))
+* world — Eldmere walkable (V3) (private PR 12) ([5cf1c72](https://github.com/Shiven23-coder/shardbound/commit/5cf1c723a4816f2df352f2547be8fcd14431f93b))
 
 
 ### Bug Fixes
 
-* **client:** resume survives restarts (P-30) ([#10](https://github.com/Shiven23-coder/shardbound/issues/10)) ([4819611](https://github.com/Shiven23-coder/shardbound/commit/481961109fa1b79d79831920b6e05bb480ab8334))
+* **client:** resume survives restarts (P-30) (private PR 10) ([98e230e](https://github.com/Shiven23-coder/shardbound/commit/98e230e708173dbb84cb0d00f2cc27952d2d70db))
 
 ## Changelog
 
