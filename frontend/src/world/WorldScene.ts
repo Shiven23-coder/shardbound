@@ -22,7 +22,8 @@ import {
 } from './content';
 import { artUrl, tilesetUrl } from './art';
 import { BACKDROP_KEY, BATTLE_SCENE, BattleScene, createEffectAnimations } from './BattleScene';
-import { createBossAnimations, preloadBosses } from './bossSprites';
+import { bossKeysOnMap, createBossAnimations, preloadBosses, releaseBosses } from './bossSprites';
+import type { TiledLayers } from './bossSprites';
 import type { CutsceneCast } from './bridge';
 import type { AshSettings } from './content';
 import type { CutsceneStepView } from '../api/types';
@@ -125,6 +126,8 @@ export class WorldScene extends Phaser.Scene {
   private lanternTops = new Map<string, Phaser.GameObjects.Image>();
   private chests = new Map<string, Phaser.GameObjects.Sprite>();
   private bosses = new Map<string, Phaser.GameObjects.Sprite>();
+  /** The boss sprite keys this area's map names: their strips load with it (P-67). */
+  private areaBosses: string[] = [];
   /** The cutscene's actors by id while one plays (P-68). */
   private cutsceneActors = new Map<string, Phaser.GameObjects.Sprite>();
   /** A cutscene is playing. */
@@ -196,6 +199,7 @@ export class WorldScene extends Phaser.Scene {
     this.npcTiles = new Set();
     this.lighting = [];
     this.ash = null;
+    this.areaBosses = [];
     this.props = [];
     this.playerLight = null;
   }
@@ -204,13 +208,18 @@ export class WorldScene extends Phaser.Scene {
     const mapKey = this.mapCacheKey();
     if (!this.cache.json.exists(mapKey)) {
       this.load.json(mapKey, mapUrl(this.view.mapKey));
-      this.load.once(`filecomplete-json-${mapKey}`, (_key: string, _type: string, data: { tilesets: TiledTileset[] }) => {
+      this.load.once(`filecomplete-json-${mapKey}`, (_key: string, _type: string, data: { tilesets: TiledTileset[] } & TiledLayers) => {
         for (const tileset of data.tilesets) {
           if (!this.textures.exists(tilesetKey(tileset.name))) {
             this.load.image(tilesetKey(tileset.name), tilesetUrl(tileset.image));
           }
         }
+        this.areaBosses = bossKeysOnMap(data);
+        preloadBosses(this, this.areaBosses);
       });
+    } else {
+      this.areaBosses = bossKeysOnMap(this.cache.json.get(mapKey));
+      preloadBosses(this, this.areaBosses);
     }
     for (const key of actorKeys) {
       if (!this.textures.exists(key)) {
@@ -218,7 +227,6 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     if (!this.textures.exists('actor-shadow')) this.load.image('actor-shadow', artUrl(actorShadow));
-    preloadBosses(this);
     if (!this.textures.exists(CHEST_KEY)) {
       this.load.spritesheet(CHEST_KEY, artUrl(chestArt.sheet), { frameWidth: chestArt.frameWidth, frameHeight: chestArt.frameHeight });
     }
@@ -235,6 +243,7 @@ export class WorldScene extends Phaser.Scene {
     createEffectTextures(this);
     createWalkAnimations(this);
     createEffectAnimations(this);
+    this.releaseOtherBosses();
     createBossAnimations(this);
     this.buildMap();
     this.createPlayer();
@@ -263,6 +272,9 @@ export class WorldScene extends Phaser.Scene {
       this.bridge.toScene.on('dialogue', (cover) => this.frameDialogue(cover)),
       this.bridge.toScene.on('battle', (battle) => this.showBattle(battle !== null)),
       this.bridge.toScene.on('cutscene', (cast) => (cast ? this.startCutscene(cast) : this.endCutscene())),
+      this.bridge.toScene.on('battle', (next) => {
+        if (!next) this.releaseOtherBosses();
+      }),
       this.bridge.toScene.on('cutsceneStep', (step) => this.stageStep(step)),
     );
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -1065,6 +1077,15 @@ export class WorldScene extends Phaser.Scene {
         done();
       },
     });
+  }
+
+  /**
+   * Only this area's bosses stay loaded (P-67). A battle still on screen (a boss's last page, after which a death
+   * moved the player to another area) keeps its boss until it closes.
+   */
+  private releaseOtherBosses(): void {
+    if (this.bridge.latestBattle) return;
+    releaseBosses(this, this.areaBosses);
   }
 
   /** The Lost Shards (P-62): a pulsing glow on the tile where the player fell, until recovered. */

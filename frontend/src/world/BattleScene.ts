@@ -19,7 +19,7 @@ import type { BattleView, HitView } from '../api/types';
 import type { WorldBridge } from './bridge';
 import { battleBackdrop, battleEffects, bossArt, bossTexture, effectArt, sheetLayout } from './content';
 import type { BossArt } from './content';
-import { createBossAnimations } from './bossSprites';
+import { createBossAnimations, preloadBosses } from './bossSprites';
 import { mixColour } from './colour';
 import { reducedMotion } from './motion';
 
@@ -114,6 +114,12 @@ export class BattleScene extends Phaser.Scene {
     this.enemyFlashing = false;
     this.windUpTweens = [];
     this.phasePlayedRound = -1;
+  }
+
+  /** A boss's strips load with its area; a fight resumed before they have (a reload) loads them here. */
+  preload(): void {
+    const enemy = this.bridge.latestBattle!.battle.enemy.sprite;
+    if (bossArt(enemy)) preloadBosses(this, [enemy]);
   }
 
   create(): void {

@@ -3,8 +3,10 @@ name: Nightly
 # Checks that are too slow or too noisy to gate every PR (P-36): the 20-cycle
 # restart-and-reload test and the mobile performance budget (4x CPU throttle,
 # p95 CPU time per frame and JS heap from content/balance.json, P-38), which
-# also fails on a p95 more than 25 % worse than the last successful nightly
-# (its perf-numbers artifact). Also run by hand before each release.
+# also fails on a p95 or a battle start more than 25 % worse than the last
+# successful nightly (its perf-numbers artifact, P-70). Also run by hand before
+# each release. A red nightly on main opens a nightly-red issue; the next green
+# one closes it.
 on:
   schedule:
     - cron: '30 21 * * *'   # 03:00 IST
@@ -12,7 +14,7 @@ on:
 
 permissions:
   contents: read
-  actions: read
+  actions: read   # the perf run reads the last good nightly's artifact
 
 jobs:
   resume-20-and-perf:
@@ -20,3 +22,33 @@ jobs:
     with:
       resume-cycles: '20'
       perf: true
+
+  # P-70: nobody watches the nightly, so a red one files an issue (or comments on
+  # the open one) and the next green one closes it. Runs on main only, not when
+  # the workflow is dispatched on a PR branch.
+  alert:
+    name: nightly-red issue
+    needs: resume-20-and-perf
+    if: always() && github.ref == 'refs/heads/main' && needs.resume-20-and-perf.result != 'cancelled'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RESULT: ${{ needs.resume-20-and-perf.result }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Open, update or close the nightly-red issue
+        run: |
+          gh label create nightly-red --color B60205 --description "The nightly run is failing on main" 2>/dev/null || true
+          issue=$(gh issue list --label nightly-red --state open --limit 1 --json number --jq '.[0].number // empty')
+          if [ "$RESULT" = success ]; then
+            if [ -n "$issue" ]; then
+              gh issue close "$issue" --comment "The nightly is green again: $RUN_URL"
+            fi
+          elif [ -n "$issue" ]; then
+            gh issue comment "$issue" --body "Still red on ${GITHUB_SHA::7}: $RUN_URL"
+          else
+            gh issue create --label nightly-red --title "Nightly is red on main"               --body "The nightly run failed on ${GITHUB_SHA::7}: $RUN_URL. This issue closes itself when a nightly is green again (P-70)."
+          fi

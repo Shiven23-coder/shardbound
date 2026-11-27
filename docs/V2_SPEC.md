@@ -485,7 +485,7 @@ There is no v1 → v2 conversion: v1 never ran in production, so no v1 saves exi
 |---|---|---|
 | Title screen interactive | < 2.0 s | Playwright, cold cache, `performance.mark('title-interactive')` |
 | Region load | < 1.5 s | mark from the `/api/world/exit` response to the first World frame |
-| Battle start | < 300 ms | mark from the `/api/world/encounter` response to the first Battle frame |
+| Battle start | cold ≤ 300 ms and warm p95 ≤ 300 ms (P-70) | from the `/api/world/encounter` response to the battle on screen, on one cold battle (the first after the page loads) and seven warm ones, in Chrome at 4× CPU throttle on the reference machine: a desktop with a hardware GPU, run before each release. CI's runners draw WebGL in software, so the nightly instead holds cold and warm p95 to within 25 % of the last good nightly |
 | Initial JS (title) | ≤ 200 KB gzip | CI bundle check from **V3** |
 | Phaser chunk (lazy) | ≤ 450 KB gzip | CI bundle check from **V3**; Shardbound's own Phaser build with only the modules it uses (P-60) |
 | Region asset pack | ≤ 1.5 MB | CI asset check |

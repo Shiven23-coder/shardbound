@@ -629,12 +629,18 @@
             "p95FrameCpuMs",
             "maxRegression",
             "jsHeapMb",
-            "battleStartMs"
+            "battleStartColdMs",
+            "battleStartWarmP95Ms"
           ],
           "additionalProperties": false,
           "properties": {
-            "battleStartMs": {
-              "description": "From the encounter's answer to the battle on screen, on the throttled CPU (§4.13).",
+            "battleStartColdMs": {
+              "description": "The first battle after the page loads: from the encounter's answer to the battle on screen, in Chrome at cpuThrottle on the reference machine (a desktop with a hardware GPU, §4.13). CI compares with the last green nightly instead.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "battleStartWarmP95Ms": {
+              "description": "The same for the next seven battles, at their 95th percentile (the slowest of seven), on the reference machine (§4.13).",
               "type": "number",
               "exclusiveMinimum": 0
             },
