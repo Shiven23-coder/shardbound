@@ -69,3 +69,6 @@ Dependabot keeps dependencies current. release-please tags semver releases and w
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/TECH_STACK.md](docs/TECH_STACK.md) · [docs/PRD.md](docs/PRD.md) · [docs/ALGORITHMS.md](docs/ALGORITHMS.md)
 - Diagrams: [ER](docs/diagrams/er-diagram-v2.md) · [classes](docs/diagrams/class-diagram-v2.md)
 - [docs/PROJECT_SPEC.md](docs/PROJECT_SPEC.md): the historical v1 spec; its engine rules still apply
+
+## Licence
+© 2026 Shiven23-coder. All rights reserved. The source code, story and original art in this repository are published so they can be read and reviewed as a portfolio. No licence is granted to use, copy, modify or distribute them beyond what GitHub's Terms of Service allow (viewing and forking on GitHub). Third-party assets keep their own licences: see CREDITS.md (the Ninja Adventure pack is CC0 1.0).

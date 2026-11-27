@@ -11,12 +11,6 @@ CI fails if a file under `content/art/`, `content/audio/`, `frontend/src/assets/
 5. Record any change made (recolour, crop, re-export) in the "Changes" column.
 6. Nothing taken from Elden Ring or any other commercial game: assets, names, fonts, UI, music or text.
 
-## Fonts
-| Font | Author | Source | Licence | Files | Changes |
-|---|---|---|---|---|---|
-| Cinzel | Natanael Gama | https://github.com/NDISCOVER/Cinzel | SIL OFL 1.1 | _(added in V3)_ | self-hosted subset |
-| Cormorant Garamond | Christian Thalmann | https://github.com/CatharsisFonts/Cormorant | SIL OFL 1.1 | _(added in V3)_ | self-hosted subset |
-
 ## Art
 | Asset / folder | Author | Source URL | Licence | Changes |
 |---|---|---|---|---|
