@@ -9,7 +9,7 @@ What each technology is for and why it was chosen. Exact versions are pinned in 
 | Layer | Choice |
 |---|---|
 | Language | Java 25 (`maven.compiler.release=25`) |
-| Framework | Spring Boot 4.1: web, JDBC, Flyway, Actuator, validation; Security (V2a); mail (V2b) |
+| Framework | Spring Boot 4.2: web, JDBC, Flyway, Actuator, validation; Security (V2a); mail (V2b) |
 | Data access | `JdbcClient` with hand-written SQL; `@Transactional` for multi-row writes |
 | Migrations | Flyway (`backend/src/main/resources/db/migration/V*__*.sql`), run by Spring at startup |
 | Database | PostgreSQL 17 |

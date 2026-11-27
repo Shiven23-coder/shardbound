@@ -35,7 +35,7 @@ flowchart LR
         SW["Service worker: precached shell, region atlases"]
     end
     C -- "HTTPS /api (same origin)" --> CDN["CDN: static frontend, proxies /api"]
-    CDN --> J["Spring Boot 4.1 on Java 25: web/ controllers, Spring Security"]
+    CDN --> J["Spring Boot 4.2 on Java 25: web/ controllers, Spring Security"]
     J --> E["Engine (framework-free): GameEngine · WorldEngine · BattleEngine · DialogueEngine · ProgressionService"]
     E --> M["Immutable content in memory (JSON + .tmj, validated at startup)"]
     E --> PT["Ports: SaveStore · MetaStore · RunStore"]
@@ -50,7 +50,7 @@ flowchart LR
 
 | Layer | Choice |
 |---|---|
-| Backend | Java 25, **Spring Boot 4.1** (web, JDBC, Flyway, Actuator, validation; Security from V2a; mail from V2b), **JdbcClient** with hand-written SQL, Jackson, springdoc-openapi, networknt json-schema-validator, Caffeine, Bouncy Castle (Argon2 through Spring Security's encoder), JUnit 5, **Testcontainers**, ArchUnit |
+| Backend | Java 25, **Spring Boot 4.2** (web, JDBC, Flyway, Actuator, validation; Security from V2a; mail from V2b), **JdbcClient** with hand-written SQL, Jackson, springdoc-openapi, networknt json-schema-validator, Caffeine, Bouncy Castle (Argon2 through Spring Security's encoder), JUnit 5, **Testcontainers**, ArchUnit |
 | Database | **PostgreSQL 17**, player data only; roles `shardbound_owner` / `shardbound_app` / `shardbound_telemetry_ro` |
 | Frontend | TypeScript, React 19 (HUD/menus), Phaser 3.90 (world/battle), Vite, openapi-typescript + openapi-fetch, Vitest, Playwright (budgets, e2e), installable PWA (V2c) |
 | Ops | Docker Compose for dev (postgres + mailpit), GitHub Actions CI (Testcontainers, OpenAPI drift, gitleaks, PR-title lint), Dependabot, release-please, Cloudflare Turnstile, Sentry |
@@ -855,7 +855,7 @@ Order after ALPHA (P-27, P-65): V6b → **WW** (Alpha 2) → V8 → V2b → V9 �
 4. Audio: CC0/CC-BY, listed in CREDITS.md.
 5. Hosting: backend in Mumbai/Singapore, CDN frontend proxying `/api`, managed Postgres; the provider is chosen at deploy time (P-16). A domain is bought before V2b (SPF/DKIM/DMARC).
 6. Tile-step client movement with server-validated REST events; no WebSocket (P-06, P-19, P-51).
-7. Spring Boot 4.1 on Java 25, JdbcClient + hand-written SQL, Flyway via Spring (P-02, P-03).
+7. Spring Boot 4.2 on Java 25, JdbcClient + hand-written SQL, Flyway via Spring (P-02, P-03).
 8. Accounts: guest + Google at alpha, email + password in V2b (P-11).
 9. 6 endings; the merchant ending is the secret early one.
 10. Telemetry: anonymous run ids plus an opt-out setting.

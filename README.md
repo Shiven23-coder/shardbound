@@ -2,7 +2,7 @@
 
 A 2D top-down dark-fantasy RPG for phone and desktop browsers. Carry the Heartshard across six regions of Valdren, fight turn-based battles against foes you can see coming, rest at Lanterns, and spend Shards on attributes and weapon upgrades, knowing you drop them all when you die. The server decides every outcome; the browser renders it.
 
-Spring Boot 4.1 · Java 25 · PostgreSQL 17 · React + TypeScript (Phaser for the world and battles)
+Spring Boot 4.2 · Java 25 · PostgreSQL 17 · React + TypeScript (Phaser for the world and battles)
 
 ## Prerequisites
 - JDK 25 (`JAVA_HOME` set). Maven is downloaded by the wrapper.

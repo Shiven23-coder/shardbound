@@ -16,7 +16,7 @@ flowchart TB
 
     CLIENT -- "JSON over HTTPS /api\n(Vite proxy → :8080 in dev, CDN proxy in prod)" --> WEB
 
-    subgraph Server["Spring Boot 4.1 — Java 25"]
+    subgraph Server["Spring Boot 4.2 — Java 25"]
         WEB["web/: @RestControllers\nSessionArgumentResolver\nProblemDetailAdvice"] --> ENG["GameEngine\n(framework-free)"]
         ENG --> CACHE["Live-run cache (Caffeine)"]
         ENG --> RULES["combat · quest · rules · story\nEventBus → AchievementManager"]
