@@ -28,6 +28,11 @@ public final class StatusTracker {
     }
 
     /** Puts a status on (or renews its turns). The caller checked {@link #canTake}. */
+    /** Immune to {@code status} for at least {@code turns} more turns (a boss after a Stun or as it turns, §4.5). */
+    public void grantImmunity(Status status, int turns) {
+        immunity.merge(status, turns, Math::max);
+    }
+
     public void apply(StatusRule rule) {
         turnsLeft.put(rule.status(), rule.turns());
     }

@@ -47,6 +47,9 @@ public final class Requests {
 
     public record ItemRequest(@NotBlank @Size(max = MAX_ID) String itemId) { }
 
+    /** The cutscene the client finished or skipped (P-68). */
+    public record CutsceneRequest(@NotBlank @Size(max = MAX_ID) String cutsceneId) { }
+
     /** The player stepped within a tile of their Lost Shards: their position (V2_SPEC §4.4, P-62). */
     public record RecoverRequest(@PositiveOrZero int x, @PositiveOrZero int y, @NotNull Facing facing) { }
 

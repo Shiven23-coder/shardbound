@@ -34,8 +34,10 @@ public final class ContentFiles {
     public static final String STATUSES = "statuses.json";
     public static final String SKILLS = "skills.json";
     public static final String CREEPS = "creeps.json";
+    public static final String BOSSES = "bosses.json";
     public static final String SCHEMA_DIR = "schema/";
     public static final String DIALOGUE_DIR = "dialogue/";
+    public static final String CUTSCENE_DIR = "cutscenes/";
     public static final String MAPS_DIR = "maps/";
     public static final String MAP_SUFFIX = ".tmj";
     /** Folders whose files the client ships; the server only schema-checks their top-level JSON. */
@@ -119,6 +121,17 @@ public final class ContentFiles {
         List<String> names = new ArrayList<>();
         for (String name : texts.keySet()) {
             if (name.startsWith(DIALOGUE_DIR) && name.endsWith(".json")) {
+                names.add(name);
+            }
+        }
+        return names;
+    }
+
+    /** Cutscene files ({@code cutscenes/*.json}, P-68), in name order. */
+    public List<String> cutsceneNames() {
+        List<String> names = new ArrayList<>();
+        for (String name : texts.keySet()) {
+            if (name.startsWith(CUTSCENE_DIR) && name.endsWith(".json")) {
                 names.add(name);
             }
         }

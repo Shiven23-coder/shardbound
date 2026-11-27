@@ -43,10 +43,13 @@ const EFFECTS = {
   'PowerUp1.wav': 'sfx/shards-recovered.wav',
   // chests (P-65)
   'Bonus2.wav': 'sfx/chest-open.wav',
+  // the Ashen Herald (P-67): its phase-2 sting
+  'Fire3.wav': 'sfx/herald-phase.wav',
 };
 const MUSIC = {
   '26 - Lost Village.ogg': 'music/eldmere.ogg',
   '17 - Fight.ogg': 'music/battle.ogg',
+  '10 - Dark Castle.ogg': 'music/herald.ogg',
 };
 
 const source = process.argv[2];

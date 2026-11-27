@@ -49,6 +49,9 @@ public final class DamageCalculator {
         if (move.status() != null && elem > 0) {
             int chance = Math.max(0, Math.min(rules.statusChanceCap(),
                     move.statusChance() + attacker.statusBonusPct() - defender.statusResistPct()));
+            if (defender instanceof CreepFighter creep && creep.boss() != null) {
+                chance /= 2;                                            // halved against bosses (§4.5)
+            }
             if (rng.nextInt(100) < chance) {
                 StatusRule rule = content.status(move.status());
                 if (defender.statuses().canTake(rule, defender.family())) {

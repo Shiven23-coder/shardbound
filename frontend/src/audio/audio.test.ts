@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import manifest from '../../../content/audio/audio.json';
-import { audioPacks, busLevels, playableFile } from './audio';
+import { audioPacks, busLevels, musicLevel, playableFile } from './audio';
 import { DEFAULT_SETTINGS } from '../settings/settings';
 
 describe('music files', () => {
@@ -23,17 +23,29 @@ describe('audio levels from the settings', () => {
       .toEqual({ master: 0, music: 0.6, effects: 0.8 });
   });
 
-  it('loads every effect in some pack; initial and battle effects in exactly one, region packs may share (P-59, P-64)', () => {
+  it('loads every effect in some pack; initial, battle and boss effects in exactly one, region packs may share (P-59, P-64)', () => {
     const regional = new Set(Object.values(audioPacks.regions).flatMap((p) => p.effects));
-    const once = [...audioPacks.initial.effects, ...audioPacks.battle.effects];
+    const once = [...audioPacks.initial.effects, ...audioPacks.battle.effects,
+      ...Object.values(audioPacks.bosses).flatMap((p) => p.effects)];
     expect(new Set(once).size).toBe(once.length);
     expect(once.filter((effect) => regional.has(effect))).toEqual([]);
     expect([...new Set([...once, ...regional])].sort()).toEqual(Object.keys(manifest.effects).sort());
   });
 
-  it("loads a region's own music with its pack, and the battle track only with the battle pack (P-57, P-59)", () => {
+  it("loads a region's own music with its pack, the battle track only with the battle pack, a boss's with its own (P-57, P-59, P-67)", () => {
     for (const [region, pack] of Object.entries(audioPacks.regions)) expect(pack.music).toBe(region);
     expect(audioPacks.battle.music).toBe('battle');
-    expect(Object.keys(manifest.music).sort()).toEqual([...Object.keys(audioPacks.regions), 'battle'].sort());
+    const bossTracks = Object.values(audioPacks.bosses).map((p) => p.music);
+    expect(Object.keys(manifest.music).sort()).toEqual([...Object.keys(audioPacks.regions), 'battle', ...bossTracks].sort());
+  });
+});
+
+describe('the boss music step-up (P-67)', () => {
+  it("plays a boss's track faster and louder in its second phase, and other tracks as they are", () => {
+    const herald = { file: 'music/herald.ogg', fallback: 'music/herald.m4a', volume: 0.32, escalated: { rate: 1.1, volume: 0.42 } };
+    expect(musicLevel(herald, false)).toEqual({ rate: 1, volume: 0.32 });
+    expect(musicLevel(herald, true)).toEqual({ rate: 1.1, volume: 0.42 });
+    const region = { file: 'music/eldmere.ogg', fallback: 'music/eldmere.m4a', volume: 0.3 };
+    expect(musicLevel(region, true)).toEqual({ rate: 1, volume: 0.3 });
   });
 });

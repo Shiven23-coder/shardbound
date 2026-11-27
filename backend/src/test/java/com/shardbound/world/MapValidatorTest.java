@@ -46,7 +46,7 @@ class MapValidatorTest {
                 List.of(edges),
                 Map.of("test_area", map));
         return new MapValidator(world, Set.of("intro", "flavour"), Set.of(), Set.of("storm_rat"),
-                Map.of("hatchet", false, "tonic", true)).validate();
+                Map.of("hatchet", false, "tonic", true), Set.of("ashen_herald")).validate();
     }
 
     private static MapObject building(int x, int y, int w, int h) {

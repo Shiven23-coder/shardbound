@@ -1,7 +1,9 @@
 // The battle menu (V2_SPEC §4.7, P-57): ATTACK (Strike / Guard), SKILLS (the
 // four slots), BAG and FLEE, with the same keys, gamepad buttons and taps as
-// dialogue. Pure, so every device shares one set of rules.
-import type { BattleRequest, MenuView } from '../api/types';
+// dialogue. Pure, so every device shares one set of rules. While a telegraphed
+// blow is pending, the server's brace cue (P-67) marks ATTACK and Guard with
+// the warning's amber and gives Guard its subtitle.
+import type { BattleRequest, BraceView, MenuView } from '../api/types';
 import type { Intent } from '../dialogue/dialogueInput';
 
 export type MenuPage = 'root' | 'attack' | 'skills' | 'bag';
@@ -12,6 +14,8 @@ export interface MenuItem {
   label: string;
   detail?: string;
   disabled: boolean;
+  /** Marked with the telegraph warning's amber: the way to Guard while a blow is pending. */
+  cue?: boolean;
   page?: MenuPage;
   action?: BattleRequest;
   back?: boolean;
@@ -26,12 +30,13 @@ export const ROOT: MenuState = { page: 'root', highlight: 0 };
 
 const BACK: MenuItem = { id: 'back', label: 'Back', disabled: false, back: true };
 
-/** The entries of a page, from the server's menu (what is usable is decided there). */
-export function menuItems(page: MenuPage, menu: MenuView): MenuItem[] {
+/** The entries of a page, from the server's menu (what is usable is decided there) and its brace cue, if any. */
+export function menuItems(page: MenuPage, menu: MenuView, brace?: BraceView | null): MenuItem[] {
+  const cue = Boolean(brace);
   switch (page) {
     case 'root':
       return [
-        { id: 'attack', label: 'Attack', disabled: false, page: 'attack' },
+        { id: 'attack', label: 'Attack', disabled: false, page: 'attack', cue },
         { id: 'skills', label: 'Skills', disabled: !menu.skills.some((s) => s.id), page: 'skills' },
         { id: 'bag', label: 'Bag', disabled: menu.bag.length === 0, page: 'bag' },
         { id: 'flee', label: 'Flee', disabled: !menu.canFlee, action: { kind: 'FLEE', slot: 0 } },
@@ -39,7 +44,11 @@ export function menuItems(page: MenuPage, menu: MenuView): MenuItem[] {
     case 'attack':
       return [
         { id: 'strike', label: 'Strike', detail: 'A plain attack', disabled: false, action: { kind: 'STRIKE', slot: 0 } },
-        { id: 'guard', label: 'Guard', detail: 'Halve the next hit', disabled: false, action: { kind: 'GUARD', slot: 0 } },
+        // Guard goes first in its round (P-69): it blunts the hit that comes this round.
+        {
+          id: 'guard', label: 'Guard', detail: brace?.guardDetail ?? 'Halve the next hit', disabled: false, cue,
+          action: { kind: 'GUARD', slot: 0 },
+        },
         BACK,
       ];
     case 'skills':

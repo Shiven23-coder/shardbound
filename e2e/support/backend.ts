@@ -78,6 +78,8 @@ export async function start(): Promise<void> {
     SPRING_DATASOURCE_USERNAME: process.env.E2E_DB_USER ?? 'shardbound',
     SPRING_DATASOURCE_PASSWORD: process.env.E2E_DB_PASSWORD ?? 'shardbound-dev',
     PORT: String(E2E_API_PORT),
+    // The production configuration plus the e2e profile's rehearsals (P-67): POST /api/debug/ready-for-the-herald.
+    SPRING_PROFILES_ACTIVE: 'e2e',
   };
   const child = spawn(javaExecutable(), ['-jar', backendJar()], { env, stdio: process.env.E2E_BACKEND_LOGS ? 'inherit' : 'ignore' });
   process_ = child;

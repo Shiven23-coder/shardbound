@@ -1,0 +1,90 @@
+{
+  "$schema": "../schema/cutscene.schema.json",
+  "description": "The Ashen Herald descends on the Ash Rise (P-67). Plays the first time the player steps onto the trigger; never after a death.",
+  "id": "herald_intro",
+  "area": "eldmere_ash_rise",
+  "actors": [
+    {
+      "id": "herald",
+      "sprite": "boss.ashen_herald",
+      "x": 10,
+      "y": 2,
+      "facing": "DOWN",
+      "name": "The Ashen Herald"
+    }
+  ],
+  "steps": [
+    {
+      "do": "fade",
+      "state": "in",
+      "ms": 600
+    },
+    {
+      "do": "camera",
+      "camera": "frame",
+      "actor": "herald",
+      "ms": 1000
+    },
+    {
+      "do": "music",
+      "track": "herald"
+    },
+    {
+      "do": "move",
+      "actor": "herald",
+      "path": [
+        [
+          10,
+          3
+        ],
+        [
+          10,
+          4
+        ]
+      ]
+    },
+    {
+      "do": "camera",
+      "camera": "frame",
+      "ms": 700
+    },
+    {
+      "do": "say",
+      "speaker": "herald",
+      "text": "Little lamp-bearer. You carry what was ours.",
+      "variants": [
+        {
+          "conditions": [
+            {
+              "type": "ITEM",
+              "key": "heartshard",
+              "op": "<",
+              "value": 1
+            }
+          ],
+          "text": "Little lamp-bearer. You carried what was ours. The stink of it is on you still."
+        }
+      ]
+    },
+    {
+      "do": "say",
+      "speaker": "herald",
+      "text": "The Circle wakes the world. You will kneel in the ash with the rest."
+    },
+    {
+      "do": "camera",
+      "camera": "shake",
+      "ms": 500
+    },
+    {
+      "do": "flash",
+      "ms": 300
+    },
+    {
+      "do": "say",
+      "speaker": "herald",
+      "text": "Come, then. Burn."
+    }
+  ],
+  "then": "battle:ashen_herald"
+}

@@ -9,8 +9,10 @@ import cottageLane from './eldmere/cottage-lane.mjs';
 import oldRuins from './eldmere/old-ruins.mjs';
 import square from './eldmere/square.mjs';
 import millRoad from './eldmere/mill-road.mjs';
+import ashRise from './eldmere/ash-rise.mjs';
 
 writeMap('eldmere_cottage_lane', cottageLane());
 writeMap('eldmere_old_ruins', oldRuins());
 writeMap('eldmere_square', square());
 writeMap('eldmere_mill_road', millRoad());
+writeMap('eldmere_ash_rise', ashRise());

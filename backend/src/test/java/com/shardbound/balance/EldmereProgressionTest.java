@@ -7,6 +7,7 @@ import com.shardbound.battle.BattleEngine;
 import com.shardbound.battle.BattleOutcome;
 import com.shardbound.battle.BattleRules;
 import com.shardbound.battle.BattleState;
+import com.shardbound.battle.BossTemplate;
 import com.shardbound.battle.CreepTemplate;
 import com.shardbound.battle.Element;
 import com.shardbound.battle.Skill;
@@ -48,19 +49,30 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * it back to the Lantern to rest and pick its Shards up again, then it retries.
  * <p>Gear (P-65): at dawn the bot opens the ruins chest on the main path and
  * equips the Woodcutter's Hatchet; the rusty-sword route (a player who skipped
- * the chest) is the stand-in's lower bound, and a third route also detours to
- * the secret clearing for the Hunter's Longbow. After every rest the bot holds
- * whichever weapon the server rates higher, as the Bag's Compare shows it.
+ * the chest) is reported, and a third route also detours to the secret
+ * clearing for the Hunter's Longbow, with a Dexterity build. After every rest
+ * the bot holds whichever weapon the server rates higher, as the Bag's Compare
+ * shows it.
+ * <p>Then the Ashen Herald itself (P-67), from {@code bosses.json}, met by two
+ * policies: the guarding bot Guards while a telegraphed blow is pending (what
+ * the battle teaches; Guard goes first, P-69) and otherwise fights as above;
+ * the naive bot never Guards and drinks below 35 % HP. A loss wakes the bot at
+ * the Ruins Lantern, rested, with its Shards picked up again, and it tries
+ * again: the attempts per run are V2_SPEC §10.3's difficulty curve.
  */
 class EldmereProgressionTest {
 
     private static final int RUNS = 1000;
     private static final String DRAUGHT = "lantern_draught";
+    /** The build order, one raise per level from level 1: the Vigor and Strength route (§10.2). */
     private static final List<Attribute> BUILD = List.of(Attribute.VIGOR, Attribute.STRENGTH, Attribute.ENDURANCE,
             Attribute.DEXTERITY, Attribute.VIGOR, Attribute.MIND);
-    /** The boss stand-in: the Hired Blade at the Ashen Herald's level (§10.1) with this much more HP. */
-    private static final int BOSS_LEVEL = 5;
-    private static final double BOSS_HP_MULTIPLIER = 1.8;
+    /** The Dexterity route for the secret longbow (P-65): Dexterity first. */
+    private static final List<Attribute> DEX_BUILD = List.of(Attribute.VIGOR, Attribute.DEXTERITY, Attribute.DEXTERITY,
+            Attribute.VIGOR, Attribute.ENDURANCE, Attribute.MIND);
+    private static final String HERALD = "ashen_herald";
+    /** Fights at most per run against the Herald before the run counts as stuck. */
+    private static final int MAX_ATTEMPTS = 6;
 
     /** What the bot carries: the starting sword only, the main-path hatchet, or the hatchet and the secret longbow. */
     private enum Gear {
@@ -101,7 +113,7 @@ class EldmereProgressionTest {
         return s;
     }
 
-    private Run play(long seed, BattleEngine engine, Gear gear) {
+    private Run play(long seed, BattleEngine engine, Gear gear, List<Attribute> build) {
         GameState s = newPlayer(seed);
         Map<String, List<Integer>> turns = new TreeMap<>();
         int[] deaths = {0};
@@ -113,12 +125,12 @@ class EldmereProgressionTest {
         fightAll(s, engine, MILL_ROAD.subList(0, 1), turns, deaths);
         int afterThree = s.stats().shards();
         fightAll(s, engine, MILL_ROAD.subList(1, 2), turns, deaths);
-        restAndLevel(s);
+        restAndLevel(s, build);
         fight(s, engine, content.battle().creeps().get("hired_blade"), 2, turns, deaths);
         fightAll(s, engine, RUINS, turns, deaths);
-        restAndLevel(s);
+        restAndLevel(s, build);
         fightAll(s, engine, STORM_NIGHT.subList(0, 1), turns, deaths);   // one refight after the rest
-        restAndLevel(s);
+        restAndLevel(s, build);
         return new Run(afterTwo, afterThree, s.stats().level(), deaths[0], turns, s);
     }
 
@@ -155,7 +167,12 @@ class EldmereProgressionTest {
     }
 
     private BattleAction choose(GameState s, CreepTemplate creep, BattleEngine engine) {
-        if (s.stats().hp() * 100 < s.stats().maxHp() * 40 && s.flaskCharges(DRAUGHT) > 0) {
+        return choose(s, creep, 40);
+    }
+
+    /** A draught below `drinkBelowPct` % HP; else a skill the enemy is weak to (or one it does not resist when it resists Strike); else Strike. */
+    private BattleAction choose(GameState s, CreepTemplate creep, int drinkBelowPct) {
+        if (s.stats().hp() * 100 < s.stats().maxHp() * drinkBelowPct && s.flaskCharges(DRAUGHT) > 0) {
             return BattleAction.item(DRAUGHT);
         }
         BattleContent battle = content.battle();
@@ -187,10 +204,10 @@ class EldmereProgressionTest {
     }
 
     /** Rests, buys every level it can afford one attribute at a time in the build order, then rests again. */
-    private void restAndLevel(GameState s) {
+    private void restAndLevel(GameState s, List<Attribute> build) {
         rest(s);
         while (true) {
-            Attribute next = BUILD.get(s.stats().level() % BUILD.size());
+            Attribute next = build.get(s.stats().level() % build.size());
             LevelUp.Plan plan = levelUp.plan(s.stats().attributes(), Map.of(next, 1), s.stats().shards());
             if (!plan.affordable()) {
                 break;
@@ -201,9 +218,13 @@ class EldmereProgressionTest {
     }
 
     private List<Run> runs(BattleEngine engine, Gear gear) {
+        return runs(engine, gear, BUILD);
+    }
+
+    private List<Run> runs(BattleEngine engine, Gear gear, List<Attribute> build) {
         List<Run> runs = new ArrayList<>();
         for (long seed = 1; seed <= RUNS; seed++) {
-            runs.add(play(seed, engine, gear));
+            runs.add(play(seed, engine, gear, build));
         }
         return runs;
     }
@@ -215,35 +236,99 @@ class EldmereProgressionTest {
         return turns;
     }
 
-    /** The share of runs, in %, that beat the boss stand-in with this HP multiplier on the first attempt. */
-    private int standInWinPct(Gear gear, double hpMultiplier) {
-        CreepTemplate blade = content.battle().creeps().get("hired_blade");
-        CreepTemplate standIn = new CreepTemplate("boss_stand_in", "Boss stand-in", blade.family(), blade.sprite(),
-                (int) Math.round(blade.baseHp() * hpMultiplier), blade.baseAtk(), blade.baseDef(), blade.baseSpd(),
-                blade.ai(), blade.moves(), List.of());
-        BattleEngine engine = new BattleEngine(content.battle(), content.items());
-        int wins = 0;
-        for (Run run : runs(engine, gear)) {
-            GameState s = run.state();
-            BattleState b = engine.start(s, standIn, BOSS_LEVEL, null, "boss", false);
-            TestBattles.begin(s, b);
-            for (int rounds = 0; b.outcome() == BattleOutcome.ONGOING && rounds < 80; rounds++) {
-                engine.act(s, choose(s, standIn, engine));
-            }
-            if (b.outcome() == BattleOutcome.WON) {
-                wins++;
-            }
+    /** How the bot fights the Herald (P-67, P-69). */
+    private enum Policy {
+        /** Guards a pending telegraph (unless low: then it drinks), drinks below 40 %. */
+        GUARDING(40),
+        /** Never guards; drinks below 35 %. */
+        NAIVE(35);
+
+        private final int drinkBelowPct;
+
+        Policy(int drinkBelowPct) {
+            this.drinkBelowPct = drinkBelowPct;
         }
-        return wins * 100 / RUNS;
     }
 
-    /** The smallest HP multiplier, in steps of 0.1 from ×1.8, at which the stand-in is won at most 85 % of the time. */
-    private double restoringMultiplier(Gear gear) {
-        double multiplier = BOSS_HP_MULTIPLIER;
-        while (standInWinPct(gear, multiplier) > 85 && multiplier < 4) {
-            multiplier = Math.round((multiplier + 0.1) * 10) / 10.0;
+    /**
+     * How the Herald went for a run: the fights it took to win (0: never won in MAX_ATTEMPTS), and the first
+     * fight's rounds and draughts drunk.
+     */
+    private record HeraldResult(int attempts, int firstTurns, int firstDraughts) {
+        boolean firstAttempt() {
+            return attempts == 1;
         }
-        return multiplier;
+    }
+
+    /** Each run meets the Ashen Herald; a loss rests at the Ruins Lantern, picks the Shards back up and tries again. */
+    private List<HeraldResult> meetTheHerald(List<Run> runs, BattleEngine engine, Policy policy) {
+        return meetTheHerald(runs, engine, policy, content.battle().bosses().get(HERALD));
+    }
+
+    private List<HeraldResult> meetTheHerald(List<Run> runs, BattleEngine engine, Policy policy, BossTemplate herald) {
+        List<HeraldResult> results = new ArrayList<>();
+        for (Run run : runs) {
+            GameState s = run.state();
+            int won = 0;
+            int firstTurns = 0;
+            int firstDraughts = 0;
+            for (int attempt = 1; attempt <= MAX_ATTEMPTS && won == 0; attempt++) {
+                int shards = s.stats().shards();
+                BattleState b = engine.startBoss(s, herald);
+                TestBattles.begin(s, b);
+                int rounds = 0;
+                int draughts = 0;
+                for (; b.outcome() == BattleOutcome.ONGOING && rounds < 80; rounds++) {
+                    BattleAction action = chooseAgainst(s, b, herald, policy);
+                    if (action.kind() == BattleAction.Kind.ITEM) {
+                        draughts++;
+                    }
+                    engine.act(s, action);
+                }
+                if (attempt == 1) {
+                    firstTurns = rounds;
+                    firstDraughts = draughts;
+                }
+                if (b.outcome() == BattleOutcome.WON) {
+                    won = attempt;
+                } else {
+                    rest(s);
+                    s.stats().addShards(shards - s.stats().shards());   // walked back to the Lost Shards
+                }
+            }
+            results.add(new HeraldResult(won, firstTurns, firstDraughts));
+        }
+        return results;
+    }
+
+    /** The guarding bot Guards a pending telegraph ("Guard the fall", P-67) unless it must drink; otherwise as against a creep. */
+    private BattleAction chooseAgainst(GameState s, BattleState b, BossTemplate boss, Policy policy) {
+        boolean low = s.stats().hp() * 100 < s.stats().maxHp() * policy.drinkBelowPct && s.flaskCharges(DRAUGHT) > 0;
+        if (policy == Policy.GUARDING && !low && !b.enemy().pendingTelegraphs().isEmpty()) {
+            return BattleAction.of(BattleAction.Kind.GUARD);
+        }
+        return choose(s, boss.asCreep(), policy.drinkBelowPct);
+    }
+
+    private static int firstAttemptPct(List<HeraldResult> results) {
+        return (int) (results.stream().filter(HeraldResult::firstAttempt).count() * 100 / results.size());
+    }
+
+    private static double attemptsPerRun(List<HeraldResult> results) {
+        return results.stream().mapToInt(r -> r.attempts() == 0 ? MAX_ATTEMPTS : r.attempts()).average().orElse(0);
+    }
+
+    private static double creepDeathsPerRun(List<Run> runs) {
+        return runs.stream().mapToInt(Run::deaths).sum() / (double) runs.size();
+    }
+
+    private static String report(String route, List<Run> runs, List<HeraldResult> results) {
+        return route + ": the Ashen Herald won on the first attempt in " + firstAttemptPct(results) + " % of runs; "
+                + String.format("%.2f", attemptsPerRun(results)) + " attempts per run; first fight median "
+                + median(results.stream().map(HeraldResult::firstTurns).toList()) + " turns and "
+                + median(results.stream().map(HeraldResult::firstDraughts).toList()) + " draughts; "
+                + String.format("%.2f", creepDeathsPerRun(runs)) + " creep deaths per run; "
+                + results.stream().filter(r -> r.attempts() == 0).count() + " runs never won";
     }
 
     private static int median(List<Integer> values) {
@@ -258,8 +343,10 @@ class EldmereProgressionTest {
         BattleRules rules = new BattleRules(r.hpPerLevel(), r.atkPerLevel(), r.defPerLevel(), r.shardsBase(),
                 r.shardsExponent(), r.rollMin(), r.rollMax(), r.critMultiplier(), r.enemyCritPct(), r.guardNormal(),
                 r.guardTelegraphed(), r.statusChanceCap(), r.fleeBasePct(), r.fleePctPerSpeed(), r.fleeMinPct(),
-                r.fleeMaxPct(), r.fleeIgnoreTiles(), r.defensiveGuardBelowPct(), r.dialogueLossHpPct(), victoryFpPct);
-        return new BattleEngine(new BattleContent(b.chart(), b.statuses(), b.skills(), b.creeps(), rules),
+                r.fleeMaxPct(), r.fleeIgnoreTiles(), r.defensiveGuardBelowPct(), r.dialogueLossHpPct(), victoryFpPct,
+                r.bossShardsMultiplier());
+        return new BattleEngine(new BattleContent(b.chart(), b.statuses(), b.skills(), b.creeps(), b.bosses(), rules,
+                b.brace()),
                 content.items());
     }
 
@@ -289,37 +376,45 @@ class EldmereProgressionTest {
         assertTrue(deaths * 100 <= RUNS * 25, "a death in at most one run in four on the way: " + deaths);
     }
 
-    /** P-64's band, kept as the lower bound (P-65): a player who skipped the main-path chest. */
+    /**
+     * §10.3, Eldmere's row (P-67, P-69): the main path, the hatchet on the Vigor and Strength route at level 4.
+     * The guarding bot wins 70–85 % at the first attempt in about 8–12 turns; a naive one that never guards
+     * roughly 35–50 %, so the lesson matters.
+     */
     @Test
-    void theBossStandInIsWonSeventyToEightyFivePercentWithTheRustySword() {
-        int pct = standInWinPct(Gear.RUSTY, BOSS_HP_MULTIPLIER);
-        String report = "boss stand-in (Hired Blade Lv " + BOSS_LEVEL + ", HP ×" + BOSS_HP_MULTIPLIER
-                + ") with the Rusty Shortsword: " + pct + " % first-attempt wins";
+    void theHeraldIsWonSeventyToEightyFivePercentWithTheHatchetByGuardingItsTelegraphs() {
+        BattleEngine engine = new BattleEngine(content.battle(), content.items());
+        List<Run> runs = runs(engine, Gear.HATCHET);
+        List<HeraldResult> results = meetTheHerald(runs, engine, Policy.GUARDING);
+        String report = report("hatchet, Vigor and Strength, guarding", runs, results);
         System.out.println(report);
+        int pct = firstAttemptPct(results);
         assertTrue(pct >= 70 && pct <= 85, report);
+        assertTrue(results.stream().allMatch(r -> r.attempts() > 0), "every run beats the Herald in time: " + report);
+        int turns = median(results.stream().map(HeraldResult::firstTurns).toList());
+        assertTrue(turns >= 8 && turns <= 12, "median fight length: " + report);
+
+        List<Run> naiveRuns = runs(engine, Gear.HATCHET);
+        List<HeraldResult> naive = meetTheHerald(naiveRuns, engine, Policy.NAIVE);
+        String naiveReport = report("hatchet, Vigor and Strength, never guarding", naiveRuns, naive);
+        System.out.println(naiveReport);
+        int naivePct = firstAttemptPct(naive);
+        assertTrue(naivePct >= 35 && naivePct <= 50, naiveReport);
     }
 
-    /** Reported for V7 (P-65): the main-path weapon's rate and the multiplier that brings the band back; the longbow's effect. */
+    /** Reported for P-67 and §10.3: the secret longbow on a Dexterity build, and a player who skipped the chest. */
     @Test
-    void reportsTheStandInAndTheCreepsWithTheChestWeapons() {
+    void reportsTheHeraldWithTheLongbowAndWithTheRustySword() {
         BattleEngine engine = new BattleEngine(content.battle(), content.items());
-        double mainPath = restoringMultiplier(Gear.HATCHET);
-        for (Gear gear : List.of(Gear.HATCHET, Gear.HATCHET_AND_LONGBOW)) {
-            List<Run> runs = runs(engine, gear);
-            int rate = standInWinPct(gear, BOSS_HP_MULTIPLIER);
-            double restoring = gear == Gear.HATCHET ? mainPath : restoringMultiplier(gear);
-            long longbow = runs.stream().filter(r -> "hunter_longbow".equals(r.state().inventory().equippedWeaponId())).count();
-            StringBuilder line = new StringBuilder(gear + ": stand-in at HP x" + BOSS_HP_MULTIPLIER + " won " + rate
-                    + " %; at the main-path HP x" + mainPath + " won " + standInWinPct(gear, mainPath)
-                    + " %; at most 85 % from HP x" + restoring + " (" + standInWinPct(gear, restoring) + " %)"
-                    + "; longbow held at the boss in " + longbow + " runs; median turns:");
-            turnsOf(runs).forEach((creep, list) -> line.append(' ').append(creep).append(' ').append(median(list)));
-            System.out.println(line);
-            if (gear == Gear.HATCHET_AND_LONGBOW) {
-                turnsOf(runs).forEach((creep, list) -> assertTrue(creep.equals("hired_blade") || median(list) >= 3,
-                        "the secret longbow leaves " + creep + " at a median of " + median(list) + " turns"));
-            }
-        }
+        List<Run> longbow = runs(engine, Gear.HATCHET_AND_LONGBOW, DEX_BUILD);
+        List<HeraldResult> withLongbow = meetTheHerald(longbow, engine, Policy.GUARDING);
+        long held = longbow.stream().filter(r -> "hunter_longbow".equals(r.state().inventory().equippedWeaponId())).count();
+        System.out.println(report("longbow, Dexterity (longbow held in " + held + " runs)", longbow, withLongbow));
+        List<Run> rusty = runs(engine, Gear.RUSTY);
+        System.out.println(report("Rusty Shortsword only", rusty, meetTheHerald(rusty, engine, Policy.GUARDING)));
+        assertTrue(firstAttemptPct(withLongbow) <= 90, "the secret longbow must not trivialise the Herald");
+        turnsOf(longbow).forEach((creep, list) -> assertTrue(creep.equals("hired_blade") || median(list) >= 3,
+                "the secret longbow leaves " + creep + " at a median of " + median(list) + " turns"));
     }
 
     @Test

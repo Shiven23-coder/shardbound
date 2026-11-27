@@ -267,10 +267,13 @@ function tileLayer(id, name, width, height, data, extra = {}) {
  * Objects are given in tiles: { name, type, x, y, w?, h?, props? }.
  * `obstacleStamps` are drawn in the `obstacles` layer, which the client hides
  * with their obstacle; they add no collision, as the `obstacle` object blocks
- * while active (P-45).
+ * while active (P-45). `obstacleWater` cells ([x, y]) are water in that layer
+ * too, autotiled with the terrain's water: a flood over dry ground that drops
+ * when its obstacle hides (P-67).
  */
 export function build({
-  width, height, ground = 'light', terrain, forestTrees = [], stamps, obstacleStamps = [], details, objects, properties,
+  width, height, ground = 'light', terrain, forestTrees = [], stamps, obstacleStamps = [], obstacleWater = [], details, objects,
+  properties,
 }) {
   const index = (x, y) => y * width + x;
   const inside = (x, y) => x >= 0 && y >= 0 && x < width && y < height;
@@ -329,6 +332,12 @@ export function build({
     stamp.rows.forEach((row, dy) => row.forEach((id, dx) => {
       if (id !== null && inside(x0 + dx, y0 + dy)) layers.obstacles[index(x0 + dx, y0 + dy)] = gid(stamp.tileset, id);
     }));
+  }
+
+  const flood = new Set(obstacleWater.map(([x, y]) => `${x},${y}`));
+  const wet = (x, y) => is('water')(x, y) || flood.has(`${x},${y}`);
+  for (const [x, y] of obstacleWater) {
+    if (inside(x, y)) layers.obstacles[index(x, y)] = gid('water', pick(WATER, neighbourMask(wet, x, y)));
   }
 
   // Ground detail, only on open ground.

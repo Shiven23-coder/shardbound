@@ -32,6 +32,7 @@
                 "ambient": { "type": "number", "minimum": 0, "maximum": 1 },
                 "tint": { "$ref": "#/$defs/rgbFactors" },
                 "rain": { "type": "boolean" },
+                "ash": { "description": "Ash falls (the region's ash settings), and fades away when a state without it follows (P-67).", "type": "boolean" },
                 "playerLight": { "type": "boolean" }
               }
             }
@@ -45,6 +46,20 @@
               "radius": { "type": "number", "exclusiveMinimum": 0 },
               "color": { "$ref": "#/$defs/hexColour" },
               "intensity": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          },
+          "ash": {
+            "description": "Falling ash flecks (P-67): how many on a typical screen, how fast they fall and drift, in pixels a second; reduce motion shows reducedShare of them, falling at that share of the speed.",
+            "type": "object",
+            "required": ["opacity", "flecksPerScreen", "fall", "drift", "reducedShare", "fadeMs"],
+            "additionalProperties": false,
+            "properties": {
+              "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+              "flecksPerScreen": { "type": "integer", "minimum": 0, "maximum": 120 },
+              "fall": { "$ref": "#/$defs/range" },
+              "drift": { "$ref": "#/$defs/range" },
+              "reducedShare": { "type": "number", "minimum": 0, "maximum": 1 },
+              "fadeMs": { "type": "integer", "minimum": 0, "maximum": 5000 }
             }
           },
           "rain": {

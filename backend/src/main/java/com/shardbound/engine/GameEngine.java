@@ -14,6 +14,7 @@ import com.shardbound.battle.BattleAction;
 import com.shardbound.battle.BattleEngine;
 import com.shardbound.battle.BattleOutcome;
 import com.shardbound.battle.BattleState;
+import com.shardbound.battle.BossTemplate;
 import com.shardbound.battle.CreepTemplate;
 import com.shardbound.battle.Encounter;
 import com.shardbound.battle.Skill;
@@ -21,6 +22,7 @@ import com.shardbound.exception.IdempotencyKeyReusedException;
 import com.shardbound.world.CreepSpawn;
 import com.shardbound.world.WorldRules;
 import com.shardbound.content.GameContent;
+import com.shardbound.cutscene.Cutscene;
 import com.shardbound.dialogue.Choice;
 import com.shardbound.dialogue.Dialogue;
 import com.shardbound.dialogue.DialogueGraph;
@@ -313,6 +315,9 @@ public class GameEngine {
                 Chests.open(s, Chest.of(last.areaId(), target), content);
                 return persistAndView(s);
             }
+            if (target.type() == ObjectType.TRIGGER && target.property("boss") != null) {
+                return bossTrigger(s, content.battle().bosses().get(target.property("boss")));
+            }
             if (target.type() == ObjectType.LANTERN) {
                 Lantern lantern = Lantern.of(last.areaId(), target);
                 if (s.flag(lantern.litFlag()) != 0) {
@@ -321,6 +326,81 @@ public class GameEngine {
             }
             openDialogue(s, target.property("dialogue"));        // a cold Lantern: its cold or kindling message
             return persistAndView(s);
+        }
+    }
+
+    // =====================================================================
+    // Bosses and cutscenes (P-67, P-68)
+    // =====================================================================
+
+    /** The engine flag that records a cutscene as seen in this run (D15: content may read it, never set it). */
+    public static String seenFlag(String cutsceneId) {
+        return "_seen_" + cutsceneId;
+    }
+
+    /**
+     * The player stepped onto a boss's trigger: its intro the first time, else straight into the fight (the
+     * client shows the boss name banner), so the intro never replays after a death.
+     */
+    private SessionView bossTrigger(GameState s, BossTemplate boss) {
+        if (s.flag(seenFlag(boss.introCutscene())) == 0) {
+            playCutscene(s, boss.introCutscene());
+        } else {
+            startBossBattle(s, boss);
+        }
+        return persistAndView(s);
+    }
+
+    private static void playCutscene(GameState s, String cutsceneId) {
+        s.setCutscene(cutsceneId);
+        s.setMode(Mode.CUTSCENE);
+    }
+
+    private void startBossBattle(GameState s, BossTemplate boss) {
+        s.setBattle(battleEngine.startBoss(s, boss));
+        s.setMode(Mode.BATTLE);
+    }
+
+    /**
+     * The client finished a cutscene, played out or skipped (P-68): it is recorded as seen, then its
+     * {@code then} follows: a boss battle, or the world.
+     */
+    public SessionView finishCutscene(GameState s, String cutsceneId) {
+        synchronized (s) {
+            requireMode(s, Mode.CUTSCENE, "No cutscene is playing.");
+            if (!cutsceneId.equals(s.cutscene())) {
+                throw new ActionNotAllowedException("That cutscene is not the one playing.");
+            }
+            Cutscene cutscene = content.cutscenes().get(cutsceneId);
+            s.setFlag(seenFlag(cutsceneId), 1);
+            s.setCutscene(null);
+            String boss = cutscene.thenBoss();
+            if (boss != null) {
+                startBossBattle(s, content.battle().bosses().get(boss));
+            } else {
+                s.setMode(Mode.WORLD);
+                s.moveTo(s.position(), clock.millis());      // walking time counts from here
+            }
+            return persistAndView(s);
+        }
+    }
+
+    /**
+     * A boss battle ends (P-67): a victory records the boss's fall and plays its epilogue; a loss goes
+     * through Death like any creep battle (Lost Shards on the battle tile, waking at the last Lantern).
+     */
+    private void endBossBattle(GameState s, BattleState battle, BossTemplate boss, BattleOutcome outcome) {
+        switch (outcome) {
+            case WON -> {
+                s.setFlag(boss.defeatFlag(), 1);
+                playCutscene(s, boss.epilogueCutscene());
+            }
+            case LOST -> {
+                death.apply(s, clock.millis()).forEach(battle::close);
+                s.setMode(Mode.WORLD);
+                s.moveTo(s.position(), clock.millis());
+            }
+            case FLED, ONGOING -> throw new IllegalStateException("A boss battle cannot end " + outcome);
         }
     }
 
@@ -484,7 +564,9 @@ public class GameEngine {
             if (outcome != BattleOutcome.ONGOING) {
                 s.setBattle(null);
                 s.setFinishedBattle(battle);
-                if (battle.creepRef() != null) {
+                if (battle.enemy().boss() != null) {
+                    endBossBattle(s, battle, battle.enemy().boss(), outcome);
+                } else if (battle.creepRef() != null) {
                     endCreepBattle(s, battle, outcome);
                 } else {
                     endDialogueBattle(s, battle.encounterId(), outcome);
@@ -778,6 +860,55 @@ public class GameEngine {
             throw new ActionNotAllowedException("Saves are not available on this server.");
         }
         saves.delete(playerId, slot);
+    }
+
+    // =====================================================================
+    // Rehearsals (e2e profile only)
+    // =====================================================================
+
+    /**
+     * Puts the run at a story point in one step (P-67): the rehearsal's flags, quests, standing, gear, skills and
+     * raises on top of what the run has, rested, standing at its spawn. Only the {@code e2e} profile calls it.
+     */
+    public SessionView rehearse(GameState s, Rehearsal r) {
+        synchronized (s) {
+            AreaMap map = world.mapOf(r.area());
+            MapObject spawn = map.spawn(r.spawn())
+                    .orElseThrow(() -> new IllegalArgumentException("No spawn " + r.spawn() + " in " + r.area()));
+            s.setBattle(null);
+            s.setCutscene(null);
+            s.setCurrentNode(null);
+            s.setMode(Mode.WORLD);
+            r.flags().forEach(s::setFlag);
+            r.quests().forEach(s::setQuestStatus);
+            r.reputation().forEach(s::addReputation);
+            r.affinity().forEach(s::addAffinity);
+            r.items().forEach(itemId -> s.inventory().add(item(itemId), 1));
+            if (!s.inventory().has(r.weapon())) {
+                s.inventory().add(item(r.weapon()), 1);
+            }
+            s.inventory().equip(r.weapon());
+            r.skills().forEach(s::learnSkill);
+            for (Attribute raise : r.raises()) {
+                LevelUp.Plan plan = levelUp.plan(s.stats().attributes(), Map.of(raise, 1), Integer.MAX_VALUE);
+                s.stats().addShards(plan.cost());
+                s.stats().applyLevelUp(plan);
+            }
+            s.setLastLantern(r.lantern());
+            s.stats().restoreAll();
+            s.refillFlasks();
+            s.creeps().respawn(world, s.rng());
+            s.moveTo(WorldPosition.at(r.area(), map, spawn), clock.millis());
+            return persistAndView(s);
+        }
+    }
+
+    private Item item(String itemId) {
+        Item item = content.items().get(itemId);
+        if (item == null) {
+            throw new IllegalArgumentException("No item " + itemId);
+        }
+        return item;
     }
 
     // =====================================================================

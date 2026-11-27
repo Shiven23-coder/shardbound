@@ -39,10 +39,31 @@
           "tint": [1.05, 0.97, 0.92],
           "rain": false,
           "playerLight": false
+        },
+        "ash_falling": {
+          "ambient": 0.8,
+          "tint": [0.98, 0.95, 0.95],
+          "rain": false,
+          "ash": true,
+          "playerLight": false
+        },
+        "ash_lifted": {
+          "ambient": 1.0,
+          "tint": [1.02, 1.0, 0.98],
+          "rain": false,
+          "playerLight": false
         }
       },
       "lightRadiusScale": 1.0,
       "playerLight": { "radius": 2.5, "color": "#ffe2b0", "intensity": 0.4 },
+      "ash": {
+        "opacity": 0.75,
+        "flecksPerScreen": 36,
+        "fall": [14, 26],
+        "drift": [-10, 6],
+        "reducedShare": 0.5,
+        "fadeMs": 1000
+      },
       "rain": {
         "opacity": 0.18,
         "dropsPerScreen": 90,

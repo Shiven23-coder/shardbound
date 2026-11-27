@@ -56,6 +56,12 @@ public class ContentAssembler {
 
     public GameContent assemble(RawContent raw, World world, WorldRules worldRules, BattleContent battle,
                                 ProgressionRules progression) {
+        return assemble(raw, world, worldRules, battle, progression, List.of());
+    }
+
+    /** As above, with the cutscenes read from {@code cutscenes/*.json} (P-68). */
+    public GameContent assemble(RawContent raw, World world, WorldRules worldRules, BattleContent battle,
+                                ProgressionRules progression, List<CutsceneReader.RawCutscene> cutscenes) {
         checkFactions(raw);
         Map<String, Npc> npcs = buildNpcs(raw);
         Map<String, Item> items = buildItems(raw);
@@ -75,7 +81,7 @@ public class ContentAssembler {
 
         return new GameContent(freeze(npcs), freeze(items), freeze(encounters), freeze(achievements),
                 List.copyOf(endings), buildObjectives(raw, rules), questManager, graph, world, worldRules, battle,
-                progression);
+                progression, CutsceneReader.build(cutscenes, rules));
     }
 
     // ---------------------------------------------------------------------

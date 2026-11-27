@@ -115,6 +115,10 @@
   ],
 
   "objectives": [
+    { "id": "obj_after_herald", "text": "The road west is drying. Rest, and make ready.",
+      "conditions": [{ "type": "FLAG", "key": "herald_defeated", "op": "=", "value": 1 }] },
+    { "id": "obj_herald", "text": "Face the Herald in the rubble north of the ruins.",
+      "conditions": [{ "type": "FLAG", "key": "herald_risen", "op": "=", "value": 1 }] },
     { "id": "obj_follow_corvin", "text": "Follow Corvin into Tanner's Alley.",
       "conditions": [{ "type": "FLAG", "key": "following_corvin", "op": "=", "value": 1 }] },
     { "id": "obj_dawn", "text": "Take the crystal to someone in Eldmere Square.",

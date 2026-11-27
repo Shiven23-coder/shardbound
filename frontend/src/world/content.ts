@@ -68,17 +68,70 @@ export const battleBackdrop = manifest.battleBackdrop;
 /** The chest sprite (P-65): frame 0 closed, frame 1 open. */
 export const chestArt = manifest.chest;
 
+/** One animation of a boss: a strip of square frames (P-67). */
+export interface BossAnimation {
+  sheet: string;
+  frames: number;
+  frameRate: number;
+}
+
+/** A boss's art (P-67): its animations, its portrait, and the attack frame held while a telegraph is pending. */
+export interface BossArt {
+  frameSize: number;
+  faceset: string;
+  idle: BossAnimation;
+  walk: BossAnimation;
+  attack: BossAnimation;
+  hit: BossAnimation;
+  transform: BossAnimation;
+  windUpFrame: number;
+}
+
+export const BOSS_ANIMATIONS = ['idle', 'walk', 'attack', 'hit', 'transform'] as const;
+export type BossAnimationName = (typeof BOSS_ANIMATIONS)[number];
+
+/** The art for a boss sprite key ("boss.ashen_herald"), or undefined for any other key. */
+export function bossArt(key: string): BossArt | undefined {
+  return (manifest.bosses as Record<string, BossArt>)[key];
+}
+
+export const bossKeys = Object.keys(manifest.bosses);
+
+/** The texture of one of a boss's strips. */
+export function bossTexture(key: string, animation: BossAnimationName): string {
+  return `${key}#${animation}`;
+}
+
+/** The boss id of a boss sprite key ("boss.ashen_herald" → "ashen_herald"), or null. */
+export function bossIdOf(sprite: string): string | null {
+  return sprite.startsWith('boss.') ? sprite.slice('boss.'.length) : null;
+}
+
 export interface LightState {
   ambient: number;
   tint: number[];
   rain: boolean;
+  /** Ash falls (P-67). */
+  ash?: boolean;
   playerLight: boolean;
+}
+
+/** A region's falling ash (P-67): flecks per typical screen, fall and drift speeds in pixels a second. */
+export interface AshSettings {
+  opacity: number;
+  flecksPerScreen: number;
+  fall: number[];
+  drift: number[];
+  /** Under reduce motion: this share of the flecks, falling at this share of the speed. */
+  reducedShare: number;
+  fadeMs: number;
 }
 
 export interface RegionLighting {
   states: Record<string, LightState>;
   lightRadiusScale: number;
   playerLight: { radius: number; color: string; intensity: number };
+  ash?: AshSettings;
   rain: { opacity: number; dropsPerScreen: number; length: number[]; angle: number[]; splashes: boolean };
 }
 

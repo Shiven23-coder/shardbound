@@ -17,7 +17,8 @@ import java.util.List;
  */
 public record WorldView(String areaId, String areaName, String regionId, String mapKey, String lightState,
                         PlayerView player, List<NpcView> npcs, List<CreepView> creeps, List<String> hiddenObjects,
-                        List<LanternView> lanterns, List<ChestView> chests, @Nullable LostShardsView lostShards) {
+                        List<LanternView> lanterns, List<ChestView> chests, List<BossView> bosses,
+                        @Nullable LostShardsView lostShards) {
 
     public record PlayerView(int x, int y, Facing facing) { }
 
@@ -29,6 +30,12 @@ public record WorldView(String areaId, String areaName, String regionId, String 
      * contents are not sent; an open chest stays drawn open and blocks like a closed one.
      */
     public record ChestView(String id, int x, int y, boolean open) { }
+
+    /**
+     * A boss standing in its area (P-67): {@code id} is the map object name, {@code sprite} an art manifest key,
+     * x/y its tile centre in pixels. It blocks its tile; its trigger starts the fight.
+     */
+    public record BossView(String id, String bossId, String name, String sprite, int x, int y) { }
 
     /** The Shards the last death dropped, in this area (P-62): tile centre in pixels and the amount. */
     public record LostShardsView(int x, int y, int amount) { }

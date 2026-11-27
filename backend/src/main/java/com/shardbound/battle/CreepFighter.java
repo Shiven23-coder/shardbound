@@ -1,5 +1,7 @@
 package com.shardbound.battle;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
@@ -9,11 +11,13 @@ import java.util.Optional;
  * An enemy in battle, built from its template at a level (V2_SPEC §4.2):
  * {@code hp = round(baseHp · (1 + 0.12(lvl−1)))}, atk and def likewise with
  * their own growth, speed unscaled. Holds its own HP, its AI memory and its
- * announced telegraphed moves (an {@code ArrayDeque}, P-54).
+ * announced telegraphed moves (an {@code ArrayDeque}, P-54). A boss (P-67) is a
+ * creep fighter with its {@link BossTemplate}: its phase follows from its HP.
  */
 public final class CreepFighter extends Fighter {
 
     private final CreepTemplate template;
+    private final @Nullable BossTemplate boss;
     private final int level;
     private final int maxHp;
     private final int atk;
@@ -24,7 +28,17 @@ public final class CreepFighter extends Fighter {
     private boolean guardedOnce;
 
     public CreepFighter(CreepTemplate template, int level, BattleRules rules) {
+        this(template, null, level, rules);
+    }
+
+    /** A boss at its own level. */
+    public CreepFighter(BossTemplate boss, BattleRules rules) {
+        this(boss.asCreep(), boss, boss.level(), rules);
+    }
+
+    private CreepFighter(CreepTemplate template, @Nullable BossTemplate boss, int level, BattleRules rules) {
         this.template = template;
+        this.boss = boss;
         this.level = level;
         this.maxHp = BattleRules.scaled(template.baseHp(), rules.hpPerLevel(), level);
         this.atk = BattleRules.scaled(template.baseAtk(), rules.atkPerLevel(), level);
@@ -34,6 +48,20 @@ public final class CreepFighter extends Fighter {
     }
 
     public CreepTemplate template()   { return template; }
+    public @Nullable BossTemplate boss() { return boss; }
+
+    /** A boss's phase from its HP: 2 once HP is at or below the second phase's share (V2_SPEC §4.7); a creep is always 1. */
+    public int phase() {
+        return boss != null && hp * 100L <= (long) maxHp * boss.phases().get(1).atPct() ? 2 : 1;
+    }
+
+    /** The boss's current phase. */
+    public BossTemplate.Phase bossPhase() {
+        if (boss == null) {
+            throw new IllegalStateException(name() + " is not a boss");
+        }
+        return boss.phases().get(phase() - 1);
+    }
     public int atk()                  { return atk; }
 
     @Override public String name()        { return template.name(); }
@@ -44,7 +72,7 @@ public final class CreepFighter extends Fighter {
     @Override public int maxHp()          { return maxHp; }
     @Override public boolean isPlayer()   { return false; }
     @Override protected int baseDefence() { return def; }
-    @Override protected int baseSpeed()   { return template.baseSpd(); }
+    @Override protected int baseSpeed()   { return template.baseSpd() + (boss != null && phase() == 2 ? bossPhase().spdDelta() : 0); }
     @Override public int critPct()        { return critPct; }
     @Override public int statusBonusPct() { return 0; }
     @Override public int statusResistPct() { return 0; }

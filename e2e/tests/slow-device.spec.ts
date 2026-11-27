@@ -2,14 +2,16 @@ import { expect, test, type Page } from '@playwright/test';
 import * as backend from '../support/backend';
 import {
   activeObstacles, chests, choose, inArea, interact, loadMap, newGame, openBag, restAtLantern, settle, status, tap, taps, tileOf,
-  toTheLanternWithTheShard, toTheRuinsAtDawn, walkTo, withObstacles, type Dir,
+  toTheHerald, toTheLanternWithTheShard, toTheRuinsAtDawn, toTheRuinsLanternAfterTheAshFalls, walkTo, withObstacles,
+  type Dir,
 } from '../support/world';
 
 // Tile steps (P-51) on a CPU slowed like a budget phone: the same taps reach
 // the same tiles at 1×, 4× and 8× (no press lost to a long frame, no step
 // added), a quick tap of E still talks, and pushing into a one-tile fence or
 // Tanner's crates, straight or diagonally, never draws the player over a wall
-// or an obstacle on any frame.
+// or an obstacle on any frame. The Herald's intro skips on a held E, and a
+// boss round takes every press (P-67).
 
 const TILE = 16;
 
@@ -216,3 +218,27 @@ for (const rate of [4, 8]) {
   });
 }
 
+
+// The Herald on a slow CPU (P-67, P-68): after the elder's path (played at
+// full speed), a held E skips the intro at 4×, and a boss round takes every
+// press: E opens Attack, E strikes and the round plays.
+test('at 4× CPU a held E skips the intro, and a boss round takes every press', async ({ page }) => {
+  test.setTimeout(480_000);
+  await toTheRuinsLanternAfterTheAshFalls(page, 'keyboard', `slowh-${Date.now() % 1e9}`);
+  await throttle(page, 4);
+  await toTheHerald(page, 'keyboard');
+  await expect(page.locator('.cutscene-line')).toBeVisible({ timeout: 30_000 });
+  await page.keyboard.down('e');
+  await page.waitForTimeout(1600);
+  await page.keyboard.up('e');
+  const box = page.locator('.battle-box');
+  const menu = box.locator('.battle-menu');
+  await expect(menu).toBeVisible({ timeout: 30_000 });
+  await page.mouse.move(1, 1);
+  await page.keyboard.press('e');
+  await expect(menu, 'E opened Attack').toHaveAttribute('aria-label', 'attack');
+  await page.keyboard.press('e');
+  await expect(menu, 'E struck: the round plays').toBeHidden();
+  await expect(page.locator('.boss-bar [aria-label="HP"]')).not.toHaveAttribute('aria-valuenow',
+    await page.locator('.boss-bar [aria-label="HP"]').getAttribute('aria-valuemax') ?? '', { timeout: 30_000 });
+});

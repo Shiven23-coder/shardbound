@@ -725,7 +725,7 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 
 **Spec.** §12.
 
-**Amended by P-27** (Whispering Wood placed after V6).
+**Amended by P-27** (Whispering Wood placed after V6). **Superseded by P-66** (no public alpha; one launch as 1.0).
 
 ---
 
@@ -762,6 +762,8 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 **Why.** Accounts and ops ship and get reviewed separately.
 
 **Spec.** §12.
+
+**Superseded by P-66:** V2c is gone; its parts are in S1 Private staging and V12.
 
 ---
 
@@ -851,6 +853,8 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 
 **Spec.** §12.
 
+**Superseded by P-66:** no Alpha 2; WW follows PLAYTEST 1 in the new order.
+
 ---
 
 ## P-28 — CI guards content ids against unmapped removal
@@ -926,6 +930,8 @@ Recorded with Phase P0 (2026-11-18). Shardbound became a public game and portfol
 **Why.** Broken object-level authorization is the most common API flaw; a test against the contract stops it from coming back.
 
 **Spec.** §7, §12 (ALPHA).
+
+**Amended by P-66:** the contract test is a LAUNCH checklist item.
 
 ---
 
@@ -1614,3 +1620,113 @@ The audio engine fetches a pack's files when its moment comes and decodes each e
 **Revises** P-64's stand-in (now the rusty-sword lower bound), P-27's post-ALPHA order (V6 → V6b) and the Hunter's Longbow's base in §4.6 (30 → 26).
 
 **Spec.** §4.6, §9, §12.
+
+## P-66 — No public alpha: one launch, complete, as 1.0
+
+**Problem.** The plan shipped a public alpha after Eldmere (ALPHA) and Whispering Wood as Alpha 2, so accounts, deploy and a public feedback loop came before most of the game existed. The game should meet the public once, complete.
+
+**Decision.**
+- **There is no public alpha.** The game launches once, complete, as **1.0**. Until then it runs on a **private, password-protected staging** for invited playtests.
+- **Phase order:**
+
+  V7 Eldmere boss → V6b Gear II → V10a Content tools → S1 Private staging → **PLAYTEST 1** (Eldmere) → WW Whispering Wood → V8 Navigation → V11a Hollow Deep → V9 Save slots → **PLAYTEST 2** → V11b Valdren City → V11c Ashen Wastes → V11d Crystal Spire → V2a Accounts + privacy → V2b Email accounts → V10b Telemetry → V12 Polish → **PLAYTEST 3** → **LAUNCH 1.0**.
+- **V10 splits:** **V10a Content tools** (the playtest bot over REST, the per-region balance simulator, content tooling) comes early so every region after Eldmere is built with it; **V10b Telemetry** (anonymous telemetry, opt-out, SQL views) comes before launch.
+- **V2c's parts are placed:**
+  - **S1 Private staging:** the container image, hosting, managed Postgres with backups and a **tested restore**, Sentry, JSON logs, Actuator health and metrics, password protection, preview deployments per PR, and the content-id guard (P-28), since playtesters' saves must survive releases.
+  - **V12 Polish:** the installable PWA and version skew (`X-API-Version`, "Update available", one release of backward compatibility, the `oasdiff` check).
+- **Playtests:**
+  - **PLAYTEST 1** plays Eldmere, start to the Ashen Herald, on phone and desktop with the in-game feedback button (moved from ALPHA).
+  - **PLAYTEST 2** plays through the Hollow Deep with save slots.
+  - **PLAYTEST 3** plays the complete game after V12.
+- **The ALPHA checklist becomes the LAUNCH checklist:** ASVS L1 review, a backup restore drill, a Sentry alert, the privacy page live, licences chosen (code vs story/art), no endpoint accepting a player id from the client (P-32), the repository public, and domain email with SPF, DKIM and DMARC.
+- **Releases:** each phase is still a `0.x` release with a CHANGELOG entry; **1.0 is the launch**.
+- **GitHub:** the milestone ALPHA is renamed **LAUNCH**; its issues stay on it.
+- **Credits and the end screen** belong to V11d, the final ending. V7 ends in an epilogue and free roam, not an end-of-alpha screen.
+
+**Why.** Players see one finished game. Private playtests at three points still bring outside eyes early, and the tools (bot, simulator) arrive before the regions they check.
+
+**Supersedes** the ALPHA parts of P-17 (order, feedback button), P-20 (V2c), P-27 (Alpha 2 and the order after ALPHA) and P-32 (an ALPHA checklist item, now LAUNCH), and the ALPHA milestone. **Reads as LAUNCH** wherever P-11 ("at alpha") and P-25 ("before ALPHA") name the alpha.
+
+**Spec.** §1, §4.10, §4.15, §6, §7, §11, §12, §13.
+
+## P-67 — Eldmere's finale: the Ashen Herald
+
+**Problem.** Every Eldmere route except the merchant's fell into V3's stub `p11` "The Cult Raid", whose resolver always picked `END_WANDERER`. Under P-66 V7 ends Eldmere in an epilogue and free roam, so the region needs its own finale.
+
+**Decision.**
+- **The trigger, "The Ash Falls":** `p11` is rewritten in place, so all seven routes into it (Maren, Corvin's "Go home", the alley loss, the millstone, the forest sign) lead to the Herald. Maren sends the player to the rubble north of the crater; the choice sets `herald_risen`. The merchant route (`END_QUICK`, "The Merchant's Bargain") is untouched. `finale.json` now starts at `c5_resolver`: the five resolver endings are parked for V11d.
+- **The way in:** the Old Ruins' north rubble becomes an obstacle hidden by `herald_risen`, and `arena_way` becomes the exit to a new area, **The Ash Rise** (edge `gateFlag: herald_risen`).
+- **The Ruins Lantern,** a few steps from the Rise, kindles from the crater's lingering warmth from dawn, **without the Heartshard**, so the retry loop is short for every player, including one who sold the stone.
+- **Retry loop:** a death goes through `Death` like any creep battle (Lost Shards on the battle tile, wake at the last Lantern). The intro never replays; a retry shows only the boss name banner, then the fight.
+- **The boss** (`content/bosses.json`): the **Ashen Herald**, level 5, family Ashen (Fire and Burn immune, Crystal resisted, Bleed works), drawn with the pack's **Red Tengu** (its transformation plays at phase 2). Final stats: **base HP 132, ATK 15, DEF 8, SPD 7**.
+  - **Cadence:** every n-th of its moves is the phase's telegraph, which takes two of its turns (announced, then landed), so it is announced every (n + 1)-th round. (A first version announced it every n-th round; with n = 2 the second phase never struck an ordinary blow, so Guarding every other round made it harmless. Found by the balance run and fixed with a failing test.)
+  - Phase 1: weighted Cinder Lash, Ash Veil (Bleed) and, every 3rd move, the telegraphed **Cinderfall** (×1.6).
+  - Phase 2 at HP ≤ 50 %: a transition line, Stun immunity for 1 turn, speed +1; Searing Wing (Burn), Cinder Lash and, every 2nd move, the telegraphed **Pyre Descent** (×1.9).
+  - Flee is disabled, status chances are halved, and a Stun gives 3 turns of Stun immunity (§4.5). The phase is derived from HP, so nothing new is saved for it.
+- **The mechanic, "Guard the fall":** Guarding a telegraphed blow cuts it to ×0.25 (as for creeps) and, against the Herald, **cracks its ash mantle**: the Herald is **Exposed** (DEF −50 %) for 2 turns. Only a guarded telegraph exposes it; a guarded ordinary blow does not. It works because Guard goes first (P-69): seeing the warning and choosing Guard always braces the blow. Data: `bosses.json` `onGuardedTelegraph`, status `EXPOSED`.
+- **Teaching it:** while a telegraph is pending (the server's `brace` cue, strings from content: `bosses.json` for the Herald, `balance.json` `battle.brace` for creeps):
+  - the warning reads "⚠ Cinderfall next turn — Guard to brace", on one line in every layout, on the boss bar or the enemy's info box until the blow lands;
+  - ATTACK and Guard carry the warning's amber, and Guard's subtitle becomes "Brace — leaves it exposed" (creeps: "Brace against the blow"; otherwise "Halve the next hit");
+  - guarding the Herald's telegraph reads "The Herald staggers — EXPOSED!", and the boss bar shows the boss's status chips (EXPOSED, Burn, Bleed…), since a boss has no enemy info box.
+- **Wind-ups are readable in both phases** (creeps too): while a telegraph is pending the enemy glows brighter and back, slowly (never a strobe), and rises a little and settles, on top of the boss's raised-wing pose. Reduce motion: a steady brighter glow, no pulse, no rise.
+- **Phase two is an escalation:** the transformation with one short ember flash and a 250 ms shake (reduce motion: one soft, dim flash, no shake); from then on an ember glow on the Herald and a hotter boss-bar fill; the boss track steps up (faster with its pitch kept, and louder: `audio.json` `escalated`, no new pack).
+- **The intro's first line** depends on the Heartshard: holding it, "Little lamp-bearer. You carry what was ours."; sold, "Little lamp-bearer. You carried what was ours. The stink of it is on you still."
+- **Presentation:** a boss bar just above the battle text, aligned to its right edge so it never covers the player's sprite (at the top of the deck in portrait; in battle there is no D-pad or Ⓐ on touch), with the name, a long HP bar, the phase-2 tick, the phase, the status chips and the telegraph warning; a boss has no enemy info box, so the player's box moves to its top-left place; a name banner at the start of every attempt and **FOE VANQUISHED** on victory, both in the open ground between the fighters. Boss music in its own pack, loaded on entering the Rise, with its own budget (P-64).
+- **The ash falls before it can stop:** a light state `ash_falling` (set by `herald_risen`) brings slow grey ash over Eldmere, as "The Ash Falls" says (it settles on the square too): a few dozen flecks a screen from one particle emitter, from `grades.json`'s ash settings. The epilogue's LIGHT step to `ash_lifted` fades it out over 1 s, just before "The ash stops falling", and it stays off. Reduce motion: half the flecks at half the speed. Within the 4× CPU budget (the perf test walks the ruins and the Rise in it).
+- **Reward:** `5 · creepShards(5)` = 1,805 Shards and the **Iron Longsword** (C; the Herald's raiders took it from Brann's rack). Never empty (P-65): if it is already owned, the fallback is Shards of one level-5 creep (361). **Whispering Wood's balance assumes the player holds the Iron Longsword after the Herald.**
+- **After victory:** FOE VANQUISHED, the rewards, then the epilogue cutscene: the ash stops falling (Eldmere's light state `ash_lifted`) and the flood on the west road starts to drop. Free roam returns with the post-boss state saved (`herald_defeated`, set only by the engine): the Rise is quiet; Osric, Maren and Brann have new lines; Lanterns, creeps, chests and refights keep working. Cottage Lane's flooded road gives way to mud and ends at a stop at the map's edge, "The far bank is still sodden; tomorrow, perhaps.", which the WW phase removes. No end screen and no credits (V11d).
+- **Balance** (`EldmereProgressionTest`, 1,000 seeds, the real Herald, under P-69; a loss rests at the Ruins Lantern, picks the Shards up and retries, up to six fights). Two policies:
+  - the **guarding** bot Guards a pending telegraph (unless it must drink) and drinks below 40 %;
+  - the **naive** bot never Guards, uses skills and strikes, and drinks below 35 %.
+
+  | Route (level 4) | First-attempt wins | Attempts per run | First fight: median turns, draughts |
+  |---|---|---|---|
+  | Hatchet, Vig/Str, guarding | **79 %** (asserted 70–85 %) | 1.26 | 11, 2 (asserted 8–12 turns) |
+  | Hatchet, Vig/Str, never guarding | **43 %** (asserted 35–50 %) | 2.21 | 9, 2 |
+  | Longbow, Dex, guarding | **84 %** (asserted ≤ 90 %) | 1.19 | 11, 2 |
+  | Rusty Shortsword only, guarding | 33 % (reported) | 2.62 | 17, 3 |
+
+  The rusty-sword route never wins in six fights in 7 % of runs: the fight sends a player who skipped the main-path chest back for it. Getting both policies into their bands needed the telegraphs weaker and the ordinary blows harder than the first draft: base HP 196 → 132, ATK 13 → 15, DEF 10 → 8, Cinderfall ×2.0 → ×1.6, Pyre Descent ×2.4 → ×1.9. Creep deaths per run are 0.00 (hatchet) and 0.06 (rusty), under §10.3's ~0.1, because the bot never misplays: PLAYTEST 1 checks it. Creep fights keep a median of 3 turns (the Barrow Skull 5), unchanged by P-69.
+- **Save:** no format bump. The slot document's shape does not change (boss defeat, seen cutscenes and the Ruins Lantern are flags; Exposed is a status); the active run gains an optional `cutscene` id that older runs read as null.
+- **e2e:** an `e2e` Spring profile (off in production and dev) adds `POST /api/debug/ready-for-the-herald` (keyed): an engine *rehearsal* that leaves the run where the elder's path does (its flags, quest, standing and the Heartshard, matched against the played route by `RehearsalTest`), at the Ruins Lantern, level 4 with the hatchet and Ember. Only the win test (and the on-demand screenshots) use it; the skip, loss and retry test plays the elder's path through the UI. `ProductionProfileIT` proves the `prod` profile answers 404 for it and for the dev routes, and the bundle grep keeps its path out of the frontend.
+
+**Why.** Eldmere gets a real ending that teaches its last lesson, without an end screen, and the region's routes all converge on it while the merchant's secret stays secret.
+
+**Supersedes** D3 (the raid folds into the resolver) and V3's interim finale; amends P-61 (a Lantern may kindle without the Heartshard).
+
+**Spec.** §4.7, §8, §9, §10, §12.
+
+## P-68 — Data-driven cutscenes
+
+**Problem.** The boss intro and the epilogue need staging (movement, camera, music, lines) that dialogue alone cannot express, and the art stays CC0-pack only.
+
+**Decision.**
+- `content/cutscenes/<id>.json` (schema-validated): actors (sprite, tile, facing, and a `name` that titles their lines) and steps `say` (with optional `conditions` variants), `move`, `face`, `camera` (frame, pan, zoom, shake, follow), `music`, `sound`, `fade`, `flash`, `wait`, `light`, `vanish`; `then` is `battle:<bossId>` or `world`. Validated at startup (sprites, tiles, speakers, targets).
+- The server owns when a cutscene plays and what follows: a new `CUTSCENE` mode; `POST /api/cutscene/finish` (keyed) ends it, played out or skipped, records it as seen (engine flag `_seen_<id>`) and applies `then`. A seen cutscene never plays again in that run.
+- The client plays the steps with map sprites, the dialogue box and pack effects; no illustrated stills.
+- **Input:** tapping E or Ⓐ (or the line itself) advances `say` steps; skipping needs a ~1 s hold of E, Ⓐ or the Skip button (≥ 48 px, top-right), whose progress ring fills as it is held; the first press shows "Hold E to skip" ("Hold Ⓐ…", or "Hold to skip" on touch), and letting go early skips nothing. The HUD and the touch controls hide while a cutscene plays. **Reduce motion** removes shake, flashes and camera moves (pans become cuts); fades stay as short cross-fades.
+- **Framing:** `camera: frame` centres one actor, or every actor and the player, in the play area above the line box (the dialogue box over the world, nothing in the portrait deck) with a margin, at the largest whole zoom that fits while the map still fills the view (P-29, P-52), clamped to the map. One helper serves every layout, and the scene re-frames on resize and rotation. Actors stand fully on the map. The e2e test checks, in all three layouts, that the Herald and the player are fully inside the play area during the intro.
+- **Nothing else on screen:** in CUTSCENE mode the HUD, the touch controls, the area title card, the objective banner, hints and the interaction marker are hidden; an objective that changed meanwhile (or under a battle) shows once the cutscene has ended.
+- **Division of work:** React plays `say`, `music` and `sound`; the world scene stages the rest and reports each step done (with a time-out, so a scene still loading never stalls the cutscene). After a boss victory the epilogue waits until the battle's last page has been read.
+
+**Why.** Staging is data like the rest of the content, the server keeps the rules, and a death never replays an intro.
+
+**Spec.** §4.7, §8, §9.
+
+## P-69 — Guard goes first
+
+**Problem.** Turn order was by speed for every action, and Guard lasted until the guarder's next turn. Against a faster enemy (every Eldmere creep from level 2, and the Ashen Herald at speed 7–8 against a level-4 player's 6) a telegraphed blow landed at the start of the round in which the player first saw its warning, so a Guard chosen on the warning always came too late. "Guard to brace" (P-67) would have taught something that could not work; the Storm Rat test pinned that behaviour.
+
+**Decision.**
+- **Guard has priority, for every fighter** (player, creeps, bosses): whoever guards raises it before anyone acts, and it lasts to the end of that round, so the hit it blunts is the one that comes in the same round. Flasks, skills, attacks and Flee keep speed order (the player on ties).
+- A creep decides its action as the round begins, so its own Guard (the DEFENSIVE strategy, once below 30 % HP) goes first too; a boss follows its cadence at its turn.
+- A guarded blow takes ×0.5, a guarded telegraph ×0.25; only a guarded telegraph exposes a boss (P-67).
+- "Halve the next hit", Guard's subtitle, is now literally true.
+- **The Storm Rat test is rewritten:** it asserted that the faster rat landed its announced Frenzy before a guard chosen that round, so only a guard raised the round before could blunt it. It now asserts that the guard chosen after the warning goes first and takes the Frenzy at a quarter. New tests: a slower player's guard halves a faster enemy's hit that round; an enemy's guard goes first; a guarded ordinary hit does not expose the Herald.
+- Creep balance is unchanged (the bot never guards creeps; the Mire Slime guards once): median fights of 3 turns (the Barrow Skull 5), as before. The Herald was re-tuned for it (P-67).
+
+**Why.** A telegraph is a promise that reacting to it works. With speed order the promise held only for players faster than the enemy, which in Eldmere is nobody.
+
+**Amends** P-54 and P-57 (turn order, Guard's duration).
+
+**Spec.** §4.5, §4.7.
