@@ -10,7 +10,7 @@ It is a public, mobile-first web game and a flagship portfolio piece: guest and 
 Decision history: `docs/DECISIONS.md` (P-01 … P-69 win over older entries).
 
 ## Tech
-- Backend: **Spring Boot 4.1** on **Java 25**; **JdbcClient** with hand-written SQL; **Flyway via Spring**; springdoc-openapi; JUnit 5, **Testcontainers**, ArchUnit.
+- Backend: **Spring Boot 4.2** on **Java 25**; **JdbcClient** with hand-written SQL; **Flyway via Spring**; springdoc-openapi; JUnit 5, **Testcontainers**, ArchUnit.
 - Database: **PostgreSQL 17**, player data only (JSONB saves, `active_run`). Content is JSON in `content/`, validated against `content/schema/` and loaded at startup.
 - Frontend: **TypeScript**, React (HUD, menus, dialogue, auth), Phaser 4 (world and battle, lazy-loaded; own build, P-60), Vite, Vitest, Playwright. The API client is **generated from `api/openapi.json`** (openapi-typescript + openapi-fetch).
 - Ops: **Docker Compose** (postgres + mailpit for dev), GitHub Actions, Dependabot, gitleaks, release-please, Cloudflare Turnstile, Sentry.
