@@ -49,7 +49,8 @@
       "p95FrameCpuMs": 33,
       "maxRegression": 0.25,
       "jsHeapMb": 100,
-      "battleStartMs": 300
+      "battleStartColdMs": 300,
+      "battleStartWarmP95Ms": 300
     }
   }
 }
