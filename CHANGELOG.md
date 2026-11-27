@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.5.0](https://github.com/Shiven23-coder/shardbound/compare/shardbound-v0.4.0...shardbound-v0.5.0) (2026-11-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* the cult raid no longer resolves to END_WANDERER.
+* WorldView gains `chests`, ToastView gains `tier`, and ItemView/HudView carry a WeaponView.
+* SessionView gains `lantern` and Mode LANTERN; WorldView gains `lanterns` and `lostShards`; items may be FLASK with `maxQty`; save format 4.
+
+### Features
+
+* V5 Progression — Lanterns, levelling, Lost Shards, the Lantern Draught ([#22](https://github.com/Shiven23-coder/shardbound/issues/22)) ([bf4bda5](https://github.com/Shiven23-coder/shardbound/commit/bf4bda5ff080cc6182b8c54785c39a2044db7707))
+* V6a Gear slice — chests, tier colours, Compare and Equip ([#25](https://github.com/Shiven23-coder/shardbound/issues/25)) ([3d3e4d4](https://github.com/Shiven23-coder/shardbound/commit/3d3e4d46ff73616e3eb8d6348637c44b1b7f067b))
+* V7 Eldmere boss — the Ashen Herald, Guard goes first, data-driven cutscenes ([#7](https://github.com/Shiven23-coder/shardbound/issues/7)) ([92e9f81](https://github.com/Shiven23-coder/shardbound/commit/92e9f81a4b765dbd113f73d5e0e1969b1f3fe08f))
+
+
+### Bug Fixes
+
+* **client:** pre-bundle the Phaser build for the dev server ([#24](https://github.com/Shiven23-coder/shardbound/issues/24)) ([1307f71](https://github.com/Shiven23-coder/shardbound/commit/1307f719a455e25e31d9a44eadd56babca5811d4))
+
 ## 0.4.0 (2026-11-22)
 
 
