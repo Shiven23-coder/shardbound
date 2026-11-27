@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shardbound.game/schema/cutscene.schema.json",
+  "title": "Shardbound cutscene (content/cutscenes/<id>.json, P-68)",
+  "type": "object",
+  "required": [
+    "id",
+    "area",
+    "steps",
+    "then"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "area": {
+      "type": "string"
+    },
+    "actors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "sprite",
+          "x",
+          "y"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "sprite": {
+            "type": "string",
+            "pattern": "^(player|npc\\.[a-z0-9_]+|creep\\.[a-z0-9_]+|boss\\.[a-z0-9_]+)$"
+          },
+          "x": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "y": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "facing": {
+            "enum": [
+              "UP",
+              "DOWN",
+              "LEFT",
+              "RIGHT"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "do"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "do": {
+            "enum": [
+              "say",
+              "move",
+              "face",
+              "camera",
+              "music",
+              "sound",
+              "fade",
+              "flash",
+              "wait",
+              "light",
+              "vanish"
+            ]
+          },
+          "actor": {
+            "type": "string"
+          },
+          "speaker": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "conditions",
+                "text"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "conditions": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "type",
+                      "key",
+                      "op",
+                      "value"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": {
+                        "enum": [
+                          "FLAG",
+                          "ITEM"
+                        ]
+                      },
+                      "key": {
+                        "type": "string"
+                      },
+                      "op": {
+                        "enum": [
+                          "=",
+                          "!=",
+                          "<",
+                          "<=",
+                          ">",
+                          ">="
+                        ]
+                      },
+                      "value": {
+                        "type": "integer"
+                      },
+                      "grp": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  }
+                },
+                "text": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "path": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "facing": {
+            "enum": [
+              "UP",
+              "DOWN",
+              "LEFT",
+              "RIGHT"
+            ]
+          },
+          "camera": {
+            "enum": [
+              "frame",
+              "pan",
+              "zoom",
+              "shake",
+              "follow"
+            ]
+          },
+          "x": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "y": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "zoom": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "track": {
+            "type": "string"
+          },
+          "effect": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "then": {
+      "type": "string",
+      "pattern": "^(world|battle:[a-z][a-z0-9_]*)$"
+    }
+  }
+}

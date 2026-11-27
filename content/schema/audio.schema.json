@@ -15,14 +15,14 @@
       "additionalProperties": { "$ref": "#/$defs/sound" }
     },
     "music": {
-      "description": "One track per region id (regions.json).",
+      "description": "One track per region id (regions.json), plus the battle track and each boss's track.",
       "type": "object",
       "additionalProperties": { "$ref": "#/$defs/track" }
     },
     "packs": {
       "description": "When each sound downloads (P-59, P-64). Initial and battle effects are in exactly one pack; region packs may share effects (the Lantern sounds).",
       "type": "object",
-      "required": ["initial", "regions", "battle"],
+      "required": ["initial", "regions", "battle", "bosses"],
       "additionalProperties": false,
       "properties": {
         "description": { "type": "string" },
@@ -42,6 +42,11 @@
         "battle": {
           "description": "Loaded only when a creep is near (P-57): the battle track and the battle effects.",
           "$ref": "#/$defs/pack"
+        },
+        "bosses": {
+          "description": "One pack per boss id (bosses.json), loaded on entering its arena (P-64, P-67): its music and stings.",
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/pack" }
         }
       }
     },
@@ -66,14 +71,23 @@
       }
     },
     "track": {
-      "description": "A music track: the OGG, and an AAC fallback for browsers that cannot play OGG (P-48).",
+      "description": "A music track: the OGG, and an AAC fallback for browsers that cannot play OGG (P-48). A boss's track may step up in its second phase (P-67): faster, its pitch kept, and louder.",
       "type": "object",
       "required": ["file", "fallback", "volume"],
       "additionalProperties": false,
       "properties": {
         "file": { "type": "string", "pattern": "^music/[a-z0-9-]+[.]ogg$" },
         "fallback": { "type": "string", "pattern": "^music/[a-z0-9-]+[.]m4a$" },
-        "volume": { "type": "number", "minimum": 0, "maximum": 1 }
+        "volume": { "type": "number", "minimum": 0, "maximum": 1 },
+        "escalated": {
+          "type": "object",
+          "required": ["rate", "volume"],
+          "additionalProperties": false,
+          "properties": {
+            "rate": { "type": "number", "minimum": 1, "maximum": 1.25 },
+            "volume": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        }
       }
     },
     "sound": {

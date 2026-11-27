@@ -66,3 +66,9 @@ export interface LastPosition {
   y: number;
   facing: Facing;
 }
+export type CutsceneView = Schemas['CutsceneView'];
+export type CutsceneStepView = Schemas['StepView'];
+export type CutsceneActorView = Schemas['ActorView'];
+export type BossBarView = Schemas['BossBarView'];
+export type BraceView = Schemas['BraceView'];
+export type BossView = Schemas['BossView'];

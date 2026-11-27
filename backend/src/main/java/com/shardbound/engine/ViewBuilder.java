@@ -1,5 +1,9 @@
 package com.shardbound.engine;
 
+import com.shardbound.view.CutsceneView;
+import com.shardbound.cutscene.Cutscene;
+import com.shardbound.battle.BossTemplate;
+import com.shardbound.battle.BraceCue;
 import com.shardbound.view.ChoiceView;
 import com.shardbound.view.BattleView;
 import com.shardbound.view.HudView;
@@ -82,9 +86,26 @@ public class ViewBuilder {
                 drainToasts(s),
                 battle(s),
                 s.mode() == Mode.LANTERN ? lanternMenu(s) : null,
+                s.mode() == Mode.CUTSCENE ? cutscene(s) : null,
                 s.mode() == Mode.ENDED ? ending(s, node) : null,
                 objective(s),
                 s.offerReload());
+    }
+
+    /** The cutscene playing (P-68), its {@code say} lines chosen for this player: the first variant that holds. */
+    private CutsceneView cutscene(GameState s) {
+        Cutscene c = content.cutscenes().get(s.cutscene());
+        List<CutsceneView.ActorView> actors = c.actors().stream()
+                .map(a -> new CutsceneView.ActorView(a.id(), a.sprite(), a.x(), a.y(), a.facing(), a.name())).toList();
+        List<CutsceneView.StepView> steps = new ArrayList<>();
+        for (Cutscene.Step step : c.steps()) {
+            String text = step.variants().stream().filter(v -> v.conditions().test(s)).map(Cutscene.Variant::text)
+                    .findFirst().orElse(step.text());
+            steps.add(new CutsceneView.StepView(step.kind().name(), step.actor(), step.speaker(), text,
+                    step.path().stream().map(t -> new CutsceneView.TileView(t.x(), t.y())).toList(), step.facing(),
+                    step.camera(), step.x(), step.y(), step.zoom(), step.ms(), step.track(), step.effect(), step.state()));
+        }
+        return new CutsceneView(c.id(), actors, steps);
     }
 
     /** The Lantern menu (P-61): the Lantern rested at, the player's level, Shards, attributes, stats and skills. */
@@ -138,6 +159,7 @@ public class ViewBuilder {
         List<String> hidden = new ArrayList<>();
         List<WorldView.LanternView> lanterns = new ArrayList<>();
         List<WorldView.ChestView> chests = new ArrayList<>();
+        List<WorldView.BossView> bosses = new ArrayList<>();
         for (MapObject o : map.objects()) {
             if (!WorldObjects.active(s, p.areaId(), o)
                     || (o.type() == ObjectType.CREEP_SPAWN && s.creeps().isDefeated(CreepRoster.key(p.areaId(), o.name())))) {
@@ -150,6 +172,10 @@ public class ViewBuilder {
                 Lantern lantern = Lantern.of(p.areaId(), o);
                 lanterns.add(new WorldView.LanternView(o.name(), lantern.id(), lantern.name(), map.centre(o.x()),
                         map.centre(o.y()), s.flag(lantern.litFlag()) != 0));
+            } else if (o.type() == ObjectType.BOSS) {
+                BossTemplate boss = content.battle().bosses().get(o.property("bossId"));
+                bosses.add(new WorldView.BossView(o.name(), boss.id(), boss.name(), boss.sprite(), map.centre(o.x()),
+                        map.centre(o.y())));
             } else if (o.type() == ObjectType.CHEST) {
                 chests.add(new WorldView.ChestView(o.name(), map.centre(o.x()), map.centre(o.y()),
                         s.flag(Chest.of(p.areaId(), o).flag()) != 0));
@@ -159,7 +185,7 @@ public class ViewBuilder {
         WorldView.LostShardsView lostShards = lost == null || !lost.areaId().equals(p.areaId()) ? null
                 : new WorldView.LostShardsView(map.centre(lost.tileX()), map.centre(lost.tileY()), lost.amount());
         return new WorldView(area.id(), area.name(), area.region(), map.key(), lightState(s, world.regions().get(area.region())),
-                new WorldView.PlayerView(p.x(), p.y(), p.facing()), npcs, creeps, hidden, lanterns, chests, lostShards);
+                new WorldView.PlayerView(p.x(), p.y(), p.facing()), npcs, creeps, hidden, lanterns, chests, bosses, lostShards);
     }
 
     private WorldView.CreepView creep(GameState s, String areaId, AreaMap map, CreepSpawn spawn) {
@@ -346,8 +372,15 @@ public class ViewBuilder {
             rewards = new BattleView.RewardsView(b.rewards().shards(), names);
         }
         BattleView.MenuView menu = new BattleView.MenuView(b.canFlee(), skills, bag, s.stats().fp(), s.stats().maxFp());
+        BossTemplate boss = b.enemy().boss();
+        BattleView.BossBarView bossBar = boss == null ? null
+                : new BattleView.BossBarView(boss.name(), b.enemy().phase(), boss.phases().get(1).atPct(), b.phaseLine());
+        BraceCue cue = boss == null ? battle.brace() : boss.brace();
+        BattleView.BraceView brace = b.telegraphMove() == null || b.outcome() != BattleOutcome.ONGOING ? null
+                : new BattleView.BraceView(cue.warningFor(b.telegraphMove()), cue.guardDetail());
         return new BattleView(fighter(b.enemy(), battle, false), fighter(b.player(), battle, true), b.round(), b.text(),
-                b.telegraph(), menu, hits, b.outcome() == BattleOutcome.ONGOING ? null : b.outcome().name(), rewards);
+                b.telegraph(), menu, hits, b.outcome() == BattleOutcome.ONGOING ? null : b.outcome().name(), rewards,
+                b.telegraphMove(), bossBar, brace);
     }
 
     private static BattleView.FighterView fighter(Fighter f, BattleContent battle, boolean player) {

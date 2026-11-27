@@ -36,6 +36,12 @@
     {"id": "cinder_touch", "name": "Cinder Touch", "element": "FIRE", "power": 0.8, "fpCost": 0, "scaling": "WEAPON", "status": "BURN", "statusChance": 45, "unlock": "CREEP", "description": "Grey fire that gives no warmth."},
     {"id": "wisp_flare", "name": "Flare", "element": "FIRE", "power": 1.2, "fpCost": 0, "scaling": "WEAPON", "unlock": "CREEP", "description": "The wisp flares into a sheet of ash."},
     {"id": "skull_gnaw", "name": "Gnaw", "element": "PHYSICAL", "power": 1.0, "fpCost": 0, "scaling": "WEAPON", "status": "BLEED", "statusChance": 20, "unlock": "CREEP", "description": "Old teeth, still sharp."},
-    {"id": "grave_bite", "name": "Grave Bite", "element": "PHYSICAL", "power": 2.0, "fpCost": 0, "scaling": "WEAPON", "telegraph": true, "telegraphLine": "The {name}'s jaw unhinges, wider than any jaw should!", "unlock": "CREEP", "description": "Everything a grave keeps, in one bite."}
+    {"id": "grave_bite", "name": "Grave Bite", "element": "PHYSICAL", "power": 2.0, "fpCost": 0, "scaling": "WEAPON", "telegraph": true, "telegraphLine": "The {name}'s jaw unhinges, wider than any jaw should!", "unlock": "CREEP", "description": "Everything a grave keeps, in one bite."},
+
+    {"id": "cinder_lash", "name": "Cinder Lash", "element": "FIRE", "power": 1.0, "fpCost": 0, "scaling": "WEAPON", "unlock": "CREEP", "description": "A whip of embers that leaves grey welts."},
+    {"id": "ash_veil", "name": "Ash Veil", "element": "PHYSICAL", "power": 0.8, "fpCost": 0, "scaling": "WEAPON", "status": "BLEED", "statusChance": 40, "unlock": "CREEP", "description": "Ash sharp as glass, thrown in a cloud."},
+    {"id": "cinderfall", "name": "Cinderfall", "element": "FIRE", "power": 1.6, "fpCost": 0, "scaling": "WEAPON", "telegraph": true, "telegraphLine": "The {name} gathers the falling ash above its head!", "unlock": "CREEP", "description": "Every flake of ash in the sky, brought down at once."},
+    {"id": "searing_wing", "name": "Searing Wing", "element": "FIRE", "power": 1.1, "fpCost": 0, "scaling": "WEAPON", "status": "BURN", "statusChance": 40, "unlock": "CREEP", "description": "A sweep of wings that burn as they pass."},
+    {"id": "pyre_descent", "name": "Pyre Descent", "element": "FIRE", "power": 1.9, "fpCost": 0, "scaling": "WEAPON", "telegraph": true, "telegraphLine": "The {name} spreads its burning wings and rises!", "unlock": "CREEP", "description": "It falls on you like a burning house."}
   ]
 }

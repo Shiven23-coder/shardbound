@@ -6,6 +6,8 @@ import com.shardbound.dialogue.DialogueValidator;
 import com.shardbound.exception.ContentValidationException;
 import com.shardbound.world.AreaMap;
 import com.shardbound.world.MapObject;
+import com.shardbound.battle.BossTemplate;
+import com.shardbound.cutscene.CutsceneValidator;
 import com.shardbound.world.MapValidator;
 import com.shardbound.world.ObjectType;
 import com.shardbound.world.World;
@@ -53,8 +55,12 @@ public class ContentLoader {
         ProgressionRules progression = battleReader.readProgression();
 
         Set<String> chestFlags = MapValidator.chestFlags(world);
+        Set<String> defeatFlags = battle.bosses().values().stream().map(BossTemplate::defeatFlag)
+                .collect(Collectors.toSet());
+        Set<String> engineFlags = new HashSet<>(chestFlags);
+        engineFlags.addAll(defeatFlags);
         Set<String> flagsSetByWorld = new HashSet<>(world.start().flags().keySet());
-        flagsSetByWorld.addAll(chestFlags);
+        flagsSetByWorld.addAll(engineFlags);
         DialogueValidator dialogues = new DialogueValidator(raw, flagsReadBy(world), flagsSetByWorld,
                 gateFlagsOf(world));
         if (!dialogues.validate()) {
@@ -68,13 +74,27 @@ public class ContentLoader {
         Map<String, Boolean> itemsStack = raw.items().stream()
                 .collect(Collectors.toMap(RawContent.ItemDef::id, i -> "CONSUMABLE".equals(i.type())));
         List<String> mapErrors = new ArrayList<>(
-                new MapValidator(world, dialogueIds, npcIds, battle.creeps().keySet(), itemsStack).validate());
-        mapErrors.addAll(chestFlagsSetByDialogue(raw, chestFlags));
+                new MapValidator(world, dialogueIds, npcIds, battle.creeps().keySet(), itemsStack,
+                        battle.bosses().keySet()).validate());
+        mapErrors.addAll(chestFlagsSetByDialogue(raw, engineFlags));
         if (!mapErrors.isEmpty()) {
             throw new ContentValidationException("Maps failed validation", mapErrors);
         }
 
-        GameContent content = new ContentAssembler().assemble(raw, world, rules, battle, progression);
+        List<CutsceneReader.RawCutscene> rawCutscenes = new CutsceneReader().read(files);
+        GameContent content = new ContentAssembler().assemble(raw, world, rules, battle, progression, rawCutscenes);
+        List<String> cutsceneErrors = new ArrayList<>(
+                new CutsceneValidator(world, npcIds, battle.bosses().keySet()).validate(content.cutscenes()));
+        for (BossTemplate boss : battle.bosses().values()) {
+            for (String id : List.of(boss.introCutscene(), boss.epilogueCutscene())) {
+                if (!content.cutscenes().containsKey(id)) {
+                    cutsceneErrors.add("boss " + boss.id() + " names unknown cutscene " + id);
+                }
+            }
+        }
+        if (!cutsceneErrors.isEmpty()) {
+            throw new ContentValidationException("Cutscenes failed validation", cutsceneErrors);
+        }
         content.prepareForPlay();
         LOG.info("Content loaded: {} areas, {} dialogues, {} nodes, {} items, {} quests", world.areas().size(),
                 dialogueIds.size(), content.graph().nodes().size(), content.items().size(),
@@ -82,12 +102,12 @@ public class ContentLoader {
         return content;
     }
 
-    /** A chest's flag records it as opened, so only the engine sets it (P-65). */
+    /** A chest's flag records it as opened and a boss's defeat flag its fall, so only the engine sets them (P-65, P-67). */
     private static List<String> chestFlagsSetByDialogue(RawContent raw, Set<String> chestFlags) {
         return raw.choices().stream()
                 .flatMap(c -> c.effects().stream()
                         .filter(r -> "SET_FLAG".equals(r.type()) && chestFlags.contains(r.key()))
-                        .map(r -> "Choice " + c.id() + " sets chest flag " + r.key() + "; only opening the chest may"))
+                        .map(r -> "Choice " + c.id() + " sets engine flag " + r.key() + "; only the engine may"))
                 .toList();
     }
 

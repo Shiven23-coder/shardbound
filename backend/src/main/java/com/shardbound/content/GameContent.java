@@ -3,6 +3,7 @@ package com.shardbound.content;
 import com.shardbound.achievement.Achievement;
 import com.shardbound.battle.BattleContent;
 import com.shardbound.battle.Encounter;
+import com.shardbound.cutscene.Cutscene;
 import com.shardbound.dialogue.DialogueGraph;
 import com.shardbound.engine.Ending;
 import com.shardbound.engine.Objective;
@@ -34,7 +35,8 @@ public record GameContent(
         World world,
         WorldRules worldRules,
         BattleContent battle,
-        ProgressionRules progression) {
+        ProgressionRules progression,
+        Map<String, Cutscene> cutscenes) {
 
     /** Must run once at startup: computes the quest log order with Kahn's algorithm (spec §6.5). */
     public void prepareForPlay() {

@@ -1,0 +1,18 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "road_stop",
+  "start": "road_stop",
+  "nodes": [
+    {
+      "id": "road_stop",
+      "title": "The West Road",
+      "text": "The far bank is still sodden; tomorrow, perhaps.",
+      "choices": [
+        {
+          "label": "Turn back",
+          "end": true
+        }
+      ]
+    }
+  ]
+}

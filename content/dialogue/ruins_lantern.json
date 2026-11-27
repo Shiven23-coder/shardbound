@@ -1,0 +1,49 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "ruins_lantern",
+  "start": "ruins_cold",
+  "entries": [
+    {
+      "node": "ruins_kindle",
+      "conditions": [
+        {
+          "type": "FLAG",
+          "key": "dawn",
+          "op": ">=",
+          "value": 1
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "ruins_cold",
+      "title": "Ruins Lantern",
+      "text": "The glass is cold. The crater's heat has not reached it yet.",
+      "choices": [
+        {
+          "label": "Leave it",
+          "end": true
+        }
+      ]
+    },
+    {
+      "id": "ruins_kindle",
+      "title": "Ruins Lantern",
+      "text": "The stones around the crater still hold the crystal's warmth. You cup your hands to the cold glass and the warmth follows them: the wick catches, gold, green at its heart. [page] Whatever lay in that crater for so long, it left enough of itself behind to light the way back.",
+      "choices": [
+        {
+          "label": "Warm your hands",
+          "end": true,
+          "effects": [
+            {
+              "type": "SET_FLAG",
+              "key": "lantern_lit_ruins",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

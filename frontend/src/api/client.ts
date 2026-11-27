@@ -158,6 +158,8 @@ export const api = {
     game(() => client.POST('/api/inventory/equip', { body: { itemId }, ...keyed(key) })),
   useItem: (itemId: string, key: string): Promise<SessionView> =>
     game(() => client.POST('/api/inventory/use', { body: { itemId }, ...keyed(key) })),
+  finishCutscene: (cutsceneId: string, key: string): Promise<SessionView> =>
+    game(() => client.POST('/api/cutscene/finish', { body: { cutsceneId }, ...keyed(key) })),
   worldRecover: (x: number, y: number, facing: Facing, key: string): Promise<SessionView> =>
     game(() => client.POST('/api/world/recover', { body: { x, y, facing }, ...keyed(key) })),
   /** What these raises would cost and change; read-only, so no idempotency key (P-61). */

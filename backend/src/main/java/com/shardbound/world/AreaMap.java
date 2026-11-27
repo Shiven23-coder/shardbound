@@ -36,7 +36,8 @@ public record AreaMap(String key, int width, int height, int tileSize, Collision
     public CollisionGrid collisionWith(Predicate<MapObject> active) {
         List<MapObject> blocking = objects.stream()
                 .filter(o -> o.type() == ObjectType.BUILDING
-                        || ((o.type() == ObjectType.OBSTACLE || o.type() == ObjectType.CHEST) && active.test(o)))
+                        || ((o.type() == ObjectType.OBSTACLE || o.type() == ObjectType.CHEST || o.type() == ObjectType.BOSS)
+                        && active.test(o)))
                 .toList();
         return collision.blocking(blocking);
     }

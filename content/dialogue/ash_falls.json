@@ -1,0 +1,26 @@
+{
+  "$schema": "../schema/dialogue.schema.json",
+  "id": "ash_falls",
+  "start": "p11",
+  "nodes": [
+    {
+      "id": "p11",
+      "title": "The Ash Falls",
+      "text": "The bells are still ringing when the ash begins to fall: grey flakes, warm as breath, settling on the square. From the north, past the ruins, something calls the stone by a name you have never heard. [page] Maren finds you in the crowd and grips your arm. \"The Circle has sent its Herald. It will come for the light, and for whoever has carried it. The old rubble north of the crater: that's where it waits.\"",
+      "choices": [
+        {
+          "label": "Go to the ruins",
+          "end": true,
+          "effects": [
+            {
+              "type": "SET_FLAG",
+              "key": "herald_risen",
+              "value": 1
+            }
+          ]
+        }
+      ],
+      "speaker": "maren"
+    }
+  ]
+}

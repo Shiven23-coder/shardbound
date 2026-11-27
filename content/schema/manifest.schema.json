@@ -11,7 +11,8 @@
   "effects",
   "battleBackdrop",
   "battleEffects",
-  "chest"
+  "chest",
+  "bosses"
  ],
  "additionalProperties": false,
  "properties": {
@@ -253,6 +254,153 @@
     "frameHeight": {
      "type": "integer",
      "minimum": 8
+    }
+   }
+  },
+  "bosses": {
+   "description": "Boss sprites by key boss.<bossId> (P-67): square frames of frameSize, one row per animation.",
+   "type": "object",
+   "propertyNames": {
+    "pattern": "^boss\\.[a-z0-9_]+$"
+   },
+   "additionalProperties": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+     "frameSize",
+     "faceset",
+     "idle",
+     "walk",
+     "attack",
+     "hit",
+     "transform",
+     "windUpFrame"
+    ],
+    "properties": {
+     "description": {
+      "type": "string"
+     },
+     "frameSize": {
+      "type": "integer",
+      "minimum": 16
+     },
+     "faceset": {
+      "$ref": "#/$defs/png"
+     },
+     "idle": {
+      "type": "object",
+      "required": [
+       "sheet",
+       "frames",
+       "frameRate"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "sheet": {
+        "$ref": "#/$defs/png"
+       },
+       "frames": {
+        "type": "integer",
+        "minimum": 1
+       },
+       "frameRate": {
+        "type": "integer",
+        "minimum": 1
+       }
+      }
+     },
+     "walk": {
+      "type": "object",
+      "required": [
+       "sheet",
+       "frames",
+       "frameRate"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "sheet": {
+        "$ref": "#/$defs/png"
+       },
+       "frames": {
+        "type": "integer",
+        "minimum": 1
+       },
+       "frameRate": {
+        "type": "integer",
+        "minimum": 1
+       }
+      }
+     },
+     "attack": {
+      "type": "object",
+      "required": [
+       "sheet",
+       "frames",
+       "frameRate"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "sheet": {
+        "$ref": "#/$defs/png"
+       },
+       "frames": {
+        "type": "integer",
+        "minimum": 1
+       },
+       "frameRate": {
+        "type": "integer",
+        "minimum": 1
+       }
+      }
+     },
+     "hit": {
+      "type": "object",
+      "required": [
+       "sheet",
+       "frames",
+       "frameRate"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "sheet": {
+        "$ref": "#/$defs/png"
+       },
+       "frames": {
+        "type": "integer",
+        "minimum": 1
+       },
+       "frameRate": {
+        "type": "integer",
+        "minimum": 1
+       }
+      }
+     },
+     "transform": {
+      "type": "object",
+      "required": [
+       "sheet",
+       "frames",
+       "frameRate"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "sheet": {
+        "$ref": "#/$defs/png"
+       },
+       "frames": {
+        "type": "integer",
+        "minimum": 1
+       },
+       "frameRate": {
+        "type": "integer",
+        "minimum": 1
+       }
+      }
+     },
+     "windUpFrame": {
+      "type": "integer",
+      "minimum": 0
+     }
     }
    }
   }

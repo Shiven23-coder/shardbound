@@ -141,18 +141,47 @@ class GameEngineTest {
         assertEquals(10, s.reputation(Faction.ASHEN));
     }
 
+    /** "The Ash Falls" (P-67): the routes that ended in V3's cult raid now send the player to the Herald. */
+    private static void expectTheAshFalls(RoutePlayer p, SessionView fall) {
+        assertEquals(Mode.DIALOGUE, fall.mode());
+        assertEquals("The Ash Falls", fall.dialogue().title());
+        SessionView after = p.choose("Go to the ruins");
+        assertEquals(Mode.WORLD, after.mode());
+        assertEquals(1, p.state().flag("herald_risen"));
+        assertEquals("Face the Herald in the rubble north of the ruins.", after.objective());
+    }
+
     @Test
-    void elderPathFoldsIntoTheRaidAndResolvesToTheWanderer() {  // D3, D11
+    void elderPathLeadsToTheAshFallsAndTheHerald() {               // P-67, replacing D3's raid
+        RoutePlayer p = newPlayer(false, 1L);
+        toTheSquare(p, "Ignore");
+        p.interact("maren");
+        p.choose("Follow her inside");
+        expectTheAshFalls(p, p.choose("Promise"));
+    }
+
+    @Test
+    void sellingTheShardAndGoingHomeAlsoLeadsToTheHerald() {
+        RoutePlayer p = newPlayer(false, 1L);
+        toTheSquare(p, "Ignore");
+        p.interact("corvin_stall");
+        p.choose("Accept the three hundred gold");
+        assertEquals(0, p.state().inventory().count("heartshard"), "sold");
+        expectTheAshFalls(p, p.choose("Go home and pretend you saw nothing"));
+    }
+
+    @Test
+    void theAshFallsOpensTheRubbleNorthOfTheCrater() {
         RoutePlayer p = newPlayer(false, 1L);
         toTheSquare(p, "Ignore");
         p.interact("maren");
         p.choose("Follow her inside");
         p.choose("Promise");
-        SessionView end = p.choose("Stand your ground");
-        assertEquals(Mode.ENDED, end.mode());
-        assertNotNull(end.ending());
-        assertEquals("END_WANDERER", end.ending().id());
-        assertEquals(6, end.ending().endingsTotal());
+        p.choose("Go to the ruins");
+        p.exit("to_lane");
+        SessionView ruins = p.exit("to_ruins");
+        assertTrue(ruins.world().hiddenObjects().contains("ruins_rubble"), "the way north is open");
+        assertEquals("eldmere_ash_rise", p.exit("arena_way").world().areaId());
     }
 
     @Test

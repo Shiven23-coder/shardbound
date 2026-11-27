@@ -5,7 +5,7 @@ import type { BattleView, LastPosition, SessionView } from '../api/types';
 import { WorldBridge } from '../world/bridge';
 import WorldCanvas from '../world/WorldCanvas';
 import { useInputState } from '../input/inputMode';
-import { audio } from '../audio/audio';
+import { audio, audioPacks } from '../audio/audio';
 import type { Layout } from '../input/inputMode';
 import Hud from '../components/Hud';
 import HudCluster from '../components/HudCluster';
@@ -29,6 +29,11 @@ import ReputationPanel from '../components/ReputationPanel';
 import Journal from '../components/Journal';
 import BattleBox from '../components/BattleBox';
 import BattleInfoBox from '../components/BattleInfoBox';
+import BossBar from '../components/BossBar';
+import BossBanner from '../components/BossBanner';
+import { CutsceneLine, SkipButton } from '../components/CutsceneControls';
+import { useCutscenePlayer } from '../cutscene/useCutscenePlayer';
+import { bossIdOf } from '../world/content';
 import LanternBox from '../components/LanternBox';
 import ShardsCounter from '../components/ShardsCounter';
 import { hintText, markHintSeen, seenHints } from '../settings/hints';
@@ -49,6 +54,8 @@ const BATTLE_COVER: Record<Layout, number> = { desktop: 0.3, landscape: 0.36, po
 // - phone portrait: the world on top, a control deck below (D-pad, Ⓐ, Bag, Menu),
 //   and the dialogue inside the deck while one is open.
 // The compact HUD sits top-left over the world and never hides the player (P-39).
+// A cutscene (P-68) hides the HUD and the controls: its lines take the
+// dialogue's place, and a held Skip button sits top-right.
 export default function WorldScreen() {
   const { state, run } = useGame();
   const { view, busy } = state;
@@ -97,19 +104,30 @@ export default function WorldScreen() {
   }, [view?.battle]);
   const walking = view?.mode === 'WORLD' && battle === null;
   const hint = useHint(bridge, state.player?.playerId, walking);
-  // One overlay at a time (P-49): the area title, then any opening dialogue, then the objective, then a hint.
+  // One overlay at a time (P-49): the area title, then any opening dialogue, then the objective, then a hint;
+  // none over a battle or a cutscene, and an objective that changed meanwhile waits for them to end (P-68).
   const titleShowing = useAreaTitle(view?.world.areaName ?? '');
   const dialogueOpen = view?.mode === 'DIALOGUE' && Boolean(view.dialogue);
-  const objective = useObjectiveBanner(view?.objective, !titleShowing && !dialogueOpen);
-  const overlay = overlayNow({ battle: battle !== null, title: titleShowing, dialogue: dialogueOpen, objective: objective.waiting, hint: hint.shown !== null });
+  const staging = view?.mode === 'CUTSCENE';
+  const objective = useObjectiveBanner(view?.objective, !titleShowing && !dialogueOpen && !staging && battle === null);
+  const overlay = overlayNow({
+    battle: battle !== null, cutscene: staging, title: titleShowing, dialogue: dialogueOpen, objective: objective.waiting,
+    hint: hint.shown !== null,
+  });
 
   useEffect(() => {
     bridge.device = device;
   }, [bridge, device]);
 
-  // I opens and closes the Bag (P-47), except while typing, with a menu panel open or in a battle (it has its BAG).
+  // A cutscene plays while the server is in CUTSCENE mode, once any battle before it has been read to its end
+  // (a boss's epilogue follows its last page); played out or skipped, it ends with a keyed request.
+  const cutscene = view?.mode === 'CUTSCENE' && battle === null ? view.cutscene ?? null : null;
+  const cutscenePlayer = useCutscenePlayer(cutscene, bridge, (id) => void run((key) => api.finishCutscene(id, key)));
+
+  // I opens and closes the Bag (P-47), except while typing, with a menu panel open, in a battle (it has its BAG)
+  // or in a cutscene.
   const inBattle = useRef(false);
-  inBattle.current = battle !== null;
+  inBattle.current = battle !== null || cutscene !== null;
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'i' && event.key !== 'I') return;
@@ -142,12 +160,23 @@ export default function WorldScreen() {
     setBattleLine({ round, line });
   }, [bridge]);
   const shownLine = battle && battleLine.round === battle.round ? battleLine.line : 0;
+  // A dialogue's box, or a cutscene's line box, covers the bottom of the view: the scene frames above it.
+  const lineBoxOpen = view?.mode === 'DIALOGUE' || cutscene !== null;
   useEffect(() => {
-    bridge.setDialogue(view?.mode === 'DIALOGUE' ? DIALOGUE_COVER[layout] : null);
-  }, [bridge, view?.mode, layout]);
+    bridge.setDialogue(lineBoxOpen ? DIALOGUE_COVER[layout] : null);
+  }, [bridge, lineBoxOpen, layout]);
 
-  // The region's music plays while the world is on screen (P-42), the battle track during a battle (P-57).
-  const music = battle ? 'battle' : view?.world.regionId;
+  // The region's music plays while the world is on screen (P-42), the battle track during a battle (P-57),
+  // a boss's own track against it, and a cutscene's track once it asks for one (P-67).
+  const bossId = battle ? bossIdOf(battle.enemy.sprite) : null;
+  // The boss's phase as the battle text has reached it: the bar, the scene and the music turn on the same line.
+  const bossPhase = battle?.boss ? (battle.boss.phaseLine != null && shownLine < battle.boss.phaseLine ? 1 : battle.boss.phase) : 0;
+  useEffect(() => {
+    audio.setEscalated(bossPhase === 2);
+  }, [bossPhase]);
+  const music = battle
+    ? (bossId ? audioPacks.bosses[bossId]?.music : undefined) ?? 'battle'
+    : cutscenePlayer.music ?? view?.world.regionId;
   useEffect(() => {
     audio.setMusic(music ?? null);
   }, [music]);
@@ -156,6 +185,15 @@ export default function WorldScreen() {
   useEffect(() => {
     if (regionId) audio.loadRegion(regionId);
   }, [regionId]);
+  // A boss's pack loads once it can be met: on its map, in a cutscene or in its battle.
+  const bossesNear = [
+    ...(view?.world.bosses ?? []).map((boss) => boss.bossId),
+    ...(cutscene?.actors ?? []).map((actor) => bossIdOf(actor.sprite)),
+    bossId,
+  ].filter((id): id is string => Boolean(id)).join(' ');
+  useEffect(() => {
+    bossesNear.split(' ').filter(Boolean).forEach((id) => audio.loadBoss(id));
+  }, [bossesNear]);
 
   // World events from the scene go to the server; a rejection puts the player back (§4.11).
   // An event lost to an outage is sent again with its key once the game reconnects (P-56).
@@ -213,6 +251,28 @@ export default function WorldScreen() {
   const bagButton = (
     <ActionButton label="Bag" icon="bag" keyHint="I" variant={actionVariant} expanded={panelOpen} onClick={() => setPanelOpen(!panelOpen)} />
   );
+  const cutsceneLine = cutscenePlayer.line
+    ? (placement: 'overlay' | 'deck') => (
+      <CutsceneLine
+        line={cutscenePlayer.line!} typed={cutscenePlayer.typed} placement={placement}
+        onTyped={cutscenePlayer.onTyped} onAdvance={cutscenePlayer.advance}
+      />
+    )
+    : null;
+  // A telegraphed blow is warned of once the round's text is read, until it lands (P-67).
+  const battleRead = shownLine === Infinity;
+  const warning = battle?.brace && battleRead ? battle.brace.warning : null;
+  const boss = battle?.boss;
+  const bossBar = battle && boss ? (
+    <BossBar
+      boss={boss}
+      fighter={{ ...battle.enemy, hp: hpShown(battle.enemy, false, battle.hits, shownLine) }}
+      phase={bossPhase}
+      warning={warning}
+    />
+  ) : null;
+  const lastBlow = battle?.hits.at(-1)?.line ?? -1;
+  const vanquished = Boolean(boss && battle?.outcome === 'WON' && shownLine > lastBlow);
   const battleBox = battle
     ? (placement: 'overlay' | 'deck') => (
       <BattleBox
@@ -236,20 +296,34 @@ export default function WorldScreen() {
         <WorldCanvas bridge={bridge} />
         {battle && (
           <div className="battle-hud">
-            <BattleInfoBox fighter={{ ...battle.enemy, hp: hpShown(battle.enemy, false, battle.hits, shownLine) }} side="enemy" />
+            {!boss && (
+              <BattleInfoBox
+                fighter={{ ...battle.enemy, hp: hpShown(battle.enemy, false, battle.hits, shownLine) }} side="enemy" warning={warning}
+              />
+            )}
+            {layout !== 'portrait' && bossBar}
             <BattleInfoBox
               fighter={{ ...battle.player, hp: hpShown(battle.player, true, battle.hits, shownLine) }}
               side="player" fp={battle.menu.fp} maxFp={battle.menu.maxFp}
             />
           </div>
         )}
+        {boss && <BossBanner kind="name" text={battle?.round === 1 ? boss.name : null} />}
+        {boss && <BossBanner kind="vanquished" text={vanquished ? 'Foe vanquished' : null} />}
         {battle && layout !== 'portrait' && battleBox?.('overlay')}
-        {!battle && <ShardsCounter shards={view.hud.shards} />}
-        {!battle && <HudCluster ref={hudRef} hud={view.hud} alwaysNumbers={layout === 'desktop'} dodge={hudCovered} />}
+        {!battle && !cutscene && <ShardsCounter shards={view.hud.shards} />}
+        {!battle && !cutscene && <HudCluster ref={hudRef} hud={view.hud} alwaysNumbers={layout === 'desktop'} dodge={hudCovered} />}
         {overlay === 'title' && <AreaTitle name={view.world.areaName} />}
         {overlay === 'objective' && objective.shown && <ObjectiveLine objective={objective.shown} />}
         {layout === 'portrait' && fullscreenButton && <div className="world-actions">{fullscreenButton}</div>}
-        {layout !== 'portrait' && !battle && (
+        {cutscene && (
+          <SkipButton
+            hold={cutscenePlayer.hold} hinted={cutscenePlayer.hinted} keyHint={device === 'gamepad' ? 'Ⓐ' : device === 'keyboard' ? 'E' : undefined}
+            onPress={cutscenePlayer.press} onRelease={() => cutscenePlayer.release(true)}
+          />
+        )}
+        {layout !== 'portrait' && cutsceneLine?.('overlay')}
+        {layout !== 'portrait' && !battle && !cutscene && (
           <div className="world-actions">
             {fullscreenButton}
             {bagButton}
@@ -263,7 +337,8 @@ export default function WorldScreen() {
       </div>
       {layout === 'portrait' && (
         <div className="control-deck">
-          {battleBox?.('deck') ?? dialogue?.('deck') ?? (
+          {bossBar}
+          {battleBox?.('deck') ?? dialogue?.('deck') ?? (cutscene ? cutsceneLine?.('deck') : (
             <>
               <Dpad bridge={bridge} />
               <div className="deck-buttons">
@@ -272,7 +347,7 @@ export default function WorldScreen() {
               </div>
               <InteractButton bridge={bridge} />
             </>
-          )}
+          ))}
         </div>
       )}
       {view.mode === 'LANTERN' && view.lantern && (

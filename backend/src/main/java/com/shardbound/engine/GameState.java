@@ -66,6 +66,7 @@ public class GameState {
     private final CreepRoster creeps = new CreepRoster();
     private final Map<String, Integer> flaskCharges = new HashMap<>();  // flask item id → charges left (P-63)
     private @Nullable String lastLantern;         // the Lantern the player last rested at (P-61)
+    private @Nullable String cutscene;            // the cutscene playing; null outside CUTSCENE mode (P-68)
     private @Nullable LostShards lostShards;      // the Shards the last death dropped (P-62)
     private final RecentActions recentActions = new RecentActions();
     private @Nullable ActionKey pendingKey;       // the key of the action being applied, remembered on write
@@ -118,6 +119,7 @@ public class GameState {
     public @Nullable BattleState battle() { return battle; }
     public CreepRoster creeps()    { return creeps; }
     public @Nullable String lastLantern() { return lastLantern; }
+    public @Nullable String cutscene()    { return cutscene; }
     public @Nullable LostShards lostShards() { return lostShards; }
     public RecentActions recentActions() { return recentActions; }
     public long rngSeed()          { return rngSeed; }
@@ -302,6 +304,7 @@ public class GameState {
         this.lastWorldEventMillis = millis;
     }
     void setMode(Mode mode)                  { this.mode = mode; }
+    void setCutscene(@Nullable String id)    { this.cutscene = id; }
     void setBattle(@Nullable BattleState battle) { this.battle = battle; }
 
     /** A battle that just ended: the next view shows its last round once. */

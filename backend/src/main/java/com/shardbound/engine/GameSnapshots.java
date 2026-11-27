@@ -97,7 +97,7 @@ final class GameSnapshots {
         List<RunSnapshot.ActionEntry> actions = s.recentActions().entries().stream()
                 .map(e -> new RunSnapshot.ActionEntry(e.key(), e.requestHash(), e.runVersion())).toList();
         return new RunSnapshot(save(s), s.mode().name(), battle == null ? null : BattleSnapshot.of(battle),
-                s.offerReload(), s.endingSeconds(), s.endingsFound(), actions);
+                s.offerReload(), s.endingSeconds(), s.endingsFound(), actions, s.cutscene());
     }
 
     /** The area shown for a save slot (the summary column {@code area_id}). */
@@ -199,6 +199,12 @@ final class GameSnapshots {
         s.setMode(Mode.valueOf(run.mode()));
         if (s.mode() == Mode.BATTLE) {
             s.setBattle(run.battle() != null ? restoreBattle(s, run.battle()) : restartDialogueBattle(s));
+        }
+        if (s.mode() == Mode.CUTSCENE) {
+            if (run.cutscene() == null || !content.cutscenes().containsKey(run.cutscene())) {
+                throw new SaveIncompatibleException("The cutscene in progress no longer exists: " + run.cutscene());
+            }
+            s.setCutscene(run.cutscene());                   // it plays again from its start
         }
         s.recentActions().restore(run.recentActions().stream()
                 .map(e -> new RecentActions.Entry(e.key(), e.requestHash(), e.runVersion())).toList());

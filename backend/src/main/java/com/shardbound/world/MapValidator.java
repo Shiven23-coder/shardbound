@@ -22,6 +22,7 @@ public class MapValidator {
     private final Set<String> npcs;
     private final Set<String> creeps;
     private final Map<String, Boolean> items;
+    private final Set<String> bosses;
     private final Set<String> lanternIds = new HashSet<>();
     private final Set<String> chestFlags = new HashSet<>();
     private final List<String> errors = new ArrayList<>();
@@ -35,11 +36,13 @@ public class MapValidator {
      * @param npcs      every NPC id in world.json
      * @param creeps    every enemy id in creeps.json
      * @param items     every item id in world.json, mapped to whether it stacks
+     * @param bosses    every boss id in bosses.json
      */
     public MapValidator(World world, Set<String> dialogues, Set<String> npcs, Set<String> creeps,
-                        Map<String, Boolean> items) {
+                        Map<String, Boolean> items, Set<String> bosses) {
         this.world = world;
         this.items = items;
+        this.bosses = bosses;
         this.dialogues = dialogues;
         this.npcs = npcs;
         this.creeps = creeps;
@@ -131,7 +134,15 @@ public class MapValidator {
                 }
                 checkDialogue(where, o);
             }
-            case INTERACT, TRIGGER, OBSTACLE -> checkDialogue(where, o);
+            case INTERACT, OBSTACLE -> checkDialogue(where, o);
+            case TRIGGER -> {
+                if (o.property("boss") != null) {
+                    checkBoss(where, o, "boss");                   // a boss's trigger (P-67)
+                } else {
+                    checkDialogue(where, o);
+                }
+            }
+            case BOSS -> checkBoss(where, o, "bossId");
             case CREEP_SPAWN -> checkCreep(where, o);
             case LANTERN -> checkLantern(areaId, where, o);
             case CHEST -> checkChest(where, o);
@@ -192,6 +203,12 @@ public class MapValidator {
             errors.add(where + ": chest " + o.name() + " needs a fallback: fallbackLevel 1–99 or a fallbackItem");
         } else if (fallbackItem != null && !items.containsKey(fallbackItem)) {
             errors.add(where + ": chest " + o.name() + " names unknown fallback item " + fallbackItem);
+        }
+    }
+
+    private void checkBoss(String where, MapObject o, String property) {
+        if (!bosses.contains(String.valueOf(o.property(property)))) {
+            errors.add(where + ": " + o.name() + " names unknown boss " + o.property(property));
         }
     }
 

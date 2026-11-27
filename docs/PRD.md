@@ -27,7 +27,7 @@ Shardbound should be a game people finish and recommend, and a codebase a review
 ## 3. Goals and non-goals
 
 ### Goals
-1. A public alpha with the Eldmere vertical slice (start → Ashen Herald) on phone and desktop, then the full six regions at 1.0.
+1. One launch, complete, as 1.0: all six regions on phone and desktop, after private playtests on staging (P-66).
 2. All game rules on the server; the client renders, moves and sends intents.
 3. No lost progress: durable active runs, safe saves with versioned upgrades.
 4. Mobile-first: touch controls, responsive HUD, installable PWA, a measured performance budget.
@@ -52,7 +52,8 @@ Phases and acceptance criteria: V2_SPEC §12. Summary:
 | Bosses | Ashen Herald with phases and telegraphs | V7 |
 | Accounts + privacy | Guest + Google sign-in, export, deletion, policy and terms | V2a |
 | Ops | Sentry, deploy, PWA, version skew handling | V2c |
-| Public alpha | Eldmere slice live, feedback button, launch checklist | ALPHA |
+| Private playtests | Eldmere (PLAYTEST 1), through the Hollow Deep (PLAYTEST 2), the complete game (PLAYTEST 3), with the feedback button | PLAYTEST 1–3 |
+| Launch | The complete game live as 1.0, launch checklist | LAUNCH |
 | Depth | Gear, navigation, email accounts, save slots, telemetry and tools | V6, V8, V2b, V9, V10 |
 | Content | Remaining regions, six endings | V11a–d |
 | Polish | Audio, accessibility, 1.0 | V12 |
@@ -77,7 +78,7 @@ Phases and acceptance criteria: V2_SPEC §12. Summary:
 | Maintainability | Framework-free engine (ArchUnit), generated API types, Conventional Commits, semver releases. |
 
 ## 7. Success metrics
-1. Alpha players reach the Ashen Herald on a phone without errors (Sentry clean, feedback reviewed).
+1. Playtesters reach the Ashen Herald on a phone without errors (Sentry clean, feedback reviewed).
 2. Zero lost-progress reports across deploys.
 3. The mobile performance budget holds in CI and on a real device for every region.
 4. CI green on every merge: unit tests, ArchUnit, Testcontainers ITs, OpenAPI drift, frontend checks.

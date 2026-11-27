@@ -7,7 +7,7 @@ Souls-like progression: rest at Lanterns, spend Shards on six attributes and wea
 It is a public, mobile-first web game and a flagship portfolio piece: guest and Google accounts, anonymous telemetry, a balance simulator and a playtest bot.
 
 **Specs:** `docs/V2_SPEC.md` is the source of truth. `docs/PROJECT_SPEC.md` is the historical v1 spec; its engine rules (conditions, ConditionGroup, effects, quest state machine, combat, endings) still apply where V2_SPEC does not override them. Read the sections for the current phase before writing code. If a spec and a request conflict, ask before acting.
-Decision history: `docs/DECISIONS.md` (P-01 … P-64 win over older entries).
+Decision history: `docs/DECISIONS.md` (P-01 … P-69 win over older entries).
 
 ## Tech
 - Backend: **Spring Boot 4.1** on **Java 25**; **JdbcClient** with hand-written SQL; **Flyway via Spring**; springdoc-openapi; JUnit 5, **Testcontainers**, ArchUnit.
@@ -67,4 +67,4 @@ docker compose up -d
 - End each phase with the rule 12 report.
 
 ## Current phase
-**V6a — Gear slice** (in progress on `v6a-gear-slice`; V5 merged via PR #22) (update this line as we progress)
+**V7 — Eldmere boss** (planning on `v7-eldmere-boss`; V6a merged via PR #25; no public alpha, launch as 1.0, P-66) (update this line as we progress)

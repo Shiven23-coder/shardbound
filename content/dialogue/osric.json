@@ -5,6 +5,23 @@
   "start": "osric_storm",
   "entries": [
     {
+      "node": "osric_after_herald",
+      "conditions": [
+        {
+          "type": "FLAG",
+          "key": "herald_defeated",
+          "op": ">=",
+          "value": 1
+        },
+        {
+          "type": "FLAG",
+          "key": "osric_herald_line",
+          "op": "=",
+          "value": 0
+        }
+      ]
+    },
+    {
       "node": "osric_after_death",
       "conditions": [
         {
@@ -356,6 +373,36 @@
         {
           "label": "I should go.",
           "to": "osric_bye"
+        }
+      ]
+    },
+    {
+      "id": "osric_after_herald",
+      "title": "Osric the Lamplighter",
+      "speaker": "osric",
+      "text": "\"So the light held,\" Osric says. \"All my life I waited to see it hold.\" [page] He nods toward the west road, where the water has gone down to mud. \"The west road's drying. Tomorrow, perhaps, you'll see what lies past it.\"",
+      "choices": [
+        {
+          "label": "Ask something else",
+          "to": "osric_more",
+          "effects": [
+            {
+              "type": "SET_FLAG",
+              "key": "osric_herald_line",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "label": "I should go.",
+          "to": "osric_bye",
+          "effects": [
+            {
+              "type": "SET_FLAG",
+              "key": "osric_herald_line",
+              "value": 1
+            }
+          ]
         }
       ]
     }

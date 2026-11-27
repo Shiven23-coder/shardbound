@@ -3,6 +3,8 @@ package com.shardbound.content;
 import com.shardbound.battle.Affinity;
 import com.shardbound.battle.BattleContent;
 import com.shardbound.battle.BattleRules;
+import com.shardbound.battle.BossTemplate;
+import com.shardbound.battle.BraceCue;
 import com.shardbound.battle.CreepTemplate;
 import com.shardbound.battle.Element;
 import com.shardbound.battle.ElementChart;
@@ -45,7 +47,9 @@ public class BattleContentReader {
 
     public BattleContent readBattle() {
         Map<String, Skill> skills = readSkills();
-        return new BattleContent(readChart(), readStatuses(), skills, readCreeps(skills), readRules());
+        JsonNode brace = parse(ContentFiles.BALANCE).get("battle").get("brace");
+        return new BattleContent(readChart(), readStatuses(), skills, readCreeps(skills), readBosses(skills), readRules(),
+                new BraceCue(brace.get("warning").asString(), brace.get("guardDetail").asString()));
     }
 
     private ElementChart readChart() {
@@ -127,6 +131,52 @@ public class BattleContentReader {
         return result;
     }
 
+    /** content/bosses.json (P-67): two phases each, their moves and telegraphs resolved to skills. */
+    private Map<String, BossTemplate> readBosses(Map<String, Skill> skills) {
+        Map<String, BossTemplate> result = new LinkedHashMap<>();
+        for (JsonNode n : parse(ContentFiles.BOSSES).get("bosses")) {
+            String id = n.get("id").asString();
+            List<BossTemplate.Phase> phases = new ArrayList<>();
+            for (JsonNode p : n.get("phases")) {
+                List<CreepTemplate.WeightedMove> moves = new ArrayList<>();
+                for (JsonNode m : p.get("moves")) {
+                    moves.add(new CreepTemplate.WeightedMove(bossSkill(skills, id, m.get("skill").asString()), m.get("weight").asInt()));
+                }
+                Skill telegraph = bossSkill(skills, id, p.get("telegraph").asString());
+                if (!telegraph.telegraph()) {
+                    throw new ContentValidationException("bosses.json: " + id + " telegraphs " + telegraph.id()
+                            + ", which is not a telegraphed move");
+                }
+                phases.add(new BossTemplate.Phase(p.path("atPct").asInt(100), p.has("line") ? p.get("line").asString() : null,
+                        p.path("spdDelta").asInt(0), moves, telegraph, p.get("telegraphEvery").asInt()));
+            }
+            if (phases.get(1).line() == null) {
+                throw new ContentValidationException("bosses.json: " + id + "'s second phase needs its line");
+            }
+            JsonNode expose = n.get("onGuardedTelegraph");
+            JsonNode reward = n.get("reward");
+            BossTemplate boss = new BossTemplate(id, n.get("name").asString(), Family.valueOf(n.get("family").asString()),
+                    n.get("sprite").asString(), n.get("level").asInt(), n.get("baseHp").asInt(), n.get("baseAtk").asInt(),
+                    n.get("baseDef").asInt(), n.get("baseSpd").asInt(), phases, Status.valueOf(expose.get("status").asString()),
+                    expose.get("line").asString(),
+                    new BraceCue(expose.get("warning").asString(), expose.get("guardDetail").asString()),
+                    reward.get("item").asString(), reward.get("fallbackLevel").asInt(),
+                    n.get("defeatFlag").asString(), n.get("introCutscene").asString(), n.get("epilogueCutscene").asString());
+            if (result.put(id, boss) != null) {
+                throw new ContentValidationException("bosses.json: boss " + id + " is defined twice");
+            }
+        }
+        return result;
+    }
+
+    private static Skill bossSkill(Map<String, Skill> skills, String bossId, String skillId) {
+        Skill skill = skills.get(skillId);
+        if (skill == null) {
+            throw new ContentValidationException("bosses.json: " + bossId + " uses unknown skill " + skillId);
+        }
+        return skill;
+    }
+
     private BattleRules readRules() {
         JsonNode b = parse(ContentFiles.BALANCE).get("battle");
         JsonNode flee = b.get("flee");
@@ -138,7 +188,7 @@ public class BattleContentReader {
                 b.get("statusChanceCap").asInt(), flee.get("basePct").asInt(), flee.get("pctPerSpeed").asInt(),
                 flee.get("minPct").asInt(), flee.get("maxPct").asInt(), flee.get("ignoreTiles").asInt(),
                 b.get("defensiveGuardBelowPct").asInt(), b.get("dialogueLossHpPct").asInt(),
-                b.get("victoryFpPct").asInt());
+                b.get("victoryFpPct").asInt(), b.get("bossShardsMultiplier").asInt());
     }
 
     public ProgressionRules readProgression() {

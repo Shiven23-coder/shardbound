@@ -19,7 +19,7 @@ A 2D top-down, walkable dark-fantasy RPG for desktop and mobile browsers. You ca
 | Length | Critical path **1–2 h** (budget 105 min, §10); side content **+2–3 h**. 6 regions, 28 areas, 85 creep fights, 8 bosses. |
 | Endings | Six (v1 §6.9). **The Merchant's Bargain** stays as an early secret bad ending in Eldmere. |
 | Names used | Lanterns (rest points) · Shards (XP and currency) · Lost Shards (death drop) · "FOE VANQUISHED" (boss banner) · Lantern Draught (refillable heal). |
-| Release | Public alpha after the Eldmere vertical slice (phase ALPHA, §12), then 1.0 at V12. Semver releases with a CHANGELOG. |
+| Release | One launch, complete, as **1.0** (P-66); until then private playtests on a password-protected staging (§12). Each phase is a `0.x` semver release with a CHANGELOG. |
 | Presentations | Dev-only chapter select (§4.13), available only in the Spring `dev` profile. |
 
 ---
@@ -260,9 +260,9 @@ AR = base · tierMult · (1 + 0.08u)  +  Σ_{a ∈ Str,Dex,Arc} base · grade(a)
 **BAG.** Holds Lantern Draughts (3 charges, +1 per Glimmer Seed up to 8; heal 45 % max HP; refilled at Lanterns), consumables and status cures. Quick slots 1–4 bind BAG items, usable in battle and in the world.
 
 ### 4.7 Battle
-**V4 (P-54, P-57):** battles are 1 v 1. Creeps pick weighted moves (`creeps.json`) by AI strategy (`AGGRESSIVE`, `DEFENSIVE`, `AFFLICTER`); a creep move's raw damage is `atk × power`, and creeps crit at 5 %. Telegraphed heavy moves arrive with creeps in V4 (not only bosses). Guard lasts until the guarder's next turn; turn order is rebuilt each round from current speed. Round text auto-advances, a tap or E skips the round, holding E fast-forwards, and a Battle text speed setting (Slow/Normal/Fast/Instant, default Fast) sets the pace. Until V5 (P-55): attributes are fixed at 10, victories give held Shards and refill FP, HP does not regenerate, the starting bag holds 3 healing draughts, and defeat by a creep wakes the player at the region's `respawn` point with Shards kept and creeps reset.
+**V4 (P-54, P-57):** battles are 1 v 1. Creeps pick weighted moves (`creeps.json`) by AI strategy (`AGGRESSIVE`, `DEFENSIVE`, `AFFLICTER`); a creep move's raw damage is `atk × power`, and creeps crit at 5 %. Telegraphed heavy moves arrive with creeps in V4 (not only bosses). Turn order is rebuilt each round from current speed. **Guard goes first (V7, P-69):** whoever guards (player, creep or boss) raises it before anyone acts, and it lasts to the end of that round, so it blunts the hit that comes the same round; a creep decides its action as the round begins so its Guard can go first. Flasks, skills, attacks and Flee keep speed order. Round text auto-advances, a tap or E skips the round, holding E fast-forwards, and a Battle text speed setting (Slow/Normal/Fast/Instant, default Fast) sets the pace. Until V5 (P-55): attributes are fixed at 10, victories give held Shards and refill FP, HP does not regenerate, the starting bag holds 3 healing draughts, and defeat by a creep wakes the player at the region's `respawn` point with Shards kept and creeps reset.
 
-**Layout:** v1 `CombatEngine` turn order (`PriorityQueue` by speed; player first on ties).
+**Layout:** v1 `CombatEngine` turn order (`PriorityQueue` by speed; player first on ties), after any Guard (P-69).
 - Main menu: **ATTACK** (Strike / Guard) · **SKILLS** (4 slots) · **BAG** · **FLEE**.
 - FLEE is disabled in boss fights. Flee chance follows v1 §6.6, using the speed above.
 
@@ -273,7 +273,7 @@ elem     = chart[defender.family][move.element]                    W 1.5 · N 1 
 roll     = 0.9 + rng.nextDouble() · 0.2
 crit     = rng.nextInt(100) < crit% ? 1.5 : 1.0                    (status damage never crits)
 mitigate = 100 / (100 + DEF)                                        DEF after Frost −30 % if frosted
-guard    = guarding ? (incoming move telegraphed ? 0.25 : 0.5) : 1.0
+guard    = guarding this round ? (incoming move telegraphed ? 0.25 : 0.5) : 1.0      Guard goes first (P-69)
 damage   = elem == 0 ? 0 : max(1, round(raw · elem · roll · crit · mitigate · guard))
 status   = rng.nextInt(100) < procChance ? apply : —               (only if move.status set)
 ```
@@ -281,11 +281,13 @@ Defence is now a **ratio** (100 / (100 + DEF)) instead of v1's subtraction, so i
 
 **Bosses** (`content/bosses.json`):
 - 2 phases. Phase 2 starts at `hpPct ≤ phase2At` (default 50 %). It plays a transition line, can switch move table, family/element and speed, and is Stun-immune for 1 turn.
-- Moves are weighted (`weight`), chosen with the run's seeded RNG. A **telegraphed** move announces itself one boss turn earlier ("The Hollow King raises the bone crown…"), shown in the text box, and is executed on the boss's next turn. Guard reduces it to ×0.25.
+- Moves are weighted (`weight`), chosen with the run's seeded RNG. A **telegraphed** move announces itself one boss turn earlier ("The Hollow King raises the bone crown…"), shown in the text box, and is executed on the boss's next turn. Guard reduces it to ×0.25. Each phase has a cadence: every n-th of the boss's moves is its telegraph, which takes two turns (announced, then landed), so it is announced every (n + 1)-th round and the boss strikes ordinary blows in between (P-67).
+- While a telegraph is pending the battle teaches the answer (P-67): a warning from content ("⚠ Cinderfall next turn — Guard to brace") on one line, ATTACK and Guard in its amber, Guard's subtitle from content ("Brace — leaves it exposed"); the enemy glows and rises in a slow wind-up (a steady glow under reduce motion).
 - **Intro cutscene** plays on first entry. Skippable. Recorded in the run's seen-cutscenes set, so it is never replayed after a death.
-- **Boss bar** at the bottom-centre: name + long HP bar with a phase-2 tick mark.
+- **Boss bar** just above the battle text, at its right edge so it never covers the player's sprite (at the top of the deck in portrait): name, phase marker, long HP bar with a phase-2 tick mark, statuses and the telegraph warning. A boss has no enemy info box; the player's box takes its top-left place (P-67).
 - **"FOE VANQUISHED"** banner on victory, then the Shards reward and loot.
 - Boss defeat is recorded in the run's defeated-bosses set and is permanent.
+- **The Ashen Herald (V7, P-67):** level 5, base HP 132, ATK 15, DEF 8, SPD 7; Cinderfall (×1.6) every 3rd move, Pyre Descent (×1.9) every 2nd in phase 2. The phase is derived from HP; Flee is disabled; a guarded telegraph leaves the Herald **Exposed** (DEF −50 %) for 2 turns, and its line reads "The Herald staggers — EXPOSED!". Phase 2 escalates: an ember flash and a short shake (one soft flash under reduce motion), an ember glow and a hotter bar, and the boss track steps up.
 
 Bosses on the critical path: Ashen Herald (Eldmere) · Thornmother (Whispering Wood) · Bone Warden, The Hollow King (Hollow Deep) · Ser Calder the Gilded (Valdren City) · Cinder Matriarch, Ashborn Wyrm (Ashen Wastes) · The Shard Sovereign (Crystal Spire). The optional elite **Dragonbone Revenant** (side content) is not counted among the 8.
 
@@ -320,7 +322,7 @@ Bosses on the critical path: Ashen Herald (Eldmere) · Thornmother (Whispering W
 
 ### 4.10 Accounts and security
 Accounts for a public game, in two steps:
-- **V2a (before the public alpha):** guest accounts and **Google sign-in (OIDC)**, guest → Google upgrade, sessions, CSRF, rate limits, Turnstile, data export and account deletion.
+- **V2a (before launch, P-66):** guest accounts and **Google sign-in (OIDC)**, guest → Google upgrade, sessions, CSRF, rate limits, Turnstile, data export and account deletion.
 - **V2b:** email + password accounts with verification, forgot/reset and change email.
 
 There are no public email accounts until reset and verification exist.
@@ -544,7 +546,7 @@ There is no v1 → v2 conversion: v1 never ran in production, so no v1 saves exi
 - The backend ships as a container image (multi-stage Maven build on a Java 25 JRE base, runs as a non-root user and connects as `shardbound_app`).
 - Backend region Mumbai or Singapore, close to the audience; the provider is chosen at deploy time.
 - The frontend is served from a CDN that **proxies `/api`** to the backend, so the browser sees one origin and the session cookie stays first-party.
-- Managed PostgreSQL with **point-in-time recovery or daily backups**, plus a **tested restore** (a restore drill is part of the ALPHA checklist).
+- Managed PostgreSQL with **point-in-time recovery or daily backups**, plus a **tested restore** (set up in S1; a restore drill is part of the LAUNCH checklist, P-66).
 - **Preview deployments** per PR.
 - Checklist: domain + TLS, env secrets, log retention 14 days, Turnstile production keys, Google OAuth production client, Sentry alerts; SPF/DKIM/DMARC before email goes live (V2b).
 
@@ -556,7 +558,7 @@ There is no v1 → v2 conversion: v1 never ran in production, so no v1 saves exi
   - *Keyboard and mouse:* no touch controls; the game view fills the screen.
   - *Phone portrait (the main phone layout):* the game view with the HUD cluster on top, a control deck below (D-pad, interact A, menu, bag). An open dialogue renders inside the deck.
   - *Phone landscape:* the desktop layout plus translucent touch controls (about 40 % opacity idle, full while pressed).
-  - On touch, quick slots sit behind the bag button; the boss bar is bottom-centre (V7).
+  - On touch, quick slots sit behind the bag button; the boss bar sits above the battle text, or at the top of the deck in portrait (V7).
 - **Interaction marker (P-46):** the key or button for the device in use (E, gamepad A, a tap icon) floats above the nearest NPC or object in reach.
 - **Arrival (P-49):** the area title card first (about 2 s), then any opening dialogue, then the objective banner, then hints; never two at once.
 - **Layout polish (P-47):** the portrait deck takes about 28–30 % of the height, with pill-shaped Bag and Menu; the area name is a title card when entering an area; desktop shows Bag and Menu as icon buttons with key hints (I, Esc); in landscape Bag and Menu are translucent until pressed.
@@ -620,7 +622,7 @@ The structures below were chosen for the jobs they do. They are design notes, no
 | `V1__baseline.sql` | P0 | **player** (`player_id`, `username` UNIQUE, `created_at`), **save_slot** (`save_id`, `player_id` FK CASCADE, `slot_no` CHECK 0–3, `save_version`, `level`, `area_id`, `playtime_seconds`, `data` JSONB CHECK object, `created_at`, `updated_at`, UNIQUE (`player_id`, `slot_no`)), **player_achievement**, **player_ending**, view **v_leaderboard**, **active_run** (`run_id` UUID PK, `player_id` FK, `session_token_hash` UNIQUE, `version` BIGINT, `data` JSONB, `updated_at`) |
 | `V2__accounts.sql` | V2a | **account** (replaces `player`; `player_id` kept as `account_id`), **account_identity** (provider, subject, UNIQUE), **auth_session**, **login_attempt** (audit), **account_setting**, roles + grants |
 | `V3__email_tokens.sql` | V2b | ENUM **auth_purpose**, **auth_token**, ENUM **outbox_status**, **email_outbox** |
-| `V4__feedback.sql` | ALPHA | **feedback** (in-game feedback button) |
+| `V4__feedback.sql` | PLAYTEST 1 | **feedback** (in-game feedback button, P-66) |
 | `V5__telemetry.sql` | V10 | **telemetry_event** + BRIN(at) + B-tree(run_id, at), views `v_deaths_by_area`, `v_time_per_area`, `v_fights_per_level`, materialized view **mv_balance_summary** + unique index, role `shardbound_telemetry_ro` |
 
 Merged migrations are never edited; every change is a new migration. Indexes on `level`, `area_id` or `playtime_seconds` are added when a query needs them.
@@ -658,7 +660,7 @@ The contract is `api/openapi.json`, generated by springdoc from the controllers 
 | GET | /api/map · /api/journal · /api/bestiary | |
 | GET/POST/DELETE | /api/saves… | slots 1–3 only at a Lantern |
 | GET | /api/leaderboard | verified, non-guest accounts only |
-| POST | /api/feedback | in-game feedback (ALPHA) |
+| POST | /api/feedback | in-game feedback (PLAYTEST 1, P-66) |
 | GET/POST | /api/dev/chapter-select | **`dev` profile only** (§4.13) |
 | GET | /api/debug/weapons | every weapon rated for a new player, for the dev tier gallery; **`dev` and `test` profiles only** (P-65) |
 | GET | /actuator/health | liveness/readiness |
@@ -800,7 +802,31 @@ The harsher case (dying mid-region with a full purse, or under-levelled) is cove
 
 **Measured in V5 (P-64):** `balance/EldmereProgressionTest` plays Eldmere's real route (storm night, kindle and rest, Ember at dawn, Mill Road, the Hired Blade, the ruins, rests and greedy level-ups) over 1,000 seeds with the real battle engine: the first level-up is affordable after fight 3 and not before, the median level before the boss is **4**, creep fights take a median of 3–6 turns, and the boss stand-in (the Hired Blade template at level 5 with **HP ×1.8**) is won on the first attempt in **84 %** of runs, inside the 70–85 % band. ×1.8 is the starting point for the Ashen Herald in V7.
 
+### 10.3 Difficulty curve (P-67)
+
+Targets per region, measured by the balance runner (and from V10a by the simulator and the playtest bot). Creep deaths count every creep battle lost on the way; boss attempts count the tries until the boss falls.
+
+| Region | Creep deaths per run | Boss first-attempt win | Boss attempts per run |
+|---|---|---|---|
+| Eldmere | ~0.1 | 70–85 % (guarding); ~35–50 % never guarding | ~1.2–1.4 |
+| Whispering Wood | ~0.2 | 65–80 % | ~1.3–1.5 |
+| Hollow Deep | ~0.3 | 60–75 % | ~1.4–1.7 |
+| Valdren City | ~0.3 | 60–75 % | ~1.4–1.7 |
+| Ashen Wastes | ~0.4 | 55–70 % | ~1.5–1.9 |
+| Crystal Spire | ~0.4 | 50–65 % | ~1.6–2.0 |
+
 **Measured in V6a (P-65):** with the Woodcutter's Hatchet from the ruins chest the route still ends at level 4 (creep fights at a median of 3–5 turns); the ×1.8 stand-in is won 99 %, and the 70–85 % band returns at **HP ×2.8** (81 %), V7's new starting point. The secret Hunter's Longbow (base 26) wins 87 % at ×2.8.
+
+**Measured in V7 (P-67, P-69)** with the real Ashen Herald (base HP 132, ATK 15, DEF 8; Cinderfall ×1.6, Pyre Descent ×1.9), 1,000 seeds at level 4. The guarding bot Guards a pending telegraph and drinks below 40 %; the naive bot never Guards and drinks below 35 %; a loss rests at the Ruins Lantern and retries.
+
+| Route | First-attempt wins | Attempts per run | First fight: median turns · draughts |
+|---|---|---|---|
+| Hatchet, Vig/Str, guarding | 79 % | 1.26 | 11 · 2 |
+| Hatchet, Vig/Str, never guarding | 43 % | 2.21 | 9 · 2 |
+| Longbow, Dex, guarding | 84 % | 1.19 | 11 · 2 |
+| Rusty Shortsword only, guarding | 33 % | 2.62 | 17 · 3 |
+
+Creep deaths per run: 0.00 (hatchet), 0.06 (rusty), below the ~0.1 target because the bot never misplays (PLAYTEST 1 checks it). Creep fights: median 3 turns (the Barrow Skull 5).
 
 ---
 
@@ -811,7 +837,7 @@ The harsher case (dying mid-region with a full purse, or under-levelled) is cove
 4. Fonts: Cinzel and Cormorant Garamond (SIL OFL 1.1), self-hosted, licence files in `frontend/public/fonts/`.
 5. Every asset gets a row in CREDITS.md (file/folder, author, source URL, licence, changes made) **in the same commit** that adds it. CI fails if a file under `frontend/src/assets/` has no CREDITS row.
 6. No assets, names, fonts, UI layouts or text from Elden Ring or any other commercial game. The battle layout follows a common genre convention, drawn with original UI.
-7. Licences for the repository itself (code vs story and art) are decided before ALPHA (P-25).
+7. Licences for the repository itself (code vs story and art) are decided before LAUNCH (P-25, P-66).
 
 ---
 
@@ -824,25 +850,29 @@ The harsher case (dying mid-region with a full purse, or under-levelled) is cove
 | **V4** | Battles | Battle layout (portrait, landscape, desktop), ATTACK/SKILLS/BAG/FLEE with touch targets ≥ 48 px, elements, statuses, 4 skill slots (2 to start; Ember from Brann), telegraphed creep moves, visible creeps with aggro in the south meadow; the Hired Blade on the battle screen; interim victory/defeat (P-55). **Idempotency keys** on every state-changing action (P-31, P-56). Seeded balance runner. Battle music loaded lazily |
 | **V5** | Progression | Shards, Lanterns (rest, respawn, autosave), attributes and curves, level-up with preview, Lost Shards; first level-up after fight 3. The Lantern Draught flask; Eldmere's six creeps (P-64) with expected level 4 before the boss; Osric the Lamplighter |
 | **V6a** | Gear slice | Chests `chest{item,qty,flag}` opened through the keyed interact, never empty (a duplicate unique item gives its fallback), never lost to a full bag (P-65); the Woodcutter's Hatchet on the main path (Old Ruins, from dawn) and the Hunter's Longbow in Cottage Lane's secret clearing with its optional tells; weapon cards with server AR, grades, crit and colours for every tier; Compare and Equip in the Bag (keyboard, gamepad, touch; three layouts); `EldmereProgressionTest` with the hatchet (creep fights 3–6 turns; stand-in rate reported for V7) |
-| **V7** | Bosses (Eldmere only) | Ashen Herald: phases, telegraphs, Guard, skippable intro, FOE VANQUISHED, boss bar; tuned for an unupgraded weapon |
-| **V2a** | Accounts + privacy | Guest + Google sign-in (OIDC), guest → Google upgrade, Spring Security sessions, CSRF, configurable rate limits, Turnstile, data export, account deletion, privacy policy + terms |
-| **V2c** | Observability, deploy, PWA, version skew | Sentry (frontend + backend), JSON logs, Actuator metrics + health. Container image; hosting (backend Mumbai/Singapore, frontend CDN proxying `/api`, managed Postgres with PITR or daily backups plus a tested restore). Preview deployments per PR. Installable PWA with asset caching. Version skew: `X-API-Version`, "Update available — reload", backend compatible with the previous frontend for one release (`oasdiff` check). Content id guard in CI: no id removed or renamed without a `SaveUpgrade` (P-28) |
-| **ALPHA** | Public alpha (Eldmere) | Deployed; Eldmere start → Ashen Herald on phone and desktop. In-game feedback button. Release `v0.x`. Launch checklist: ASVS L1 review, backup restore drill, Sentry alert, privacy page live, **licences chosen (code vs story/art)**, **no endpoint accepts a player id from the client (P-32)**, repo public |
+| **V7** | Eldmere boss | Ashen Herald: phases, telegraphs, Guard, skippable intro, FOE VANQUISHED, boss bar; tuned for the main-path weapon (P-65). After victory an epilogue, then free roam with the post-boss state saved; the west road opens to an in-world stop until WW (P-66) |
 | **V6b** | Gear II | Smith upgrades +0..+10, scaling, materials, bag + quick slots, the remaining chests (P-65) |
-| **WW** | Whispering Wood (Alpha 2) | 5 areas, 15 fights, Thornmother with both phases; released as Alpha 2. Verified by manual playtests and the §10.2 progression table (expected level 9 at Thornmother); V10's bot re-checks the 18-minute budget later (P-27) |
+| **V10a** | Content tools | Playtest bot over REST, per-region balance simulator (every boss ≥ 40 % at target − 2, §10.2), content tooling; Eldmere checked with them (P-66) |
+| **S1** | Private staging | Container image; hosting (backend Mumbai/Singapore, frontend CDN proxying `/api`); managed Postgres with PITR or daily backups and a **tested restore**; Sentry (frontend + backend), JSON logs, Actuator health and metrics; **password-protected**; preview deployments per PR; content-id guard in CI: no id removed or renamed without a `SaveUpgrade` (P-28, P-66) |
+| **PLAYTEST 1** | Eldmere, private | Invited players on staging play Eldmere start → Ashen Herald on phone and desktop; in-game feedback button; Sentry clean; feedback triaged into issues (P-66) |
+| **WW** | Whispering Wood | 5 areas, 15 fights, Thornmother with both phases; expected level 9 at Thornmother (§10.2), checked with the V10a bot and simulator; removes the west road's in-world stop (P-66) |
 | **V8** | Navigation | Map, Dijkstra fast travel, quest markers + next hop, journal, bestiary |
-| **V2b** | Accounts II | Email + password sign-up, verification, forgot/reset, change email, transactional outbox + worker, cleanup job |
-| **V9** | Saves & slots | 3 slots + autosave UI, first real save upgrade, dev-only chapter select |
-| **V10** | Telemetry & tools | Anonymous telemetry + opt-out, SQL views, balance simulator (every boss ≥ 40 % at target − 2, §10.2), playtest bot over REST |
 | **V11a** | Hollow Deep | 5 areas, 18 fights, 2 bosses, Sealed Vault side chain; bot budget ≤ 22 min (+15 %), simulator targets met |
+| **V9** | Saves & slots | 3 slots + autosave UI, first real save upgrade, dev-only chapter select |
+| **PLAYTEST 2** | Through the Hollow Deep, private | Invited players play Eldmere, Whispering Wood and the Hollow Deep with save slots; feedback triaged (P-66) |
 | **V11b** | Valdren City | 5 areas, 14 fights, Ser Calder, tournament; bot ≤ 18 min |
 | **V11c** | Ashen Wastes | 5 areas, 18 fights, 2 bosses; bot ≤ 22 min |
-| **V11d** | Crystal Spire | 4 areas, 12 fights, Shard Sovereign, 6 endings via resolver; bot ≤ 13 min and full critical path ≤ 120 min |
-| **V12** | Polish & 1.0 | Audio, settings/accessibility (§4.9), load budgets, domain email (SPF/DKIM/DMARC), CREDITS, 1.0 |
+| **V11d** | Crystal Spire | 4 areas, 12 fights, Shard Sovereign, 6 endings via resolver, **credits and the end screen**; bot ≤ 13 min and full critical path ≤ 120 min (P-66) |
+| **V2a** | Accounts + privacy | Guest + Google sign-in (OIDC), guest → Google upgrade, Spring Security sessions, CSRF, configurable rate limits, Turnstile, data export, account deletion, privacy policy + terms |
+| **V2b** | Email accounts | Email + password sign-up, verification, forgot/reset, change email, transactional outbox + worker, cleanup job |
+| **V10b** | Telemetry | Anonymous telemetry + opt-out, SQL views (P-66) |
+| **V12** | Polish | Audio, settings/accessibility (§4.9), load budgets, CREDITS; installable PWA; version skew: `X-API-Version`, "Update available — reload", backend compatible with the previous frontend for one release (`oasdiff` check) (P-66) |
+| **PLAYTEST 3** | The complete game, private | Invited players play start to every ending on phone and desktop; release-candidate fixes only (P-66) |
+| **LAUNCH** | 1.0 | Release **1.0**. Launch checklist (P-66): ASVS L1 review, backup restore drill, Sentry alert, privacy page live, **licences chosen (code vs story/art)**, **no endpoint accepts a player id from the client (P-32)**, domain email (SPF, DKIM, DMARC), repo public |
 
 The earlier V1 (Foundation) phase is closed: its useful parts (Flyway baseline, env config, Dijkstra, TypeScript port, Vitest, CI) are carried into P0.
 
-Order after ALPHA (P-27, P-65): V6b → **WW** (Alpha 2) → V8 → V2b → V9 → V10 → V11a → V11b → V11c → V11d → V12.
+Order from V7 (P-66): V7 → V6b → V10a → S1 → **PLAYTEST 1** → WW → V8 → V11a → V9 → **PLAYTEST 2** → V11b → V11c → V11d → V2a → V2b → V10b → V12 → **PLAYTEST 3** → **LAUNCH 1.0**. Each phase is a `0.x` release; 1.0 is the launch.
 
 ---
 
@@ -856,7 +886,7 @@ Order after ALPHA (P-27, P-65): V6b → **WW** (Alpha 2) → V8 → V2b → V9 �
 5. Hosting: backend in Mumbai/Singapore, CDN frontend proxying `/api`, managed Postgres; the provider is chosen at deploy time (P-16). A domain is bought before V2b (SPF/DKIM/DMARC).
 6. Tile-step client movement with server-validated REST events; no WebSocket (P-06, P-19, P-51).
 7. Spring Boot 4.1 on Java 25, JdbcClient + hand-written SQL, Flyway via Spring (P-02, P-03).
-8. Accounts: guest + Google at alpha, email + password in V2b (P-11).
+8. Accounts: guest + Google in V2a, email + password in V2b, both before launch (P-11, P-66).
 9. 6 endings; the merchant ending is the secret early one.
 10. Telemetry: anonymous run ids plus an opt-out setting.
 11. Eclipse Angus Mail (through Spring's mail support) for SMTP (V-24).
@@ -866,13 +896,13 @@ Order after ALPHA (P-27, P-65): V6b → **WW** (Alpha 2) → V8 → V2b → V9 �
 **Risks**
 | Risk | Mitigation |
 |---|---|
-| Scope is months of solo work | playable after every phase; public alpha after the Eldmere slice; cut V11/V12 side content first |
+| Scope is months of solo work | playable after every phase; private playtests after Eldmere, after the Hollow Deep and before launch (P-66); cut V11/V12 side content first |
 | Migration churn in the early phases | merged migrations are never edited; saves are JSONB documents, so most format changes are save upgrades, not schema changes; Testcontainers ITs run every migration from empty |
 | Cheating under client-side movement | the server owns every outcome; world events pass reachability, speed and range checks (§4.11); rewards and encounters are decided server-side |
 | Mobile performance | mobile budget enforced in CI with CPU throttling from V3, plus a real-device check per region; one atlas per region; lazy Phaser chunk |
-| Managed-stack cost (hosting, managed Postgres, CDN, Sentry) | small instance sizes and free tiers for the alpha; costs reviewed at V2c and before 1.0 |
+| Managed-stack cost (hosting, managed Postgres, CDN, Sentry) | small instance sizes and free tiers for private staging (S1); costs reviewed at S1 and before 1.0 |
 | Art pipeline (one CC0 family must cover 6 regions, portraits, bosses) | choose the pack in V3 after checking coverage; recolour within the licence |
 | Email deliverability | domain + SPF/DKIM/DMARC; outbox retries |
-| Public deploy security | §4.10 controls, OWASP ASVS L1 review before ALPHA, Dependabot, gitleaks, least-privilege DB role |
+| Public deploy security | §4.10 controls, OWASP ASVS L1 review before LAUNCH (P-66), Dependabot, gitleaks, least-privilege DB role |
 | Load budgets vs Phaser size | lazy chunk, atlases, CI budgets from V3 |
 | Trade-dress similarity to Souls games | original names/UI/assets only (§11) |

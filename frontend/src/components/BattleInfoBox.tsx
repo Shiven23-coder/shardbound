@@ -2,15 +2,18 @@ import type { FighterView, StatusView } from '../api/types';
 
 // A fighter's info box (V2_SPEC §1, P-57): name, level, an HP bar that drains
 // (CSS transition), the player's HP numbers and FP bar, and status icons, each
-// a shape with a letter so colour is never the only cue (§4.9).
+// a shape with a letter so colour is never the only cue (§4.9). An enemy's box
+// warns of a telegraphed blow while it is pending (P-67).
 interface BattleInfoBoxProps {
   fighter: FighterView;
   side: 'enemy' | 'player';
   fp?: number;
   maxFp?: number;
+  /** The pending telegraph's warning, from content, or null. */
+  warning?: string | null;
 }
 
-export default function BattleInfoBox({ fighter, side, fp, maxFp }: BattleInfoBoxProps) {
+export default function BattleInfoBox({ fighter, side, fp, maxFp, warning }: BattleInfoBoxProps) {
   const share = fighter.maxHp > 0 ? fighter.hp / fighter.maxHp : 0;
   const tone = share > 0.5 ? 'hp-high' : share > 0.2 ? 'hp-mid' : 'hp-low';
   return (
@@ -42,11 +45,12 @@ export default function BattleInfoBox({ fighter, side, fp, maxFp }: BattleInfoBo
           {fighter.statuses.map((status) => <StatusIcon key={status.id} status={status} />)}
         </ul>
       )}
+      {warning && <p className="battle-warning" role="status">⚠ {warning}</p>}
     </section>
   );
 }
 
-function StatusIcon({ status }: { status: StatusView }) {
+export function StatusIcon({ status }: { status: StatusView }) {
   return (
     <li className={`status-icon status-${status.icon}`} title={`${status.name}, ${status.turns} turns`}>
       <span aria-hidden="true">{status.letter}</span>

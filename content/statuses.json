@@ -11,6 +11,8 @@
     "FROST":  { "name": "Frost",  "letter": "Fr", "icon": "flake",  "turns": 2, "defencePct": -30, "speed": -3, "removedBy": "FIRE",
                 "immuneFamilies": [] },
     "STUN":   { "name": "Stun",   "letter": "St", "icon": "star",   "turns": 1, "skipsTurn": true, "immuneTurnsAfter": 2,
+                "immuneFamilies": [] },
+    "EXPOSED": { "name": "Exposed", "letter": "Ex", "icon": "crack", "turns": 2, "defencePct": -50,
                 "immuneFamilies": [] }
   }
 }
