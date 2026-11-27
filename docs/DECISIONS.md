@@ -1730,3 +1730,23 @@ The audio engine fetches a pack's files when its moment comes and decodes each e
 **Amends** P-54 and P-57 (turn order, Guard's duration).
 
 **Spec.** §4.5, §4.7.
+
+---
+
+## P-70 — Battle start: cold and warm, on the reference machine
+
+**Problem.** §4.13's battle start budget (300 ms at 4× CPU throttle) failed on every nightly from its first run (#6): 707–1,288 ms on GitHub's runners, which draw WebGL in software, against 218–346 ms on a desktop with a GPU. One sample per run swung by ±20 % on the same commit, and nothing said which hardware the 300 ms was for, so the nightly stayed red and nobody was told.
+
+**Decision.**
+- Battle start is measured on **one cold battle** (the first after the page loads) and **seven warm ones**, from the `/api/world/encounter` response to the battle on screen. Each run reports cold, warm median and warm p95.
+- The budgets apply to **cold** and to **warm p95** (`budgets.performance.battleStartColdMs` and `battleStartWarmP95Ms`, 300 ms each), never to one sample. They hold for Chrome at 4× CPU throttle on the **reference machine**: a desktop with a hardware GPU, the run before each release.
+- On CI the nightly holds cold and warm p95 to within `maxRegression` (25 %) of the last good nightly's numbers, as P-38 does for frames, instead of the absolute budget. It is red only on a regression.
+- A red nightly on `main` opens (or comments on) a `nightly-red` issue; the next green nightly closes it.
+
+**Why.** The budget is about what a player feels, which a software-rendered runner cannot measure; what CI can measure reliably is whether a change made it worse. A check that is red every night teaches everyone to ignore it.
+
+**Known limit.** Comparing with the last good nightly lets a slow drift of under 25 % a night pass; the pre-release run on the reference machine catches it.
+
+**Amends** P-38 (battle start joins its regression check).
+
+**Spec.** §4.13.
