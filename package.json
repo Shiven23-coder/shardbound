@@ -1,7 +1,7 @@
 {
   "name": "shardbound",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Shardbound monorepo tasks: one command to run the whole game locally.",
   "type": "module",
   "scripts": {

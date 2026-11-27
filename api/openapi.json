@@ -1,2975 +1,3529 @@
 {
-  "openapi" : "3.1.0",
-  "info" : {
-    "description" : "REST API of the Shardbound game server. Every game rule runs on the server.",
-    "title" : "Shardbound API",
-    "version" : "0.4.0"
+  "openapi": "3.1.0",
+  "info": {
+    "description": "REST API of the Shardbound game server. Every game rule runs on the server.",
+    "title": "Shardbound API",
+    "version": "0.5.0"
   },
-  "servers" : [ {
-    "url" : "/"
-  } ],
-  "paths" : {
-    "/api/achievements" : {
-      "get" : {
-        "operationId" : "listAchievements",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "playerId",
-          "required" : false,
-          "schema" : {
-            "type" : [ "integer", "null" ],
-            "format" : "int32"
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/api/achievements": {
+      "get": {
+        "operationId": "listAchievements",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "playerId",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            }
           }
-        } ],
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/AchievementView"
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AchievementView"
                   }
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "Every achievement with this player's unlocks",
-        "tags" : [ "meta" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Every achievement with this player's unlocks",
+        "tags": [
+          "meta"
+        ]
       }
     },
-    "/api/battle/action" : {
-      "post" : {
-        "operationId" : "battleAction",
-        "parameters" : [ {
-          "description" : "A new UUID per action (P-56)",
-          "in" : "header",
-          "name" : "Idempotency-Key",
-          "required" : true,
-          "schema" : {
-            "type" : [ "string", "null" ]
+    "/api/battle/action": {
+      "post": {
+        "operationId": "battleAction",
+        "parameters": [
+          {
+            "description": "A new UUID per action (P-56)",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/BattleRequest"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BattleRequest"
               }
             }
           },
-          "required" : true
+          "required": true
         },
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/SessionView"
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "Play one battle round (§4.7)",
-        "tags" : [ "game" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Play one battle round (§4.7)",
+        "tags": [
+          "game"
+        ]
       }
     },
-    "/api/cutscene/finish" : {
-      "post" : {
-        "operationId" : "finishCutscene",
-        "parameters" : [ {
-          "description" : "A new UUID per action (P-56)",
-          "in" : "header",
-          "name" : "Idempotency-Key",
-          "required" : true,
-          "schema" : {
-            "type" : [ "string", "null" ]
+    "/api/cutscene/finish": {
+      "post": {
+        "operationId": "finishCutscene",
+        "parameters": [
+          {
+            "description": "A new UUID per action (P-56)",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/CutsceneRequest"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CutsceneRequest"
               }
             }
           },
-          "required" : true
+          "required": true
         },
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/SessionView"
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "End the cutscene playing, played out or skipped (keyed)",
-        "tags" : [ "cutscene" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "End the cutscene playing, played out or skipped (keyed)",
+        "tags": [
+          "cutscene"
+        ]
       }
     },
-    "/api/debug/inspector" : {
-      "get" : {
-        "operationId" : "inspect",
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/InspectorView"
+    "/api/debug/inspector": {
+      "get": {
+        "operationId": "inspect",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectorView"
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "Raw state behind the current screen (dev only)",
-        "tags" : [ "dev" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Raw state behind the current screen (dev only)",
+        "tags": [
+          "dev"
+        ]
       }
     },
-    "/api/debug/weapons" : {
-      "get" : {
-        "operationId" : "weaponLadder",
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/WeaponView"
+    "/api/debug/weapons": {
+      "get": {
+        "operationId": "weaponLadder",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeaponView"
                   }
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "summary" : "Every weapon rated for a new player, best first (dev only, P-65)",
-        "tags" : [ "dev" ]
+        "summary": "Every weapon rated for a new player, best first (dev only, P-65)",
+        "tags": [
+          "dev"
+        ]
       }
     },
-    "/api/dialogue/choose" : {
-      "post" : {
-        "operationId" : "choose",
-        "parameters" : [ {
-          "description" : "A new UUID per action (P-56)",
-          "in" : "header",
-          "name" : "Idempotency-Key",
-          "required" : true,
-          "schema" : {
-            "type" : [ "string", "null" ]
+    "/api/dialogue/choose": {
+      "post": {
+        "operationId": "choose",
+        "parameters": [
+          {
+            "description": "A new UUID per action (P-56)",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ChooseRequest"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChooseRequest"
               }
             }
           },
-          "required" : true
+          "required": true
         },
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/SessionView"
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "Take a dialogue choice",
-        "tags" : [ "game" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Take a dialogue choice",
+        "tags": [
+          "game"
+        ]
       }
     },
-    "/api/endings" : {
-      "get" : {
-        "operationId" : "listEndings",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "playerId",
-          "required" : false,
-          "schema" : {
-            "type" : [ "integer", "null" ],
-            "format" : "int32"
+    "/api/endings": {
+      "get": {
+        "operationId": "listEndings",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "playerId",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            }
           }
-        } ],
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/EndingInfoView"
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EndingInfoView"
                   }
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "Every ending with this player's best times",
-        "tags" : [ "meta" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Every ending with this player's best times",
+        "tags": [
+          "meta"
+        ]
       }
     },
-    "/api/game" : {
-      "get" : {
-        "operationId" : "getGame",
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/SessionView"
+    "/api/game": {
+      "get": {
+        "operationId": "getGame",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "The current screen of this session's game",
-        "tags" : [ "game" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "The current screen of this session's game",
+        "tags": [
+          "game"
+        ]
       }
     },
-    "/api/game/new" : {
-      "post" : {
-        "operationId" : "newGame",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/NewGameRequest"
+    "/api/game/new": {
+      "post": {
+        "operationId": "newGame",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewGameRequest"
               }
             }
           },
-          "required" : true
+          "required": true
         },
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/SessionView"
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "summary" : "Start a new game; the view's sessionId is the X-Session token",
-        "tags" : [ "game" ]
+        "summary": "Start a new game; the view's sessionId is the X-Session token",
+        "tags": [
+          "game"
+        ]
       }
     },
-    "/api/inventory/equip" : {
-      "post" : {
-        "operationId" : "equip",
-        "parameters" : [ {
-          "description" : "A new UUID per action (P-56)",
-          "in" : "header",
-          "name" : "Idempotency-Key",
-          "required" : true,
-          "schema" : {
-            "type" : [ "string", "null" ]
+    "/api/inventory/equip": {
+      "post": {
+        "operationId": "equip",
+        "parameters": [
+          {
+            "description": "A new UUID per action (P-56)",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ItemRequest"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemRequest"
               }
             }
           },
-          "required" : true
+          "required": true
         },
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/SessionView"
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "Equip a weapon outside battle",
-        "tags" : [ "game" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Equip a weapon outside battle",
+        "tags": [
+          "game"
+        ]
       }
     },
-    "/api/inventory/use" : {
-      "post" : {
-        "operationId" : "useItem",
-        "parameters" : [ {
-          "description" : "A new UUID per action (P-56)",
-          "in" : "header",
-          "name" : "Idempotency-Key",
-          "required" : true,
-          "schema" : {
-            "type" : [ "string", "null" ]
+    "/api/inventory/use": {
+      "post": {
+        "operationId": "useItem",
+        "parameters": [
+          {
+            "description": "A new UUID per action (P-56)",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ItemRequest"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemRequest"
               }
             }
           },
-          "required" : true
+          "required": true
         },
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/SessionView"
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "Use a consumable outside battle",
-        "tags" : [ "game" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Use a consumable outside battle",
+        "tags": [
+          "game"
+        ]
       }
     },
-    "/api/lantern/leave" : {
-      "post" : {
-        "operationId" : "lanternLeave",
-        "parameters" : [ {
-          "description" : "A new UUID per action (P-56)",
-          "in" : "header",
-          "name" : "Idempotency-Key",
-          "required" : true,
-          "schema" : {
-            "type" : [ "string", "null" ]
+    "/api/lantern/leave": {
+      "post": {
+        "operationId": "lanternLeave",
+        "parameters": [
+          {
+            "description": "A new UUID per action (P-56)",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
-        } ],
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/SessionView"
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "Close the Lantern menu and walk on",
-        "tags" : [ "lantern" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Close the Lantern menu and walk on",
+        "tags": [
+          "lantern"
+        ]
       }
     },
-    "/api/lantern/levelup" : {
-      "post" : {
-        "operationId" : "lanternLevelUp",
-        "parameters" : [ {
-          "description" : "A new UUID per action (P-56)",
-          "in" : "header",
-          "name" : "Idempotency-Key",
-          "required" : true,
-          "schema" : {
-            "type" : [ "string", "null" ]
+    "/api/lantern/levelup": {
+      "post": {
+        "operationId": "lanternLevelUp",
+        "parameters": [
+          {
+            "description": "A new UUID per action (P-56)",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/LevelUpRequest"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LevelUpRequest"
               }
             }
           },
-          "required" : true
+          "required": true
         },
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/SessionView"
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "Buy the levels of these raises with held Shards (§4.3)",
-        "tags" : [ "lantern" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Buy the levels of these raises with held Shards (§4.3)",
+        "tags": [
+          "lantern"
+        ]
       }
     },
-    "/api/lantern/levelup/preview" : {
-      "post" : {
-        "operationId" : "lanternLevelUpPreview",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/LevelUpRequest"
+    "/api/lantern/levelup/preview": {
+      "post": {
+        "operationId": "lanternLevelUpPreview",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LevelUpRequest"
               }
             }
           },
-          "required" : true
+          "required": true
         },
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/LevelPreviewView"
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LevelPreviewView"
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "What raising these attributes would cost and change; nothing is applied (§4.3)",
-        "tags" : [ "lantern" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "What raising these attributes would cost and change; nothing is applied (§4.3)",
+        "tags": [
+          "lantern"
+        ]
       }
     },
-    "/api/lantern/loadout" : {
-      "post" : {
-        "operationId" : "lanternLoadout",
-        "parameters" : [ {
-          "description" : "A new UUID per action (P-56)",
-          "in" : "header",
-          "name" : "Idempotency-Key",
-          "required" : true,
-          "schema" : {
-            "type" : [ "string", "null" ]
+    "/api/lantern/loadout": {
+      "post": {
+        "operationId": "lanternLoadout",
+        "parameters": [
+          {
+            "description": "A new UUID per action (P-56)",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/LoadoutRequest"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoadoutRequest"
               }
             }
           },
-          "required" : true
+          "required": true
         },
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/SessionView"
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "Set the four skill slots (§4.1)",
-        "tags" : [ "lantern" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Set the four skill slots (§4.1)",
+        "tags": [
+          "lantern"
+        ]
       }
     },
-    "/api/leaderboard" : {
-      "get" : {
-        "operationId" : "leaderboard",
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/LeaderboardView"
+    "/api/leaderboard": {
+      "get": {
+        "operationId": "leaderboard",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LeaderboardView"
                   }
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "summary" : "Top players by endings, achievements and fastest ending",
-        "tags" : [ "meta" ]
+        "summary": "Top players by endings, achievements and fastest ending",
+        "tags": [
+          "meta"
+        ]
       }
     },
-    "/api/profiles" : {
-      "post" : {
-        "operationId" : "createProfile",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ProfileRequest"
+    "/api/profiles": {
+      "post": {
+        "operationId": "createProfile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileRequest"
               }
             }
           },
-          "required" : true
+          "required": true
         },
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ProfileResponse"
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "summary" : "Create the profile, or return the existing one",
-        "tags" : [ "profiles" ]
+        "summary": "Create the profile, or return the existing one",
+        "tags": [
+          "profiles"
+        ]
       }
     },
-    "/api/saves" : {
-      "get" : {
-        "operationId" : "listSaves",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "playerId",
-          "required" : false,
-          "schema" : {
-            "type" : [ "integer", "null" ],
-            "format" : "int32"
+    "/api/saves": {
+      "get": {
+        "operationId": "listSaves",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "playerId",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            }
           }
-        } ],
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/SlotView"
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SlotView"
                   }
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "All four slots; empty slots have exists=false",
-        "tags" : [ "saves" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "All four slots; empty slots have exists=false",
+        "tags": [
+          "saves"
+        ]
       }
     },
-    "/api/saves/{slot}" : {
-      "delete" : {
-        "operationId" : "deleteSave",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slot",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "maximum" : 3,
-            "minimum" : 0
-          }
-        }, {
-          "in" : "query",
-          "name" : "playerId",
-          "required" : false,
-          "schema" : {
-            "type" : [ "integer", "null" ],
-            "format" : "int32"
-          }
-        }, {
-          "description" : "A new UUID per action (P-56)",
-          "in" : "header",
-          "name" : "Idempotency-Key",
-          "required" : true,
-          "schema" : {
-            "type" : [ "string", "null" ]
-          }
-        } ],
-        "responses" : {
-          "204" : {
-            "description" : "No Content"
+    "/api/saves/{slot}": {
+      "delete": {
+        "operationId": "deleteSave",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slot",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 3,
+              "minimum": 0
+            }
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          {
+            "in": "query",
+            "name": "playerId",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "description": "A new UUID per action (P-56)",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "Delete a slot",
-        "tags" : [ "saves" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Delete a slot",
+        "tags": [
+          "saves"
+        ]
       },
-      "post" : {
-        "operationId" : "saveGame",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slot",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "maximum" : 3,
-            "minimum" : 0
-          }
-        }, {
-          "description" : "A new UUID per action (P-56)",
-          "in" : "header",
-          "name" : "Idempotency-Key",
-          "required" : true,
-          "schema" : {
-            "type" : [ "string", "null" ]
-          }
-        } ],
-        "responses" : {
-          "204" : {
-            "description" : "No Content"
+      "post": {
+        "operationId": "saveGame",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slot",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 3,
+              "minimum": 0
+            }
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          {
+            "description": "A new UUID per action (P-56)",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "Save this session's game to slot 1, 2 or 3",
-        "tags" : [ "saves" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Save this session's game to slot 1, 2 or 3",
+        "tags": [
+          "saves"
+        ]
       }
     },
-    "/api/saves/{slot}/load" : {
-      "post" : {
-        "operationId" : "loadGame",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slot",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "maximum" : 3,
-            "minimum" : 0
-          }
-        }, {
-          "in" : "query",
-          "name" : "playerId",
-          "required" : false,
-          "schema" : {
-            "type" : [ "integer", "null" ],
-            "format" : "int32"
-          }
-        }, {
-          "description" : "A new UUID per action (P-56)",
-          "in" : "header",
-          "name" : "Idempotency-Key",
-          "required" : true,
-          "schema" : {
-            "type" : [ "string", "null" ]
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/SessionView"
-                }
-              }
-            },
-            "description" : "OK"
+    "/api/saves/{slot}/load": {
+      "post": {
+        "operationId": "loadGame",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slot",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 3,
+              "minimum": 0
+            }
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description" : "Client error"
+          {
+            "in": "query",
+            "name": "playerId",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            }
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          {
+            "description": "A new UUID per action (P-56)",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "OK"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "Load a slot into this session (or a new one)",
-        "tags" : [ "saves" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Load a slot into this session (or a new one)",
+        "tags": [
+          "saves"
+        ]
       }
     },
-    "/api/world/encounter" : {
-      "post" : {
-        "operationId" : "worldEncounter",
-        "parameters" : [ {
-          "description" : "A new UUID per action (P-56)",
-          "in" : "header",
-          "name" : "Idempotency-Key",
-          "required" : true,
-          "schema" : {
-            "type" : [ "string", "null" ]
+    "/api/world/encounter": {
+      "post": {
+        "operationId": "worldEncounter",
+        "parameters": [
+          {
+            "description": "A new UUID per action (P-56)",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/EncounterRequest"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EncounterRequest"
               }
             }
           },
-          "required" : true
+          "required": true
         },
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/SessionView"
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "A creep's aggro radius was entered: the battle starts (§4.2)",
-        "tags" : [ "game" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "A creep's aggro radius was entered: the battle starts (§4.2)",
+        "tags": [
+          "game"
+        ]
       }
     },
-    "/api/world/exit" : {
-      "post" : {
-        "operationId" : "worldExit",
-        "parameters" : [ {
-          "description" : "A new UUID per action (P-56)",
-          "in" : "header",
-          "name" : "Idempotency-Key",
-          "required" : true,
-          "schema" : {
-            "type" : [ "string", "null" ]
+    "/api/world/exit": {
+      "post": {
+        "operationId": "worldExit",
+        "parameters": [
+          {
+            "description": "A new UUID per action (P-56)",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ExitRequest"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExitRequest"
               }
             }
           },
-          "required" : true
+          "required": true
         },
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/SessionView"
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "Walk through an exit into the next area (§4.11)",
-        "tags" : [ "game" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Walk through an exit into the next area (§4.11)",
+        "tags": [
+          "game"
+        ]
       }
     },
-    "/api/world/interact" : {
-      "post" : {
-        "operationId" : "worldInteract",
-        "parameters" : [ {
-          "description" : "A new UUID per action (P-56)",
-          "in" : "header",
-          "name" : "Idempotency-Key",
-          "required" : true,
-          "schema" : {
-            "type" : [ "string", "null" ]
+    "/api/world/interact": {
+      "post": {
+        "operationId": "worldInteract",
+        "parameters": [
+          {
+            "description": "A new UUID per action (P-56)",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/InteractRequest"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InteractRequest"
               }
             }
           },
-          "required" : true
+          "required": true
         },
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/SessionView"
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "Talk to an NPC, use an object, or step into a trigger (§4.11)",
-        "tags" : [ "game" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Talk to an NPC, use an object, or step into a trigger (§4.11)",
+        "tags": [
+          "game"
+        ]
       }
     },
-    "/api/world/recover" : {
-      "post" : {
-        "operationId" : "worldRecover",
-        "parameters" : [ {
-          "description" : "A new UUID per action (P-56)",
-          "in" : "header",
-          "name" : "Idempotency-Key",
-          "required" : true,
-          "schema" : {
-            "type" : [ "string", "null" ]
+    "/api/world/recover": {
+      "post": {
+        "operationId": "worldRecover",
+        "parameters": [
+          {
+            "description": "A new UUID per action (P-56)",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/RecoverRequest"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoverRequest"
               }
             }
           },
-          "required" : true
+          "required": true
         },
-        "responses" : {
-          "200" : {
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/SessionView"
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
                 }
               }
             },
-            "description" : "OK"
+            "description": "OK"
           },
-          "4XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Client error"
+            "description": "Client error"
           },
-          "5XX" : {
-            "content" : {
-              "application/problem+json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Problem"
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description" : "Server error"
+            "description": "Server error"
           }
         },
-        "security" : [ {
-          "session" : [ ]
-        } ],
-        "summary" : "Stepped within a tile of the Lost Shards: they come back (§4.4)",
-        "tags" : [ "game" ]
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Stepped within a tile of the Lost Shards: they come back (§4.4)",
+        "tags": [
+          "game"
+        ]
       }
     }
   },
-  "components" : {
-    "schemas" : {
-      "AchievementView" : {
-        "type" : "object",
-        "properties" : {
-          "description" : {
-            "type" : "string"
+  "components": {
+    "schemas": {
+      "AchievementView": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
           },
-          "hidden" : {
-            "type" : "boolean"
+          "hidden": {
+            "type": "boolean"
           },
-          "id" : {
-            "type" : "string"
+          "id": {
+            "type": "string"
           },
-          "title" : {
-            "type" : "string"
+          "title": {
+            "type": "string"
           },
-          "unlocked" : {
-            "type" : "boolean"
+          "unlocked": {
+            "type": "boolean"
           }
         },
-        "required" : [ "description", "hidden", "id", "title", "unlocked" ]
+        "required": [
+          "description",
+          "hidden",
+          "id",
+          "title",
+          "unlocked"
+        ]
       },
-      "ActorView" : {
-        "type" : "object",
-        "properties" : {
-          "facing" : {
-            "type" : "string"
+      "ActorView": {
+        "type": "object",
+        "properties": {
+          "facing": {
+            "type": "string"
           },
-          "id" : {
-            "type" : "string"
+          "id": {
+            "type": "string"
           },
-          "name" : {
-            "type" : "string"
+          "name": {
+            "type": "string"
           },
-          "sprite" : {
-            "type" : "string"
+          "sprite": {
+            "type": "string"
           },
-          "x" : {
-            "type" : "integer",
-            "format" : "int32"
+          "x": {
+            "type": "integer",
+            "format": "int32"
           },
-          "y" : {
-            "type" : "integer",
-            "format" : "int32"
+          "y": {
+            "type": "integer",
+            "format": "int32"
           }
         },
-        "required" : [ "facing", "id", "sprite", "x", "y" ]
+        "required": [
+          "facing",
+          "id",
+          "sprite",
+          "x",
+          "y"
+        ]
       },
-      "AffinityView" : {
-        "type" : "object",
-        "properties" : {
-          "name" : {
-            "type" : "string"
+      "AffinityView": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
           },
-          "npcId" : {
-            "type" : "string"
+          "npcId": {
+            "type": "string"
           },
-          "value" : {
-            "type" : "integer",
-            "format" : "int32"
+          "value": {
+            "type": "integer",
+            "format": "int32"
           }
         },
-        "required" : [ "name", "npcId", "value" ]
+        "required": [
+          "name",
+          "npcId",
+          "value"
+        ]
       },
-      "AttributeView" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "enum" : [ "VIGOR", "MIND", "STRENGTH", "DEXTERITY", "ENDURANCE", "ARCANE" ]
+      "AttributeView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "VIGOR",
+              "MIND",
+              "STRENGTH",
+              "DEXTERITY",
+              "ENDURANCE",
+              "ARCANE"
+            ]
           },
-          "value" : {
-            "type" : "integer",
-            "format" : "int32"
+          "value": {
+            "type": "integer",
+            "format": "int32"
           }
         },
-        "required" : [ "id", "value" ]
+        "required": [
+          "id",
+          "value"
+        ]
       },
-      "BagItemView" : {
-        "type" : "object",
-        "properties" : {
-          "fp" : {
-            "type" : "integer",
-            "format" : "int32"
+      "BagItemView": {
+        "type": "object",
+        "properties": {
+          "fp": {
+            "type": "integer",
+            "format": "int32"
           },
-          "heal" : {
-            "type" : "integer",
-            "format" : "int32"
+          "heal": {
+            "type": "integer",
+            "format": "int32"
           },
-          "id" : {
-            "type" : "string"
+          "id": {
+            "type": "string"
           },
-          "maxQty" : {
-            "type" : "integer",
-            "format" : "int32"
+          "maxQty": {
+            "type": "integer",
+            "format": "int32"
           },
-          "name" : {
-            "type" : "string"
+          "name": {
+            "type": "string"
           },
-          "qty" : {
-            "type" : "integer",
-            "format" : "int32"
+          "qty": {
+            "type": "integer",
+            "format": "int32"
           }
         },
-        "required" : [ "fp", "heal", "id", "name", "qty" ]
+        "required": [
+          "fp",
+          "heal",
+          "id",
+          "name",
+          "qty"
+        ]
       },
-      "BattleRequest" : {
-        "type" : "object",
-        "properties" : {
-          "itemId" : {
-            "type" : "string",
-            "maxLength" : 64,
-            "minLength" : 0
+      "BattleRequest": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 0
           },
-          "kind" : {
-            "type" : "string",
-            "enum" : [ "STRIKE", "GUARD", "SKILL", "ITEM", "FLEE" ]
+          "kind": {
+            "type": "string",
+            "enum": [
+              "STRIKE",
+              "GUARD",
+              "SKILL",
+              "ITEM",
+              "FLEE"
+            ]
           },
-          "slot" : {
-            "type" : "integer",
-            "format" : "int32",
-            "maximum" : 3,
-            "minimum" : 0
+          "slot": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 3,
+            "minimum": 0
           }
         },
-        "required" : [ "kind", "slot" ]
+        "required": [
+          "kind",
+          "slot"
+        ]
       },
-      "BattleView" : {
-        "type" : "object",
-        "properties" : {
-          "boss" : {
-            "$ref" : "#/components/schemas/BossBarView"
+      "BattleView": {
+        "type": "object",
+        "properties": {
+          "boss": {
+            "$ref": "#/components/schemas/BossBarView"
           },
-          "brace" : {
-            "$ref" : "#/components/schemas/BraceView"
+          "brace": {
+            "$ref": "#/components/schemas/BraceView"
           },
-          "enemy" : {
-            "$ref" : "#/components/schemas/FighterView"
+          "enemy": {
+            "$ref": "#/components/schemas/FighterView"
           },
-          "hits" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/HitView"
+          "hits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HitView"
             }
           },
-          "menu" : {
-            "$ref" : "#/components/schemas/MenuView"
+          "menu": {
+            "$ref": "#/components/schemas/MenuView"
           },
-          "outcome" : {
-            "type" : "string"
+          "outcome": {
+            "type": "string"
           },
-          "player" : {
-            "$ref" : "#/components/schemas/FighterView"
+          "player": {
+            "$ref": "#/components/schemas/FighterView"
           },
-          "rewards" : {
-            "$ref" : "#/components/schemas/RewardsView"
+          "rewards": {
+            "$ref": "#/components/schemas/RewardsView"
           },
-          "round" : {
-            "type" : "integer",
-            "format" : "int32"
+          "round": {
+            "type": "integer",
+            "format": "int32"
           },
-          "telegraph" : {
-            "type" : "string"
+          "telegraph": {
+            "type": "string"
           },
-          "telegraphMove" : {
-            "type" : "string"
+          "telegraphMove": {
+            "type": "string"
           },
-          "text" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          }
-        },
-        "required" : [ "enemy", "hits", "menu", "player", "round", "text" ]
-      },
-      "BossBarView" : {
-        "type" : "object",
-        "properties" : {
-          "name" : {
-            "type" : "string"
-          },
-          "phase" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "phase2Pct" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "phaseLine" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "name", "phase", "phase2Pct" ]
-      },
-      "BossView" : {
-        "type" : "object",
-        "properties" : {
-          "bossId" : {
-            "type" : "string"
-          },
-          "id" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "sprite" : {
-            "type" : "string"
-          },
-          "x" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "y" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "bossId", "id", "name", "sprite", "x", "y" ]
-      },
-      "BraceView" : {
-        "type" : "object",
-        "properties" : {
-          "guardDetail" : {
-            "type" : "string"
-          },
-          "warning" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "guardDetail", "warning" ]
-      },
-      "ChestView" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string"
-          },
-          "open" : {
-            "type" : "boolean"
-          },
-          "x" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "y" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "id", "open", "x", "y" ]
-      },
-      "ChoiceView" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "label" : {
-            "type" : "string"
-          },
-          "lockReason" : {
-            "type" : "string"
-          },
-          "locked" : {
-            "type" : "boolean"
-          }
-        },
-        "required" : [ "id", "label", "locked" ]
-      },
-      "ChooseRequest" : {
-        "type" : "object",
-        "properties" : {
-          "choiceId" : {
-            "type" : "integer",
-            "format" : "int32",
-            "exclusiveMinimum" : 0
-          }
-        },
-        "required" : [ "choiceId" ]
-      },
-      "CreepView" : {
-        "type" : "object",
-        "properties" : {
-          "aggroRadius" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "id" : {
-            "type" : "string"
-          },
-          "level" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "rearmTiles" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "sprite" : {
-            "type" : "string"
-          },
-          "template" : {
-            "type" : "string"
-          },
-          "wary" : {
-            "type" : "boolean"
-          },
-          "x" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "y" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "aggroRadius", "id", "level", "name", "rearmTiles", "sprite", "template", "wary", "x", "y" ]
-      },
-      "CutsceneRequest" : {
-        "type" : "object",
-        "properties" : {
-          "cutsceneId" : {
-            "type" : "string",
-            "maxLength" : 64,
-            "minLength" : 0
-          }
-        },
-        "required" : [ "cutsceneId" ]
-      },
-      "CutsceneView" : {
-        "type" : "object",
-        "properties" : {
-          "actors" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ActorView"
-            }
-          },
-          "id" : {
-            "type" : "string"
-          },
-          "steps" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/StepView"
+          "text": {
+            "type": "array",
+            "items": {
+              "type": "string"
             }
           }
         },
-        "required" : [ "actors", "id", "steps" ]
+        "required": [
+          "enemy",
+          "hits",
+          "menu",
+          "player",
+          "round",
+          "text"
+        ]
       },
-      "DialogueView" : {
-        "type" : "object",
-        "properties" : {
-          "choices" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ChoiceView"
+      "BossBarView": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "phase2Pct": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "phaseLine": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "name",
+          "phase",
+          "phase2Pct"
+        ]
+      },
+      "BossView": {
+        "type": "object",
+        "properties": {
+          "bossId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sprite": {
+            "type": "string"
+          },
+          "x": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "y": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "bossId",
+          "id",
+          "name",
+          "sprite",
+          "x",
+          "y"
+        ]
+      },
+      "BraceView": {
+        "type": "object",
+        "properties": {
+          "guardDetail": {
+            "type": "string"
+          },
+          "warning": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "guardDetail",
+          "warning"
+        ]
+      },
+      "ChestView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "open": {
+            "type": "boolean"
+          },
+          "x": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "y": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "id",
+          "open",
+          "x",
+          "y"
+        ]
+      },
+      "ChoiceView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "label": {
+            "type": "string"
+          },
+          "lockReason": {
+            "type": "string"
+          },
+          "locked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "locked"
+        ]
+      },
+      "ChooseRequest": {
+        "type": "object",
+        "properties": {
+          "choiceId": {
+            "type": "integer",
+            "format": "int32",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "choiceId"
+        ]
+      },
+      "CreepView": {
+        "type": "object",
+        "properties": {
+          "aggroRadius": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "string"
+          },
+          "level": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rearmTiles": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sprite": {
+            "type": "string"
+          },
+          "template": {
+            "type": "string"
+          },
+          "wary": {
+            "type": "boolean"
+          },
+          "x": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "y": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "aggroRadius",
+          "id",
+          "level",
+          "name",
+          "rearmTiles",
+          "sprite",
+          "template",
+          "wary",
+          "x",
+          "y"
+        ]
+      },
+      "CutsceneRequest": {
+        "type": "object",
+        "properties": {
+          "cutsceneId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "cutsceneId"
+        ]
+      },
+      "CutsceneView": {
+        "type": "object",
+        "properties": {
+          "actors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActorView"
             }
           },
-          "message" : {
-            "type" : "boolean"
-          },
-          "nodeId" : {
-            "type" : "string"
-          },
-          "speaker" : {
-            "type" : "string"
-          },
-          "text" : {
-            "type" : "string"
-          },
-          "title" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "choices", "message", "nodeId", "text", "title" ]
-      },
-      "EncounterRequest" : {
-        "type" : "object",
-        "properties" : {
-          "creepId" : {
-            "type" : "string",
-            "maxLength" : 64,
-            "minLength" : 0
-          },
-          "facing" : {
-            "type" : "string",
-            "enum" : [ "DOWN", "UP", "LEFT", "RIGHT" ]
-          },
-          "x" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 0
-          },
-          "y" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 0
-          }
-        },
-        "required" : [ "creepId", "facing", "x", "y" ]
-      },
-      "EndingInfoView" : {
-        "type" : "object",
-        "properties" : {
-          "bestSeconds" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "id" : {
-            "type" : "string"
-          },
-          "reached" : {
-            "type" : "boolean"
-          },
-          "title" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "reached", "title" ]
-      },
-      "EndingView" : {
-        "type" : "object",
-        "properties" : {
-          "endingsFound" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "endingsTotal" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "id" : {
-            "type" : "string"
-          },
-          "seconds" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "text" : {
-            "type" : "string"
-          },
-          "title" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "endingsFound", "endingsTotal", "id", "seconds", "text", "title" ]
-      },
-      "ExitRequest" : {
-        "type" : "object",
-        "properties" : {
-          "exitId" : {
-            "type" : "string",
-            "maxLength" : 64,
-            "minLength" : 0
-          },
-          "facing" : {
-            "type" : "string",
-            "enum" : [ "DOWN", "UP", "LEFT", "RIGHT" ]
-          },
-          "x" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 0
-          },
-          "y" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 0
-          }
-        },
-        "required" : [ "exitId", "facing", "x", "y" ]
-      },
-      "FighterView" : {
-        "type" : "object",
-        "properties" : {
-          "family" : {
-            "type" : "string"
-          },
-          "hp" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "level" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "maxHp" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "sprite" : {
-            "type" : "string"
-          },
-          "statuses" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/StatusView"
-            }
-          }
-        },
-        "required" : [ "hp", "level", "maxHp", "name", "sprite", "statuses" ]
-      },
-      "HitView" : {
-        "type" : "object",
-        "properties" : {
-          "affinity" : {
-            "type" : "string"
-          },
-          "amount" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "crit" : {
-            "type" : "boolean"
-          },
-          "element" : {
-            "type" : "string"
-          },
-          "line" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "onPlayer" : {
-            "type" : "boolean"
-          },
-          "status" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "amount", "crit", "line", "onPlayer" ]
-      },
-      "HudView" : {
-        "type" : "object",
-        "properties" : {
-          "attack" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "defence" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "fp" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "gold" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "hp" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "level" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "maxFp" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "maxHp" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "shards" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "weapon" : {
-            "$ref" : "#/components/schemas/WeaponView"
-          }
-        },
-        "required" : [ "attack", "defence", "fp", "gold", "hp", "level", "maxFp", "maxHp", "shards" ]
-      },
-      "InspectorView" : {
-        "type" : "object",
-        "properties" : {
-          "affinity" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "type" : "integer",
-              "format" : "int32"
-            }
-          },
-          "flags" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "type" : "integer",
-              "format" : "int32"
-            }
-          },
-          "mode" : {
-            "type" : "string"
-          },
-          "nodeId" : {
-            "type" : "string"
-          },
-          "quests" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/QuestStatusView"
-            }
-          },
-          "reputation" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "type" : "integer",
-              "format" : "int32"
-            }
-          },
-          "rngSeed" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "runVersion" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        },
-        "required" : [ "affinity", "flags", "mode", "nodeId", "quests", "reputation", "rngSeed", "runVersion" ]
-      },
-      "InteractRequest" : {
-        "type" : "object",
-        "properties" : {
-          "facing" : {
-            "type" : "string",
-            "enum" : [ "DOWN", "UP", "LEFT", "RIGHT" ]
-          },
-          "targetId" : {
-            "type" : "string",
-            "maxLength" : 64,
-            "minLength" : 0
-          },
-          "x" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 0
-          },
-          "y" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 0
-          }
-        },
-        "required" : [ "facing", "targetId", "x", "y" ]
-      },
-      "InventoryView" : {
-        "type" : "object",
-        "properties" : {
-          "capacity" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "items" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ItemView"
-            }
-          },
-          "usedSlots" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "capacity", "items", "usedSlots" ]
-      },
-      "ItemRequest" : {
-        "type" : "object",
-        "properties" : {
-          "itemId" : {
-            "type" : "string",
-            "maxLength" : 64,
-            "minLength" : 0
-          }
-        },
-        "required" : [ "itemId" ]
-      },
-      "ItemView" : {
-        "type" : "object",
-        "properties" : {
-          "description" : {
-            "type" : "string"
-          },
-          "equipped" : {
-            "type" : "boolean"
-          },
-          "fp" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "heal" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "id" : {
-            "type" : "string"
-          },
-          "maxQty" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "qty" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "type" : {
-            "type" : "string"
-          },
-          "usable" : {
-            "type" : "boolean"
-          },
-          "weapon" : {
-            "$ref" : "#/components/schemas/WeaponView"
-          }
-        },
-        "required" : [ "description", "equipped", "id", "name", "qty", "type", "usable" ]
-      },
-      "JournalView" : {
-        "type" : "object",
-        "properties" : {
-          "choiceLabel" : {
-            "type" : "string"
-          },
-          "nodeTitle" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "choiceLabel", "nodeTitle" ]
-      },
-      "KnownSkillView" : {
-        "type" : "object",
-        "properties" : {
-          "description" : {
-            "type" : "string"
-          },
-          "element" : {
-            "type" : "string"
-          },
-          "fpCost" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "id" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "description", "element", "fpCost", "id", "name" ]
-      },
-      "LanternMenuView" : {
-        "type" : "object",
-        "properties" : {
-          "attributeMax" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "attributes" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/AttributeView"
-            }
-          },
-          "knownSkills" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/KnownSkillView"
-            }
-          },
-          "lanternId" : {
-            "type" : "string"
-          },
-          "level" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "loadout" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/LoadoutSlotView"
-            }
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "nextLevelCost" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "shards" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "stats" : {
-            "$ref" : "#/components/schemas/StatsView"
-          }
-        },
-        "required" : [ "attributeMax", "attributes", "knownSkills", "lanternId", "level", "loadout", "name", "nextLevelCost", "shards", "stats" ]
-      },
-      "LanternView" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string"
-          },
-          "lanternId" : {
-            "type" : "string"
-          },
-          "lit" : {
-            "type" : "boolean"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "x" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "y" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "id", "lanternId", "lit", "name", "x", "y" ]
-      },
-      "LeaderboardView" : {
-        "type" : "object",
-        "properties" : {
-          "achievements" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "endings" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "fastestEndingSeconds" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "username" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "achievements", "endings", "username" ]
-      },
-      "LevelPreviewView" : {
-        "type" : "object",
-        "properties" : {
-          "affordable" : {
-            "type" : "boolean"
-          },
-          "after" : {
-            "$ref" : "#/components/schemas/StatsView"
-          },
-          "before" : {
-            "$ref" : "#/components/schemas/StatsView"
-          },
-          "cost" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "levelAfter" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "levelBefore" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "shardsAfter" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "affordable", "after", "before", "cost", "levelAfter", "levelBefore", "shardsAfter" ]
-      },
-      "LevelUpRequest" : {
-        "type" : "object",
-        "properties" : {
-          "raises" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "type" : "integer",
-              "format" : "int32"
+          "id": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StepView"
             }
           }
         },
-        "required" : [ "raises" ]
+        "required": [
+          "actors",
+          "id",
+          "steps"
+        ]
       },
-      "LoadoutRequest" : {
-        "type" : "object",
-        "properties" : {
-          "slots" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string",
-              "maxLength" : 64,
-              "minLength" : 0
+      "DialogueView": {
+        "type": "object",
+        "properties": {
+          "choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChoiceView"
+            }
+          },
+          "message": {
+            "type": "boolean"
+          },
+          "nodeId": {
+            "type": "string"
+          },
+          "speaker": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "choices",
+          "message",
+          "nodeId",
+          "text",
+          "title"
+        ]
+      },
+      "EncounterRequest": {
+        "type": "object",
+        "properties": {
+          "creepId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 0
+          },
+          "facing": {
+            "type": "string",
+            "enum": [
+              "DOWN",
+              "UP",
+              "LEFT",
+              "RIGHT"
+            ]
+          },
+          "x": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "y": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "creepId",
+          "facing",
+          "x",
+          "y"
+        ]
+      },
+      "EndingInfoView": {
+        "type": "object",
+        "properties": {
+          "bestSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "string"
+          },
+          "reached": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reached",
+          "title"
+        ]
+      },
+      "EndingView": {
+        "type": "object",
+        "properties": {
+          "endingsFound": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "endingsTotal": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "string"
+          },
+          "seconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "text": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endingsFound",
+          "endingsTotal",
+          "id",
+          "seconds",
+          "text",
+          "title"
+        ]
+      },
+      "ExitRequest": {
+        "type": "object",
+        "properties": {
+          "exitId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 0
+          },
+          "facing": {
+            "type": "string",
+            "enum": [
+              "DOWN",
+              "UP",
+              "LEFT",
+              "RIGHT"
+            ]
+          },
+          "x": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "y": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "exitId",
+          "facing",
+          "x",
+          "y"
+        ]
+      },
+      "FighterView": {
+        "type": "object",
+        "properties": {
+          "family": {
+            "type": "string"
+          },
+          "hp": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "level": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxHp": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sprite": {
+            "type": "string"
+          },
+          "statuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatusView"
+            }
+          }
+        },
+        "required": [
+          "hp",
+          "level",
+          "maxHp",
+          "name",
+          "sprite",
+          "statuses"
+        ]
+      },
+      "HitView": {
+        "type": "object",
+        "properties": {
+          "affinity": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "crit": {
+            "type": "boolean"
+          },
+          "element": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "onPlayer": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "crit",
+          "line",
+          "onPlayer"
+        ]
+      },
+      "HudView": {
+        "type": "object",
+        "properties": {
+          "attack": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "defence": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fp": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "gold": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hp": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "level": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxFp": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxHp": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "shards": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "weapon": {
+            "$ref": "#/components/schemas/WeaponView"
+          }
+        },
+        "required": [
+          "attack",
+          "defence",
+          "fp",
+          "gold",
+          "hp",
+          "level",
+          "maxFp",
+          "maxHp",
+          "shards"
+        ]
+      },
+      "InspectorView": {
+        "type": "object",
+        "properties": {
+          "affinity": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "flags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "mode": {
+            "type": "string"
+          },
+          "nodeId": {
+            "type": "string"
+          },
+          "quests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestStatusView"
+            }
+          },
+          "reputation": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "rngSeed": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "runVersion": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "affinity",
+          "flags",
+          "mode",
+          "nodeId",
+          "quests",
+          "reputation",
+          "rngSeed",
+          "runVersion"
+        ]
+      },
+      "InteractRequest": {
+        "type": "object",
+        "properties": {
+          "facing": {
+            "type": "string",
+            "enum": [
+              "DOWN",
+              "UP",
+              "LEFT",
+              "RIGHT"
+            ]
+          },
+          "targetId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 0
+          },
+          "x": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "y": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "facing",
+          "targetId",
+          "x",
+          "y"
+        ]
+      },
+      "InventoryView": {
+        "type": "object",
+        "properties": {
+          "capacity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemView"
+            }
+          },
+          "usedSlots": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "capacity",
+          "items",
+          "usedSlots"
+        ]
+      },
+      "ItemRequest": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "itemId"
+        ]
+      },
+      "ItemView": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "equipped": {
+            "type": "boolean"
+          },
+          "fp": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "heal": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "string"
+          },
+          "maxQty": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string"
+          },
+          "qty": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "type": {
+            "type": "string"
+          },
+          "usable": {
+            "type": "boolean"
+          },
+          "weapon": {
+            "$ref": "#/components/schemas/WeaponView"
+          }
+        },
+        "required": [
+          "description",
+          "equipped",
+          "id",
+          "name",
+          "qty",
+          "type",
+          "usable"
+        ]
+      },
+      "JournalView": {
+        "type": "object",
+        "properties": {
+          "choiceLabel": {
+            "type": "string"
+          },
+          "nodeTitle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "choiceLabel",
+          "nodeTitle"
+        ]
+      },
+      "KnownSkillView": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "element": {
+            "type": "string"
+          },
+          "fpCost": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "description",
+          "element",
+          "fpCost",
+          "id",
+          "name"
+        ]
+      },
+      "LanternMenuView": {
+        "type": "object",
+        "properties": {
+          "attributeMax": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttributeView"
+            }
+          },
+          "knownSkills": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KnownSkillView"
+            }
+          },
+          "lanternId": {
+            "type": "string"
+          },
+          "level": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "loadout": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LoadoutSlotView"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "nextLevelCost": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "shards": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/StatsView"
+          }
+        },
+        "required": [
+          "attributeMax",
+          "attributes",
+          "knownSkills",
+          "lanternId",
+          "level",
+          "loadout",
+          "name",
+          "nextLevelCost",
+          "shards",
+          "stats"
+        ]
+      },
+      "LanternView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "lanternId": {
+            "type": "string"
+          },
+          "lit": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "x": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "y": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "id",
+          "lanternId",
+          "lit",
+          "name",
+          "x",
+          "y"
+        ]
+      },
+      "LeaderboardView": {
+        "type": "object",
+        "properties": {
+          "achievements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "endings": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fastestEndingSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "achievements",
+          "endings",
+          "username"
+        ]
+      },
+      "LevelPreviewView": {
+        "type": "object",
+        "properties": {
+          "affordable": {
+            "type": "boolean"
+          },
+          "after": {
+            "$ref": "#/components/schemas/StatsView"
+          },
+          "before": {
+            "$ref": "#/components/schemas/StatsView"
+          },
+          "cost": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "levelAfter": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "levelBefore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "shardsAfter": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "affordable",
+          "after",
+          "before",
+          "cost",
+          "levelAfter",
+          "levelBefore",
+          "shardsAfter"
+        ]
+      },
+      "LevelUpRequest": {
+        "type": "object",
+        "properties": {
+          "raises": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        },
+        "required": [
+          "raises"
+        ]
+      },
+      "LoadoutRequest": {
+        "type": "object",
+        "properties": {
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 0
             },
-            "maxItems" : 4,
-            "minItems" : 4
+            "maxItems": 4,
+            "minItems": 4
           }
         },
-        "required" : [ "slots" ]
+        "required": [
+          "slots"
+        ]
       },
-      "LoadoutSlotView" : {
-        "type" : "object",
-        "properties" : {
-          "element" : {
-            "type" : "string"
+      "LoadoutSlotView": {
+        "type": "object",
+        "properties": {
+          "element": {
+            "type": "string"
           },
-          "fpCost" : {
-            "type" : "integer",
-            "format" : "int32"
+          "fpCost": {
+            "type": "integer",
+            "format": "int32"
           },
-          "name" : {
-            "type" : "string"
+          "name": {
+            "type": "string"
           },
-          "skillId" : {
-            "type" : "string"
+          "skillId": {
+            "type": "string"
           },
-          "slot" : {
-            "type" : "integer",
-            "format" : "int32"
+          "slot": {
+            "type": "integer",
+            "format": "int32"
           }
         },
-        "required" : [ "fpCost", "slot" ]
+        "required": [
+          "fpCost",
+          "slot"
+        ]
       },
-      "LostShardsView" : {
-        "type" : "object",
-        "properties" : {
-          "amount" : {
-            "type" : "integer",
-            "format" : "int32"
+      "LostShardsView": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int32"
           },
-          "x" : {
-            "type" : "integer",
-            "format" : "int32"
+          "x": {
+            "type": "integer",
+            "format": "int32"
           },
-          "y" : {
-            "type" : "integer",
-            "format" : "int32"
+          "y": {
+            "type": "integer",
+            "format": "int32"
           }
         },
-        "required" : [ "amount", "x", "y" ]
+        "required": [
+          "amount",
+          "x",
+          "y"
+        ]
       },
-      "MenuView" : {
-        "type" : "object",
-        "properties" : {
-          "bag" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/BagItemView"
+      "MenuView": {
+        "type": "object",
+        "properties": {
+          "bag": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BagItemView"
             }
           },
-          "canFlee" : {
-            "type" : "boolean"
+          "canFlee": {
+            "type": "boolean"
           },
-          "fp" : {
-            "type" : "integer",
-            "format" : "int32"
+          "fp": {
+            "type": "integer",
+            "format": "int32"
           },
-          "maxFp" : {
-            "type" : "integer",
-            "format" : "int32"
+          "maxFp": {
+            "type": "integer",
+            "format": "int32"
           },
-          "skills" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/SkillView"
+          "skills": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SkillView"
             }
           }
         },
-        "required" : [ "bag", "canFlee", "fp", "maxFp", "skills" ]
+        "required": [
+          "bag",
+          "canFlee",
+          "fp",
+          "maxFp",
+          "skills"
+        ]
       },
-      "NewGameRequest" : {
-        "type" : "object",
-        "properties" : {
-          "demoMode" : {
-            "type" : "boolean"
+      "NewGameRequest": {
+        "type": "object",
+        "properties": {
+          "demoMode": {
+            "type": "boolean"
           },
-          "playerId" : {
-            "type" : "integer",
-            "format" : "int32",
-            "exclusiveMinimum" : 0
+          "playerId": {
+            "type": "integer",
+            "format": "int32",
+            "exclusiveMinimum": 0
           }
         },
-        "required" : [ "demoMode", "playerId" ]
+        "required": [
+          "demoMode",
+          "playerId"
+        ]
       },
-      "NpcView" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string"
+      "NpcView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
           },
-          "npcId" : {
-            "type" : "string"
+          "npcId": {
+            "type": "string"
           },
-          "x" : {
-            "type" : "integer",
-            "format" : "int32"
+          "x": {
+            "type": "integer",
+            "format": "int32"
           },
-          "y" : {
-            "type" : "integer",
-            "format" : "int32"
+          "y": {
+            "type": "integer",
+            "format": "int32"
           }
         },
-        "required" : [ "id", "npcId", "x", "y" ]
+        "required": [
+          "id",
+          "npcId",
+          "x",
+          "y"
+        ]
       },
-      "PlayerView" : {
-        "type" : "object",
-        "properties" : {
-          "facing" : {
-            "type" : "string",
-            "enum" : [ "DOWN", "UP", "LEFT", "RIGHT" ]
+      "PlayerView": {
+        "type": "object",
+        "properties": {
+          "facing": {
+            "type": "string",
+            "enum": [
+              "DOWN",
+              "UP",
+              "LEFT",
+              "RIGHT"
+            ]
           },
-          "x" : {
-            "type" : "integer",
-            "format" : "int32"
+          "x": {
+            "type": "integer",
+            "format": "int32"
           },
-          "y" : {
-            "type" : "integer",
-            "format" : "int32"
+          "y": {
+            "type": "integer",
+            "format": "int32"
           }
         },
-        "required" : [ "facing", "x", "y" ]
+        "required": [
+          "facing",
+          "x",
+          "y"
+        ]
       },
-      "Problem" : {
-        "type" : "object",
-        "properties" : {
-          "code" : {
-            "type" : "string",
-            "description" : "Stable machine-readable error code"
+      "Problem": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable error code"
           },
-          "detail" : {
-            "type" : "string"
+          "detail": {
+            "type": "string"
           },
-          "fields" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "type" : "string"
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
             },
-            "description" : "Per-field messages when code is VALIDATION_FAILED"
+            "description": "Per-field messages when code is VALIDATION_FAILED"
           },
-          "instance" : {
-            "type" : "string"
+          "instance": {
+            "type": "string"
           },
-          "status" : {
-            "type" : "integer",
-            "format" : "int32"
+          "status": {
+            "type": "integer",
+            "format": "int32"
           },
-          "title" : {
-            "type" : "string"
+          "title": {
+            "type": "string"
           },
-          "type" : {
-            "type" : "string"
+          "type": {
+            "type": "string"
           }
         },
-        "required" : [ "code", "status" ]
+        "required": [
+          "code",
+          "status"
+        ]
       },
-      "ProfileRequest" : {
-        "type" : "object",
-        "properties" : {
-          "username" : {
-            "type" : "string",
-            "maxLength" : 30,
-            "minLength" : 0
+      "ProfileRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 30,
+            "minLength": 0
           }
         },
-        "required" : [ "username" ]
+        "required": [
+          "username"
+        ]
       },
-      "ProfileResponse" : {
-        "type" : "object",
-        "properties" : {
-          "playerId" : {
-            "type" : "integer",
-            "format" : "int32"
+      "ProfileResponse": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "type": "integer",
+            "format": "int32"
           },
-          "username" : {
-            "type" : "string"
+          "username": {
+            "type": "string"
           }
         },
-        "required" : [ "playerId", "username" ]
+        "required": [
+          "playerId",
+          "username"
+        ]
       },
-      "QuestStatusView" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string"
+      "QuestStatusView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
           },
-          "status" : {
-            "type" : "string"
+          "status": {
+            "type": "string"
           }
         },
-        "required" : [ "id", "status" ]
+        "required": [
+          "id",
+          "status"
+        ]
       },
-      "QuestView" : {
-        "type" : "object",
-        "properties" : {
-          "description" : {
-            "type" : "string"
+      "QuestView": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
           },
-          "id" : {
-            "type" : "string"
+          "id": {
+            "type": "string"
           },
-          "main" : {
-            "type" : "boolean"
+          "main": {
+            "type": "boolean"
           },
-          "status" : {
-            "type" : "string"
+          "status": {
+            "type": "string"
           },
-          "title" : {
-            "type" : "string"
+          "title": {
+            "type": "string"
           }
         },
-        "required" : [ "description", "id", "main", "status", "title" ]
+        "required": [
+          "description",
+          "id",
+          "main",
+          "status",
+          "title"
+        ]
       },
-      "RecoverRequest" : {
-        "type" : "object",
-        "properties" : {
-          "facing" : {
-            "type" : "string",
-            "enum" : [ "DOWN", "UP", "LEFT", "RIGHT" ]
+      "RecoverRequest": {
+        "type": "object",
+        "properties": {
+          "facing": {
+            "type": "string",
+            "enum": [
+              "DOWN",
+              "UP",
+              "LEFT",
+              "RIGHT"
+            ]
           },
-          "x" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 0
+          "x": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
           },
-          "y" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 0
+          "y": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
           }
         },
-        "required" : [ "facing", "x", "y" ]
+        "required": [
+          "facing",
+          "x",
+          "y"
+        ]
       },
-      "ReputationView" : {
-        "type" : "object",
-        "properties" : {
-          "faction" : {
-            "type" : "string"
+      "ReputationView": {
+        "type": "object",
+        "properties": {
+          "faction": {
+            "type": "string"
           },
-          "name" : {
-            "type" : "string"
+          "name": {
+            "type": "string"
           },
-          "value" : {
-            "type" : "integer",
-            "format" : "int32"
+          "value": {
+            "type": "integer",
+            "format": "int32"
           }
         },
-        "required" : [ "faction", "name", "value" ]
+        "required": [
+          "faction",
+          "name",
+          "value"
+        ]
       },
-      "RewardsView" : {
-        "type" : "object",
-        "properties" : {
-          "items" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
+      "RewardsView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
             }
           },
-          "shards" : {
-            "type" : "integer",
-            "format" : "int32"
+          "shards": {
+            "type": "integer",
+            "format": "int32"
           }
         },
-        "required" : [ "items", "shards" ]
+        "required": [
+          "items",
+          "shards"
+        ]
       },
-      "SessionView" : {
-        "type" : "object",
-        "properties" : {
-          "affinity" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/AffinityView"
+      "SessionView": {
+        "type": "object",
+        "properties": {
+          "affinity": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AffinityView"
             }
           },
-          "battle" : {
-            "$ref" : "#/components/schemas/BattleView"
+          "battle": {
+            "$ref": "#/components/schemas/BattleView"
           },
-          "cutscene" : {
-            "$ref" : "#/components/schemas/CutsceneView"
+          "cutscene": {
+            "$ref": "#/components/schemas/CutsceneView"
           },
-          "demoMode" : {
-            "type" : "boolean"
+          "demoMode": {
+            "type": "boolean"
           },
-          "dialogue" : {
-            "$ref" : "#/components/schemas/DialogueView"
+          "dialogue": {
+            "$ref": "#/components/schemas/DialogueView"
           },
-          "ending" : {
-            "$ref" : "#/components/schemas/EndingView"
+          "ending": {
+            "$ref": "#/components/schemas/EndingView"
           },
-          "hud" : {
-            "$ref" : "#/components/schemas/HudView"
+          "hud": {
+            "$ref": "#/components/schemas/HudView"
           },
-          "inventory" : {
-            "$ref" : "#/components/schemas/InventoryView"
+          "inventory": {
+            "$ref": "#/components/schemas/InventoryView"
           },
-          "journal" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/JournalView"
+          "journal": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JournalView"
             }
           },
-          "lantern" : {
-            "$ref" : "#/components/schemas/LanternMenuView"
+          "lantern": {
+            "$ref": "#/components/schemas/LanternMenuView"
           },
-          "mode" : {
-            "type" : "string",
-            "enum" : [ "WORLD", "DIALOGUE", "BATTLE", "LANTERN", "CUTSCENE", "ENDED" ]
+          "mode": {
+            "type": "string",
+            "enum": [
+              "WORLD",
+              "DIALOGUE",
+              "BATTLE",
+              "LANTERN",
+              "CUTSCENE",
+              "ENDED"
+            ]
           },
-          "objective" : {
-            "type" : "string"
+          "objective": {
+            "type": "string"
           },
-          "offerReload" : {
-            "type" : "boolean"
+          "offerReload": {
+            "type": "boolean"
           },
-          "quests" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/QuestView"
+          "quests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestView"
             }
           },
-          "reputation" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ReputationView"
+          "reputation": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReputationView"
             }
           },
-          "sessionId" : {
-            "type" : "string"
+          "sessionId": {
+            "type": "string"
           },
-          "toasts" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ToastView"
+          "toasts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToastView"
             }
           },
-          "world" : {
-            "$ref" : "#/components/schemas/WorldView"
+          "world": {
+            "$ref": "#/components/schemas/WorldView"
           }
         },
-        "required" : [ "affinity", "demoMode", "hud", "inventory", "journal", "mode", "offerReload", "quests", "reputation", "sessionId", "toasts", "world" ]
+        "required": [
+          "affinity",
+          "demoMode",
+          "hud",
+          "inventory",
+          "journal",
+          "mode",
+          "offerReload",
+          "quests",
+          "reputation",
+          "sessionId",
+          "toasts",
+          "world"
+        ]
       },
-      "SkillView" : {
-        "type" : "object",
-        "properties" : {
-          "description" : {
-            "type" : "string"
+      "SkillView": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
           },
-          "element" : {
-            "type" : "string"
+          "element": {
+            "type": "string"
           },
-          "fpCost" : {
-            "type" : "integer",
-            "format" : "int32"
+          "fpCost": {
+            "type": "integer",
+            "format": "int32"
           },
-          "id" : {
-            "type" : "string"
+          "id": {
+            "type": "string"
           },
-          "name" : {
-            "type" : "string"
+          "name": {
+            "type": "string"
           },
-          "slot" : {
-            "type" : "integer",
-            "format" : "int32"
+          "slot": {
+            "type": "integer",
+            "format": "int32"
           },
-          "usable" : {
-            "type" : "boolean"
+          "usable": {
+            "type": "boolean"
           }
         },
-        "required" : [ "fpCost", "slot", "usable" ]
+        "required": [
+          "fpCost",
+          "slot",
+          "usable"
+        ]
       },
-      "SlotView" : {
-        "type" : "object",
-        "properties" : {
-          "areaId" : {
-            "type" : "string"
+      "SlotView": {
+        "type": "object",
+        "properties": {
+          "areaId": {
+            "type": "string"
           },
-          "areaName" : {
-            "type" : "string"
+          "areaName": {
+            "type": "string"
           },
-          "exists" : {
-            "type" : "boolean"
+          "exists": {
+            "type": "boolean"
           },
-          "level" : {
-            "type" : "integer",
-            "format" : "int32"
+          "level": {
+            "type": "integer",
+            "format": "int32"
           },
-          "playSeconds" : {
-            "type" : "integer",
-            "format" : "int32"
+          "playSeconds": {
+            "type": "integer",
+            "format": "int32"
           },
-          "slot" : {
-            "type" : "integer",
-            "format" : "int32"
+          "slot": {
+            "type": "integer",
+            "format": "int32"
           },
-          "updatedAt" : {
-            "type" : "string"
+          "updatedAt": {
+            "type": "string"
           }
         },
-        "required" : [ "exists", "slot" ]
+        "required": [
+          "exists",
+          "slot"
+        ]
       },
-      "StatsView" : {
-        "type" : "object",
-        "properties" : {
-          "attack" : {
-            "type" : "integer",
-            "format" : "int32"
+      "StatsView": {
+        "type": "object",
+        "properties": {
+          "attack": {
+            "type": "integer",
+            "format": "int32"
           },
-          "critPct" : {
-            "type" : "integer",
-            "format" : "int32"
+          "critPct": {
+            "type": "integer",
+            "format": "int32"
           },
-          "defence" : {
-            "type" : "integer",
-            "format" : "int32"
+          "defence": {
+            "type": "integer",
+            "format": "int32"
           },
-          "maxFp" : {
-            "type" : "integer",
-            "format" : "int32"
+          "maxFp": {
+            "type": "integer",
+            "format": "int32"
           },
-          "maxHp" : {
-            "type" : "integer",
-            "format" : "int32"
+          "maxHp": {
+            "type": "integer",
+            "format": "int32"
           },
-          "speed" : {
-            "type" : "integer",
-            "format" : "int32"
+          "speed": {
+            "type": "integer",
+            "format": "int32"
           }
         },
-        "required" : [ "attack", "critPct", "defence", "maxFp", "maxHp", "speed" ]
+        "required": [
+          "attack",
+          "critPct",
+          "defence",
+          "maxFp",
+          "maxHp",
+          "speed"
+        ]
       },
-      "StatusView" : {
-        "type" : "object",
-        "properties" : {
-          "icon" : {
-            "type" : "string"
+      "StatusView": {
+        "type": "object",
+        "properties": {
+          "icon": {
+            "type": "string"
           },
-          "id" : {
-            "type" : "string"
+          "id": {
+            "type": "string"
           },
-          "letter" : {
-            "type" : "string"
+          "letter": {
+            "type": "string"
           },
-          "name" : {
-            "type" : "string"
+          "name": {
+            "type": "string"
           },
-          "turns" : {
-            "type" : "integer",
-            "format" : "int32"
+          "turns": {
+            "type": "integer",
+            "format": "int32"
           }
         },
-        "required" : [ "icon", "id", "letter", "name", "turns" ]
+        "required": [
+          "icon",
+          "id",
+          "letter",
+          "name",
+          "turns"
+        ]
       },
-      "StepView" : {
-        "type" : "object",
-        "properties" : {
-          "actor" : {
-            "type" : "string"
+      "StepView": {
+        "type": "object",
+        "properties": {
+          "actor": {
+            "type": "string"
           },
-          "camera" : {
-            "type" : "string"
+          "camera": {
+            "type": "string"
           },
-          "effect" : {
-            "type" : "string"
+          "effect": {
+            "type": "string"
           },
-          "facing" : {
-            "type" : "string"
+          "facing": {
+            "type": "string"
           },
-          "kind" : {
-            "type" : "string"
+          "kind": {
+            "type": "string"
           },
-          "ms" : {
-            "type" : "integer",
-            "format" : "int32"
+          "ms": {
+            "type": "integer",
+            "format": "int32"
           },
-          "path" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/TileView"
+          "path": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TileView"
             }
           },
-          "speaker" : {
-            "type" : "string"
+          "speaker": {
+            "type": "string"
           },
-          "state" : {
-            "type" : "string"
+          "state": {
+            "type": "string"
           },
-          "text" : {
-            "type" : "string"
+          "text": {
+            "type": "string"
           },
-          "track" : {
-            "type" : "string"
+          "track": {
+            "type": "string"
           },
-          "x" : {
-            "type" : "integer",
-            "format" : "int32"
+          "x": {
+            "type": "integer",
+            "format": "int32"
           },
-          "y" : {
-            "type" : "integer",
-            "format" : "int32"
+          "y": {
+            "type": "integer",
+            "format": "int32"
           },
-          "zoom" : {
-            "type" : "number",
-            "format" : "double"
+          "zoom": {
+            "type": "number",
+            "format": "double"
           }
         },
-        "required" : [ "kind", "path" ]
+        "required": [
+          "kind",
+          "path"
+        ]
       },
-      "TileView" : {
-        "type" : "object",
-        "properties" : {
-          "x" : {
-            "type" : "integer",
-            "format" : "int32"
+      "TileView": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "integer",
+            "format": "int32"
           },
-          "y" : {
-            "type" : "integer",
-            "format" : "int32"
+          "y": {
+            "type": "integer",
+            "format": "int32"
           }
         },
-        "required" : [ "x", "y" ]
+        "required": [
+          "x",
+          "y"
+        ]
       },
-      "ToastView" : {
-        "type" : "object",
-        "properties" : {
-          "kind" : {
-            "type" : "string"
+      "ToastView": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
           },
-          "subject" : {
-            "type" : "string"
+          "subject": {
+            "type": "string"
           },
-          "text" : {
-            "type" : "string"
+          "text": {
+            "type": "string"
           },
-          "tier" : {
-            "type" : "string"
+          "tier": {
+            "type": "string"
           },
-          "upgrade" : {
-            "type" : "boolean"
+          "upgrade": {
+            "type": "boolean"
           }
         },
-        "required" : [ "kind", "text", "upgrade" ]
+        "required": [
+          "kind",
+          "text",
+          "upgrade"
+        ]
       },
-      "WeaponView" : {
-        "type" : "object",
-        "properties" : {
-          "arc" : {
-            "type" : "string"
+      "WeaponView": {
+        "type": "object",
+        "properties": {
+          "arc": {
+            "type": "string"
           },
-          "attack" : {
-            "type" : "integer",
-            "format" : "int32"
+          "attack": {
+            "type": "integer",
+            "format": "int32"
           },
-          "base" : {
-            "type" : "integer",
-            "format" : "int32"
+          "base": {
+            "type": "integer",
+            "format": "int32"
           },
-          "critPct" : {
-            "type" : "integer",
-            "format" : "int32"
+          "critPct": {
+            "type": "integer",
+            "format": "int32"
           },
-          "description" : {
-            "type" : "string"
+          "description": {
+            "type": "string"
           },
-          "dex" : {
-            "type" : "string"
+          "dex": {
+            "type": "string"
           },
-          "id" : {
-            "type" : "string"
+          "id": {
+            "type": "string"
           },
-          "name" : {
-            "type" : "string"
+          "name": {
+            "type": "string"
           },
-          "str" : {
-            "type" : "string"
+          "str": {
+            "type": "string"
           },
-          "tier" : {
-            "type" : "string"
+          "tier": {
+            "type": "string"
           }
         },
-        "required" : [ "attack", "base", "critPct", "description", "id", "name", "tier" ]
+        "required": [
+          "attack",
+          "base",
+          "critPct",
+          "description",
+          "id",
+          "name",
+          "tier"
+        ]
       },
-      "WorldView" : {
-        "type" : "object",
-        "properties" : {
-          "areaId" : {
-            "type" : "string"
+      "WorldView": {
+        "type": "object",
+        "properties": {
+          "areaId": {
+            "type": "string"
           },
-          "areaName" : {
-            "type" : "string"
+          "areaName": {
+            "type": "string"
           },
-          "bosses" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/BossView"
+          "bosses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BossView"
             }
           },
-          "chests" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ChestView"
+          "chests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChestView"
             }
           },
-          "creeps" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/CreepView"
+          "creeps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreepView"
             }
           },
-          "hiddenObjects" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
+          "hiddenObjects": {
+            "type": "array",
+            "items": {
+              "type": "string"
             }
           },
-          "lanterns" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/LanternView"
+          "lanterns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LanternView"
             }
           },
-          "lightState" : {
-            "type" : "string"
+          "lightState": {
+            "type": "string"
           },
-          "lostShards" : {
-            "$ref" : "#/components/schemas/LostShardsView"
+          "lostShards": {
+            "$ref": "#/components/schemas/LostShardsView"
           },
-          "mapKey" : {
-            "type" : "string"
+          "mapKey": {
+            "type": "string"
           },
-          "npcs" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/NpcView"
+          "npcs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NpcView"
             }
           },
-          "player" : {
-            "$ref" : "#/components/schemas/PlayerView"
+          "player": {
+            "$ref": "#/components/schemas/PlayerView"
           },
-          "regionId" : {
-            "type" : "string"
+          "regionId": {
+            "type": "string"
           }
         },
-        "required" : [ "areaId", "areaName", "bosses", "chests", "creeps", "hiddenObjects", "lanterns", "lightState", "mapKey", "npcs", "player", "regionId" ]
+        "required": [
+          "areaId",
+          "areaName",
+          "bosses",
+          "chests",
+          "creeps",
+          "hiddenObjects",
+          "lanterns",
+          "lightState",
+          "mapKey",
+          "npcs",
+          "player",
+          "regionId"
+        ]
       }
     },
-    "securitySchemes" : {
-      "session" : {
-        "description" : "Game session token returned as sessionId by POST /api/game/new",
-        "in" : "header",
-        "name" : "X-Session",
-        "type" : "apiKey"
+    "securitySchemes": {
+      "session": {
+        "description": "Game session token returned as sessionId by POST /api/game/new",
+        "in": "header",
+        "name": "X-Session",
+        "type": "apiKey"
       }
     }
   }
