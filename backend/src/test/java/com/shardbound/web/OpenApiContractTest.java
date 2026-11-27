@@ -11,8 +11,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import tools.jackson.core.util.DefaultIndenter;
+import tools.jackson.core.util.DefaultPrettyPrinter;
+import tools.jackson.core.util.Separators;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
@@ -28,6 +30,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * committed; CI regenerates it and fails if it differs, so the frontend's
  * generated client can never drift from the server.
  *
+ * <p>The file is written as {@code JSON.stringify(spec, null, 2)} writes it,
+ * the format release-please keeps when it bumps {@code info.version}, so a
+ * release PR changes that one line and not the whole file.
+ *
  * <p>Only the web layer matters here, so the database is switched off and the
  * repositories are mocks: the contract builds without Docker.
  */
@@ -37,6 +43,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class OpenApiContractTest {
 
     static final Path CONTRACT = Path.of("../api/openapi.json");
+
+    /** Two-space indents, {@code "name": value}, one array element per line, {@code []} and {@code {}} when empty. */
+    private static final DefaultPrettyPrinter STANDARD_JSON = new DefaultPrettyPrinter(new Separators()
+            .withObjectNameValueSpacing(Separators.Spacing.AFTER)
+            .withObjectEmptySeparator("")
+            .withArrayEmptySeparator(""))
+            .withArrayIndenter(DefaultIndenter.SYSTEM_LINEFEED_INSTANCE);
 
     @MockitoBean
     PlayerRepository players;
@@ -64,9 +77,9 @@ class OpenApiContractTest {
         assertTrue(spec.get("paths").has("/api/dialogue/choose"));
         assertEquals("apiKey", spec.get("components").get("securitySchemes").get("session").get("type").asString());
 
-        JsonMapper pretty = JsonMapper.builder().enable(SerializationFeature.INDENT_OUTPUT).build();
+        String json = JsonMapper.shared().writer().with(STANDARD_JSON).writeValueAsString(spec);
         Files.createDirectories(CONTRACT.getParent());
-        Files.writeString(CONTRACT, pretty.writeValueAsString(spec).replace("\r\n", "\n") + "\n");
+        Files.writeString(CONTRACT, json.replace("\r\n", "\n") + "\n");
     }
 
     private static boolean contains(JsonNode array, String value) {
